@@ -174,7 +174,18 @@ async function updateCatalog(segment) {
 }
 
 async function getCatalogData() {
-    return await readCatalog();
+    const data = await readCatalog();
+    // Filter out entries with no title or year
+    if (data.media) {
+        const cleanMedia = {};
+        for (const [id, item] of Object.entries(data.media)) {
+            if (item.title && item.year) {
+                cleanMedia[id] = item;
+            }
+        }
+        data.media = cleanMedia;
+    }
+    return data;
 }
 
 module.exports = {
