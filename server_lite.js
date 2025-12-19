@@ -176,7 +176,18 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
 // Express Server
 const app = express();
 app.set('trust proxy', true);
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://code.jquery.com", "https://cdn.datatables.net"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.datatables.net", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            imgSrc: ["'self'", "data:", "https://cdn.datatables.net"],
+            connectSrc: ["'self'"], // Add external APIs here if client-side fetches are needed later
+        },
+    },
+}));
 app.use(hpp());
 app.use(cors());
 app.use(express.json());
