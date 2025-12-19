@@ -26,6 +26,12 @@ jest.mock('../../src/services/user-service.js', () => ({
     updateUserStats: jest.fn().mockResolvedValue({ userId: 'u1', votes: 6 })
 }));
 
+// Mock Indexer to prevent interval checks
+jest.mock('../../src/services/indexer.js', () => ({
+    start: jest.fn(),
+    runIndex: jest.fn()
+}));
+
 // Mock rate-limit to avoid open handles (timer)
 jest.mock('express-rate-limit', () => {
     return jest.fn(() => (req, res, next) => next());

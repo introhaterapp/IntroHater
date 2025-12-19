@@ -18,6 +18,10 @@ describe('User Service', () => {
         // We will rely on mocking dependencies to control "state" perception.
     });
 
+    afterAll(async () => {
+        await mongoService.close();
+    });
+
     describe('getUserStats', () => {
         it('should return null if not using Mongo and no local data', async () => {
             mongoService.getCollection.mockResolvedValue(null);

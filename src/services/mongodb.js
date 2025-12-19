@@ -45,6 +45,15 @@ class MongoService {
         if (!db) return null;
         return db.collection(name);
     }
+
+    async close() {
+        if (this.client) {
+            await this.client.close();
+            this.client = null;
+            this.db = null;
+            console.log("[MongoDB] Connection closed.");
+        }
+    }
 }
 
 module.exports = new MongoService();

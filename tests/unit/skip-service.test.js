@@ -20,6 +20,10 @@ describe('Skip Service', () => {
         jest.clearAllMocks();
     });
 
+    afterAll(async () => {
+        await mongoService.close();
+    });
+
     const loadService = () => require('../../src/services/skip-service');
 
     it('should return null if no segment found (Local JSON empty)', async () => {
