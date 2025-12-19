@@ -167,7 +167,7 @@ class IndexerService {
                 }
 
                 // Save after batch
-                const skipService = require('./skip-service'); // Lazy load if needed
+                // Save after batch (using outer scope skipService)
                 await skipService.forceSave();
 
                 offset += BATCH_SIZE;
