@@ -361,8 +361,10 @@ async function getSkipSegment(fullId) {
 
 // --- Write Operations (Crowdsourcing) ---
 
-async function addSkipSegment(fullId, start, end, label = "Intro", userId = "anonymous", applyToSeries = false) {
+async function addSkipSegment(fullId, start, end, label = "Intro", userId = "anonymous", applyToSeries = false, skipSave = false) {
     await ensureInit();
+    const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot'];
+    const isTrusted = TRUSTED_SOURCES.includes(userId);
 
     // Input Validation
     if (typeof start !== 'number' || typeof end !== 'number' || start < 0 || end <= start) {
@@ -385,7 +387,7 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
     const newSegment = {
         start, end, label: cleanLabel,
         votes: 1,
-        verified: false, // All new submissions start unverified
+        verified: isTrusted, // Auto-verify trusted sources
         source: userId === 'aniskip' ? 'aniskip' : 'user',
         reportCount: 0,
         seriesSkip: applyToSeries === true, // Helper Flag
@@ -402,15 +404,65 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
     } else {
         if (!skipsData[cleanFullId]) skipsData[cleanFullId] = [];
         skipsData[cleanFullId].push(newSegment);
-        await saveSkips();
+
+        if (!skipSave) {
+            await saveSkips();
+        }
     }
 
     // Auto-register in catalog if it's a user submission (local)
-    if (userId !== 'aniskip' && userId !== 'anime-skip') {
+    // For bulk import, we handle catalog registration separately in the indexer
+    if (!isTrusted) {
         catalogService.registerShow(cleanFullId).catch(() => { });
     }
 
     return newSegment;
+}
+
+// --- Maintenance ---
+async function approveAllTrusted() {
+    await ensureInit();
+    console.log('[SkipService] Running trusted source auto-approval...');
+    const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot'];
+    let count = 0;
+
+    if (useMongo) {
+        const cursor = skipsCollection.find({});
+        while (await cursor.hasNext()) {
+            const doc = await cursor.next();
+            let changed = false;
+            doc.segments.forEach(seg => {
+                if (!seg.verified && seg.contributors.some(c => TRUSTED_SOURCES.includes(c))) {
+                    seg.verified = true;
+                    changed = true;
+                    count++;
+                }
+            });
+            if (changed) {
+                await skipsCollection.updateOne({ _id: doc._id }, { $set: { segments: doc.segments } });
+            }
+        }
+    } else {
+        for (const fullId in skipsData) {
+            skipsData[fullId].forEach(seg => {
+                if (!seg.verified && seg.contributors.some(c => TRUSTED_SOURCES.includes(c))) {
+                    seg.verified = true;
+                    count++;
+                }
+            });
+        }
+        if (count > 0) await saveSkips();
+    }
+    console.log(`[SkipService] Auto-approved ${count} existing trusted segments.`);
+}
+
+// Run approval on startup (fire and forget)
+setTimeout(approveAllTrusted, 5000);
+
+async function forceSave() {
+    if (!useMongo) {
+        await saveSkips();
+    }
 }
 
 // --- Admin Operations ---
@@ -487,5 +539,6 @@ module.exports = {
     addSkipSegment,
     getPendingModeration,
     resolveModeration,
-    reportSegment
+    reportSegment,
+    forceSave
 };

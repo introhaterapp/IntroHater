@@ -1,4 +1,5 @@
 const catalogService = require('./catalog');
+const skipService = require('./skip-service');
 const axios = require('axios');
 
 class IndexerService {
@@ -98,17 +99,76 @@ class IndexerService {
                         } catch (e) { }
                     }
 
-                    // If registered, add to catalog
+                    // If registered, add to catalog AND fetch segments
                     if (imdbId) {
-                        console.log(`[Indexer] Found IMDb ID: ${imdbId} (${show.name})`);
+                        console.log(`[Indexer] Found IMDb ID: ${imdbId} (${show.name}). Fetching segments...`);
                         await catalogService.registerShow(imdbId);
+
+                        // --- FETCH SEGMENTS ---
+                        try {
+                            const epQuery = `
+                                query ($showId: ID!) {
+                                    findEpisodesByShowId(showId: $showId) {
+                                        number
+                                        timestamps {
+                                            at
+                                            type {
+                                                name
+                                            }
+                                        }
+                                    }
+                                }
+                            `;
+                            const epRes = await axios.post('https://api.anime-skip.com/graphql', {
+                                query: epQuery,
+                                variables: { showId: show.id }
+                            }, { headers: { 'X-Client-ID': ANIME_SKIP_CLIENT_ID } });
+
+                            const episodes = epRes.data?.data?.findEpisodesByShowId || [];
+                            let importedCount = 0;
+
+                            for (const ep of episodes) {
+                                const timestamps = ep.timestamps || [];
+                                const intro = timestamps.find(t => t.type.name.toLowerCase().includes('opening') || t.type.name.toLowerCase().includes('intro'));
+
+                                if (intro) {
+                                    const currentIndex = timestamps.indexOf(intro);
+                                    const next = timestamps[currentIndex + 1];
+                                    const start = intro.at;
+                                    const end = next ? next.at : start + 90;
+
+                                    // Construct ID: tt123456:1:5 (Assuming Season 1 for simplicity if unknown, but usually AnimeSkip is absolute. Logic needed here?)
+                                    // Limitation: AnimeSkip uses absolute episode numbers usually. 
+                                    // We'll store as tt123456:1:X for now, but really we should try to map seasons.
+                                    // For now, let's assume Season 1 for simple anime, or use absolute if needed. 
+                                    // Actually, let's just use the absolute number as the episode and S1.
+                                    // Note: This relies on the user playing S1EX. 
+                                    const fullId = `${imdbId}:1:${ep.number}`;
+
+                                    await skipService.addSkipSegment(fullId, start, end, 'Intro', 'auto-import', false, true); // skipSave = true
+                                    importedCount++;
+                                }
+                            }
+
+                            if (importedCount > 0) {
+                                console.log(`[Indexer] Imported ${importedCount} segments for ${show.name}`);
+                            }
+
+                        } catch (err) {
+                            console.error(`[Indexer] Failed to fetch segments for ${show.name}: ${err.message}`);
+                        }
+
                     } else {
                         // console.log(`[Indexer] No IMDb ID for show: ${show.name}`);
                     }
 
                     // Throttle inner loop slightly to avoid hammer
-                    await new Promise(r => setTimeout(r, 200));
+                    await new Promise(r => setTimeout(r, 400)); // Increased delay for extra calls
                 }
+
+                // Save after batch
+                const skipService = require('./skip-service'); // Lazy load if needed
+                await skipService.forceSave();
 
                 offset += BATCH_SIZE;
                 page++;
