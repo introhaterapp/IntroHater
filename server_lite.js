@@ -795,6 +795,11 @@ app.get('/vote/:action/:videoId', (req, res) => {
 // Serve Addon - Handled by custom routes above
 // app.use('/', addonRouter); // DEPRECATED
 
+// 404 Handler (Last Route)
+app.use((req, res) => {
+    res.status(404).json({ error: "IntroHater Lite: Route not found", path: req.path });
+});
+
 if (require.main === module) {
     loadMetadataCache().then(() => {
         // Start Indexer
