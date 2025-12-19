@@ -431,10 +431,14 @@ async function approveAllTrusted() {
         while (await cursor.hasNext()) {
             const doc = await cursor.next();
             let changed = false;
-            if (!seg.verified && seg.contributors && seg.contributors.some(c => TRUSTED_SOURCES.includes(c))) {
-                seg.verified = true;
-                changed = true;
-                count++;
+            if (doc.segments && Array.isArray(doc.segments)) {
+                doc.segments.forEach(seg => {
+                    if (!seg.verified && seg.contributors && seg.contributors.some(c => TRUSTED_SOURCES.includes(c))) {
+                        seg.verified = true;
+                        changed = true;
+                        count++;
+                    }
+                });
             }
             if (changed) {
                 await skipsCollection.updateOne({ _id: doc._id }, { $set: { segments: doc.segments } });
