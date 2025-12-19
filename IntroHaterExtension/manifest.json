@@ -1,0 +1,64 @@
+{
+  "manifest_version": 3,
+  "name": "Intro Hater",
+  "version": "1.50.0",
+  "description": "Skips intros and outros in Stremio.",
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.strem.io/*",
+    "*://*.stremioapps.com/*",
+    "*://web.stremio.com/*",
+    "*://app.strem.io/*",
+    "https://api.jikan.moe/*",
+    "https://api.aniskip.com/*"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.strem.io/*",
+        "*://*.stremioapps.com/*",
+        "*://web.stremio.com/*",
+        "*://app.strem.io/*"
+      ],
+      "js": ["content.js"],
+      "type": "module",
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [{
+    "resources": ["modules/*.js"],
+    "matches": [
+      "*://*.strem.io/*",
+      "*://*.stremioapps.com/*",
+      "*://web.stremio.com/*",
+      "*://app.strem.io/*"
+    ]
+  }],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "introhater@extension.org",
+      "strict_min_version": "109.0"
+    }
+  }
+}

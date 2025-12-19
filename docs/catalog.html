@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntroHater - Global Catalog</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Third Party Styles -->
+    <link href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css" rel="stylesheet">
+
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="css/style.css?v=2">
+
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <a href="/" class="logo text-gradient">
+                <img src="icon32.png" alt="Logo">
+                IntroHater
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="catalog.html" class="active">Catalog</a></li>
+                    <li><a href="leaderboard.html">Leaderboard</a></li>
+                    <li><a href="api.html">API</a></li>
+                    <li><a href="https://github.com/stremio-community/introhater" target="_blank">GitHub</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <a href="api-keys.html" class="btn btn-secondary btn-sm"
+                    style="padding: 6px 16px; font-size: 0.85rem;">Get API Key</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="section">
+            <div class="container" style="padding-top: 120px; padding-bottom: 60px;">
+                <div class="header-content reveal-on-scroll" style="text-align: center; margin-bottom: 60px;">
+                    <h1 class="text-gradient" style="font-size: 3rem; margin-bottom: 16px;">Global Catalog</h1>
+                    <p class="hero-subtitle" style="margin: 0 auto;">Browse all supported shows and skip segments.</p>
+                </div>
+
+                <div class="glass-panel text-center reveal-on-scroll" style="overflow: hidden; padding: 24px;">
+                    <div class="table-container" style="margin-top: 0;">
+                        <table id="catalogTable" class="display responsive" style="width:100%">
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Episode Modal -->
+    <div id="episodeModal" class="modal">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h3 id="modalTitle">Episodes</h3>
+                <span id="closeEpisodeModal" class="modal-close">&times;</span>
+            </div>
+            <div id="episodeGrid" class="episode-grid">
+                <!-- Populated by JS -->
+            </div>
+            <div style="margin-top: 20px; text-align: right;">
+                <button id="closeModalBtn" class="btn btn-secondary" style="width: 100%">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-col">
+                    <a href="/" class="logo">IntroHater</a>
+                    <p style="margin-top: 10px; color: var(--text-muted); font-size: 0.9rem;">
+                        Making streaming better, one skip at a time.
+                    </p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="catalog.html">Catalog</a></li>
+                        <li><a href="leaderboard.html">Leaderboard</a></li>
+                        <li><a href="https://github.com/stremio-community/introhater/releases">Changelog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Developers</h4>
+                    <ul>
+                        <li><a href="api.html">API Documentation</a></li>
+                        <li><a href="https://github.com/stremio-community/introhater">GitHub</a></li>
+                        <li><a href="https://github.com/stremio-community/introhater/issues">Report Issue</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom"
+                style="margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                <p>&copy; 2025 IntroHater. Open source and community powered.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/catalog.js"></script>
+
+</body>
+
+</html>

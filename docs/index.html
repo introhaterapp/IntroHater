@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intro Hater - Ultimate Stremio Skip Extension</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css?v=2">
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icon32.png">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <a href="/" class="logo text-gradient">
+                <img src="icon32.png" alt="Logo">
+                IntroHater
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="#" class="active">Home</a></li>
+                    <li><a href="catalog.html">Catalog</a></li>
+                    <li><a href="leaderboard.html">Leaderboard</a></li>
+                    <li><a href="community.html">Community Portal</a></li>
+                    <li><a href="https://github.com/stremio-community/introhater" target="_blank">GitHub</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <a href="configure.html" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Install
+                    Addon</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Professional Hero -->
+        <section class="section hero text-center" style="padding-top: 120px; padding-bottom: 80px;">
+            <div class="container">
+                <h1 class="hero-title animate-fade-in"
+                    style="font-size: 3.5rem; margin-bottom: 24px; letter-spacing: -0.04em;">
+                    Skip the Boring.<br>
+                    <span>Focus on the Story.</span>
+                </h1>
+                <p class="hero-subtitle animate-fade-in"
+                    style="font-size: 1.25rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 40px auto; animation-delay: 0.1s;">
+                    The most advanced auto-skip extension for Stremio. Enhanced by community data and intelligent audio
+                    fingerprinting.
+                </p>
+
+                <div class="hero-buttons justify-center animate-fade-in"
+                    style="justify-content: center; animation-delay: 0.2s;">
+                    <a href="configure.html" class="btn btn-primary" style="font-size: 1.1rem; padding: 12px 32px;">
+                        Install Addon
+                    </a>
+                    <a href="community.html" class="btn btn-secondary" style="font-size: 1.1rem; padding: 12px 32px;">
+                        Community Portal
+                    </a>
+                </div>
+
+                <!-- Social Proof / Stats in a single sleek bar -->
+                <div class="stats-bar animate-fade-in"
+                    style="margin-top: 60px; padding-top: 40px; border-top: 1px solid var(--border); animation-delay: 0.3s; display: flex; justify-content: center; gap: 60px; flex-wrap: wrap;">
+                    <div class="text-center">
+                        <div id="stat-users" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">...
+                        </div>
+                        <div
+                            style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                            Active Users</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="stat-shows" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">...
+                        </div>
+                        <div
+                            style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                            Shows Indexed</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="stat-skips" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">...
+                        </div>
+                        <div
+                            style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                            Total Skips</div>
+                        <div style="font-size: 0.75rem; color: var(--primary); margin-top: 4px; font-weight: 500;">
+                            Combined Sources</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="stat-episodes" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">
+                            ...
+                        </div>
+                        <div
+                            style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                            Episodes Synced</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="stat-votes" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">...
+                        </div>
+                        <div
+                            style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+                            Community Votes</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Grid -->
+        <section class="section"
+            style="background: var(--bg-card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+            <div class="container">
+                <div class="section-header text-center" style="margin-bottom: 60px;">
+                    <h2 style="font-size: 2.25rem; margin-bottom: 16px;">Why IntroHater?</h2>
+                    <p style="color: var(--text-muted); font-size: 1.1rem;">Built for power users who value their time.
+                    </p>
+                </div>
+
+                <div class="grid-3">
+                    <!-- Feature 1 -->
+                    <div class="card">
+                        <div
+                            style="width: 48px; height: 48px; background: rgba(14, 165, 233, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.5rem; margin-bottom: 20px;">
+                            ⚡
+                        </div>
+                        <h3 style="font-size: 1.25rem; margin-bottom: 12px;">Instant Processing</h3>
+                        <p style="color: var(--text-muted);">
+                            Skips intros cleanly without buffering or delay. The extension pre-fetches segment data for
+                            seamless playback.
+                        </p>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div class="card">
+                        <div
+                            style="width: 48px; height: 48px; background: rgba(14, 165, 233, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.5rem; margin-bottom: 20px;">
+                            🧠
+                        </div>
+                        <h3 style="font-size: 1.25rem; margin-bottom: 12px;">Smart Recognition</h3>
+                        <p style="color: var(--text-muted);">
+                            Combines audio fingerprinting with user-submitted data to ensure accurate start and end
+                            times for any show.
+                        </p>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div class="card">
+                        <div
+                            style="width: 48px; height: 48px; background: rgba(14, 165, 233, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.5rem; margin-bottom: 20px;">
+                            🛡️
+                        </div>
+                        <h3 style="font-size: 1.25rem; margin-bottom: 12px;">Privacy Focused</h3>
+                        <p style="color: var(--text-muted);">
+                            Open source and transparent. No tracking of your personal viewing habits, ever.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Removed (Focus on Stremio Addon) -->
+    </main>
+
+    <!-- Footer -->
+    <footer style="margin-top: 0;">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-col">
+                    <a href="/" class="logo">IntroHater</a>
+                    <p style="margin-top: 10px; color: var(--text-muted); font-size: 0.9rem;">
+                        Making streaming better, one skip at a time.
+                    </p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="catalog.html">Catalog</a></li>
+                        <li><a href="leaderboard.html">Leaderboard</a></li>
+                        <li><a href="https://github.com/stremio-community/introhater/releases">Changelog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Developers</h4>
+                    <ul>
+                        <li><a href="api.html">API Documentation</a></li>
+                        <li><a href="https://github.com/stremio-community/introhater">GitHub</a></li>
+                        <li><a href="https://github.com/stremio-community/introhater/issues">Report Issue</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom"
+                style="margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                <p>&copy; 2025 IntroHater. Open source and community powered.</p>
+            </div>
+        </div>
+    </footer>
+
+
+    <script src="js/main.js"></script>
+</body>
+
+</html>

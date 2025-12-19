@@ -1,0 +1,133 @@
+name: Deploy to Oracle Cloud
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.ORACLE_SSH_PRIVATE_KEY }}
+          known_hosts: 'placeholder'
+
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H 129.153.202.40 >> ~/.ssh/known_hosts
+
+      - name: Deploy with rsync
+        run: |
+          rsync -avz --exclude '.git*' \
+                     --exclude 'node_modules' \
+                     --exclude '.env' \
+                     ./ ubuntu@129.153.202.40:~/app/
+
+      - name: Execute remote ssh commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: 129.153.202.40
+          username: ubuntu
+          key: ${{ secrets.ORACLE_SSH_PRIVATE_KEY }}
+          script: |
+            # Create .oci directories
+            mkdir -p ~/.oci
+            sudo mkdir -p /root/.oci
+            
+            # Create Oracle config files for ubuntu user
+            cat > ~/.oci/config << 'EOL'
+            ${{ secrets.ORACLE_CONFIG }}
+            EOL
+            chmod 600 ~/.oci/config
+            
+            cat > ~/.oci/oci_api_key.pem << 'EOL'
+            ${{ secrets.ORACLE_PRIVATE_KEY }}
+            EOL
+            chmod 600 ~/.oci/oci_api_key.pem
+            
+            cat > ~/.oci/oci_api_key_public.pem << 'EOL'
+            ${{ secrets.ORACLE_PUBLIC_KEY }}
+            EOL
+            chmod 600 ~/.oci/oci_api_key_public.pem
+            
+            # Copy and set permissions for root user
+            sudo cp ~/.oci/config /root/.oci/
+            sudo cp ~/.oci/oci_api_key.pem /root/.oci/
+            sudo cp ~/.oci/oci_api_key_public.pem /root/.oci/
+            sudo chmod 600 /root/.oci/config
+            sudo chmod 600 /root/.oci/oci_api_key.pem
+            sudo chmod 600 /root/.oci/oci_api_key_public.pem
+            
+            # Make scripts executable
+            chmod +x ~/app/scripts/install_mongodb.sh
+            
+            # Install MongoDB if not installed or upgrade if needed
+            if ! systemctl is-active --quiet mongod; then
+              echo "MongoDB not active or not installed. Installing/configuring MongoDB..."
+              ~/app/scripts/install_mongodb.sh
+            fi
+            
+            # Install PM2 globally if not already installed
+            sudo npm install -g pm2
+            
+            # Kill any existing processes
+            sudo pm2 delete all || true
+            
+            cd ~/app
+            
+            # Create environment file
+            cat > .env << 'EOL'
+            # Oracle Configuration
+            TOKEN_SECRET=${{ secrets.TOKEN_SECRET }}
+            ORACLE_REGION=${{ secrets.ORACLE_REGION }}
+            ORACLE_COMPARTMENT_ID=${{ secrets.ORACLE_COMPARTMENT_ID }}
+            ORACLE_CONFIG_FILE=/root/.oci/config
+
+            # Auth0 Configuration
+            AUTH0_DOMAIN=${{ secrets.AUTH0_DOMAIN }}
+            AUTH0_AUDIENCE=${{ secrets.AUTH0_AUDIENCE }}
+            AUTH0_CLIENT_ID=${{ secrets.AUTH0_CLIENT_ID }}
+            AUTH0_CLIENT_SECRET=${{ secrets.AUTH0_CLIENT_SECRET }}
+            BASE_URL=${{ secrets.BASE_URL }}
+
+            # MongoDB Configuration
+            MONGODB_URI=mongodb://introhater_admin:REDACTED@localhost:27017/introHater?authSource=admin
+
+            # API Configuration
+            API_KEY_LENGTH=32
+            API_RATE_LIMIT=100
+            API_RATE_WINDOW_MS=900000
+            ADMIN_EMAILS=${{ secrets.ADMIN_EMAILS }}
+            ADMIN_GITHUB_IDS=${{ secrets.ADMIN_GITHUB_IDS }}
+            API_KEY=${{ secrets.API_KEY }}
+
+            # Server Configuration
+            PORT=80
+            NODE_ENV=production
+            EOL
+            
+            # Copy systemd service file and enable it
+            sudo cp ~/app/scripts/introhater.service /etc/systemd/system/
+            sudo systemctl daemon-reload
+            sudo systemctl enable introhater.service
+            
+            # Install dependencies
+            npm install
+            
+            # Start server with PM2 in production mode with auto-restart
+            sudo env PATH=$PATH pm2 start server.js \
+              --name server \
+              --max-memory-restart 300M \
+              --restart-delay 1000 \
+              --max-restarts 10 \
+              --exp-backoff-restart-delay=100 \
+              --env production
+            
+            # Save PM2 process list and configure to start on system startup
+            sudo pm2 save
+            sudo pm2 startup systemd || true
+            sudo systemctl enable pm2-root

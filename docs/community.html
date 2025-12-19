@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntroHater - Community Portal</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon32.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/style.css?v=2">
+
+    <style>
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 8px;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            background: rgba(14, 165, 233, 0.1);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .episode-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        #login-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Auth Overlay -->
+    <div id="login-overlay">
+        <div class="glass-panel" style="max-width: 450px; width: 100%; padding: 40px;">
+            <div class="text-center" style="margin-bottom: 30px;">
+                <h2 class="text-gradient" style="font-size: 2rem;">Community Portal</h2>
+                <p style="color: var(--text-muted); margin-top: 10px;">Paste your Real-Debrid API key to access history
+                    and contribute.</p>
+            </div>
+            <div class="form-group">
+                <input type="text" id="authKey" class="form-input" placeholder="Real-Debrid Private Token (F4...)">
+            </div>
+            <button id="enterBtn" class="btn btn-primary"
+                style="width: 100%; justify-content: center; margin-top: 10px;">Enter Portal</button>
+            <p style="text-align: center; margin-top: 20px; font-size: 0.85rem;">
+                <a href="https://real-debrid.com/apitoken" target="_blank" style="color: var(--primary);">Get your key
+                    here ↗</a>
+            </p>
+        </div>
+    </div>
+
+    <header>
+        <div class="container">
+            <a href="/" class="logo text-gradient">
+                <img src="/icon32.png" alt="Logo">
+                IntroHater
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="#" class="active">Community</a></li>
+                    <li><a href="/configure.html">Install</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="section">
+            <div class="container" style="padding-top: 100px; max-width: 800px;">
+
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="dashboard">My Activity</button>
+                    <button class="tab-btn" data-tab="search">Search & Contribute</button>
+                    <button id="logoutBtn" class="tab-btn" style="margin-left: auto; color: #ef4444;">Logout</button>
+                </div>
+
+                <!-- Dashboard Tab -->
+                <div id="dashboard" class="tab-content active">
+                    <div class="glass-panel" style="padding: 30px; margin-bottom: 30px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="margin-bottom: 5px;">User Profile</h3>
+                                <p style="font-size: 0.9rem; color: var(--text-muted);">Short ID: <span
+                                        id="userShortId">-</span></p>
+                            </div>
+                            <div style="display: flex; gap: 40px;">
+                                <div class="text-center">
+                                    <div id="userRank" style="font-size: 1.25rem; font-weight: 700;">-</div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">
+                                        Rank</div>
+                                </div>
+                                <div class="text-center">
+                                    <div id="userVotes" style="font-size: 1.25rem; font-weight: 700;">0</div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">
+                                        Votes</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 20px;">Watch History</h3>
+                    <div id="history-list" style="display: flex; flex-direction: column; gap: 15px;">
+                        <!-- History items -->
+                    </div>
+                </div>
+
+                <!-- Search/Contribute Tab -->
+                <div id="search" class="tab-content">
+                    <div class="glass-panel" style="padding: 30px;">
+                        <h3 style="margin-bottom: 15px; font-family: 'Space Grotesk', sans-serif;">Search for Shows</h3>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+                            Help the community grow. Search for a show to submit or update skip metadata.
+                        </p>
+                        <div style="display: flex; gap: 10px; margin-bottom: 25px;">
+                            <input type="text" id="searchInput" class="form-input"
+                                placeholder="e.g. Breaking Bad, Arcane...">
+                            <button id="searchBtn" class="btn btn-primary">Search</button>
+                        </div>
+                        <div id="search-results"
+                            style="display: flex; flex-direction: column; gap: 12px; max-height: 500px; overflow-y: auto;">
+                            <!-- Results -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- Submission Modal -->
+    <div id="submit-overlay" class="d-none"
+        style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px;">
+        <div class="glass-panel" style="width: 100%; max-width: 550px; padding: 40px;">
+            <h2 id="submit-title" style="margin-bottom: 25px; font-family: 'Space Grotesk', sans-serif;">Submit Skip
+                Segment</h2>
+
+            <div
+                style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 30px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px;">
+                <img id="submit-poster" src=""
+                    style="width: 80px; height: 120px; object-fit: cover; border-radius: 8px;">
+                <div style="flex: 1">
+                    <div id="submit-name" style="font-size: 1.25rem; font-weight: 700;">-</div>
+                    <div id="submit-year" style="color: var(--text-muted); font-size: 0.9rem;">-</div>
+
+                    <div id="episode-inputs" class="episode-grid d-none">
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 0.75rem;">Season</label>
+                            <input type="number" id="seasonNum" class="form-input" placeholder="S" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-size: 0.75rem;">Episode</label>
+                            <input type="number" id="episodeNum" class="form-input" placeholder="E" min="1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2" style="gap: 20px;">
+                <div class="form-group">
+                    <label class="form-label">Start Time</label>
+                    <input type="text" id="skipStart" class="form-input" placeholder="e.g. 01:25 or 85">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Time</label>
+                    <input type="text" id="skipEnd" class="form-input" placeholder="e.g. 03:00 or 180">
+                </div>
+            </div>
+
+            <div id="seriesOptionContainer" class="d-none" style="margin-top: 15px; margin-bottom: 5px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="applySeries"
+                        style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
+                    <label for="applySeries" style="font-weight: 500; cursor: pointer; color: var(--text-main);">Apply
+                        to entire series?</label>
+                </div>
+                <div id="seriesWarning" class="d-none"
+                    style="color: #fbbf24; font-size: 0.85rem; margin-top: 8px; background: rgba(251, 191, 36, 0.1); padding: 10px; border-radius: 6px; border: 1px solid rgba(251, 191, 36, 0.2);">
+                    ⚠️ <strong>Warning:</strong> This will add this skip segment to <u>ALL episodes</u> of this series.
+                    Only use this for consistent intros that appear at the exact same timestamp every time.
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-top: 30px;">
+                <button onclick="closeSubmit()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+                <button id="submitBtn" class="btn btn-primary" style="flex: 1; justify-content: center;">Publish
+                    Skip</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rdKey = localStorage.getItem('introhater_rdkey') || "";
+        let currentItem = null;
+
+        // --- Auth Flow ---
+        if (rdKey) {
+            document.getElementById('login-overlay').style.display = 'none';
+            loadDashboard();
+        }
+
+        document.getElementById('enterBtn').onclick = async () => {
+            const key = document.getElementById('authKey').value.trim();
+            if (!key) return;
+
+            const btn = document.getElementById('enterBtn');
+            btn.textContent = 'Verifying...';
+
+            try {
+                // Verify with our API
+                const res = await fetch('/api/stats/personal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rdKey: key })
+                });
+
+                if (res.ok) {
+                    rdKey = key;
+                    localStorage.setItem('introhater_rdkey', key);
+                    document.getElementById('login-overlay').style.display = 'none';
+                    loadDashboard();
+                } else {
+                    alert("Verification failed. Please check your Real-Debrid API Key.");
+                }
+            } catch (e) {
+                alert("Server error.");
+            } finally {
+                btn.textContent = 'Enter Portal';
+            }
+        };
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('introhater_rdkey');
+            location.reload();
+        });
+
+        // --- Tab Logic ---
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            if (!btn.dataset.tab) return;
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // --- Dashboard Logic ---
+        async function loadDashboard() {
+            try {
+                const res = await fetch('/api/stats/personal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rdKey })
+                });
+                const data = await res.json();
+
+                document.getElementById('userShortId').textContent = data.userId ? data.userId.substr(0, 8) : '-';
+                document.getElementById('userRank').textContent = data.rank || '-';
+                document.getElementById('userVotes').textContent = data.votes || 0;
+
+                const historyList = document.getElementById('history-list');
+                historyList.innerHTML = '';
+
+                if (data.history && data.history.length > 0) {
+                    data.history.forEach(item => {
+                        const row = document.createElement('div');
+                        row.className = 'glass-panel';
+                        row.style.padding = '15px';
+                        row.style.display = 'flex';
+                        row.style.justifyContent = 'space-between';
+                        row.style.alignItems = 'center';
+
+                        row.innerHTML = `
+                            <div>
+                                <div style="font-weight: 600;">${item.title || item.videoId}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</div>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-secondary" style="font-size: 0.75rem;" onclick="openSubmitFromHistory('${item.videoId}')">Improve 🛠️</button>
+                                <button class="btn" style="font-size: 0.75rem; border: 1px solid #ef4444;" onclick="reportIssue('${item.videoId}')">Report ⚠️</button>
+                            </div>
+                        `;
+                        historyList.appendChild(row);
+                    });
+                } else {
+                    historyList.innerHTML = '<p style="text-align: center; color: var(--text-muted); margin-top: 20px;">No recent activity found. Watch something on Stremio first!</p>';
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // --- Search/Submit Logic ---
+        document.getElementById('searchBtn').onclick = performSearch;
+        document.getElementById('searchInput').onkeydown = (e) => {
+            if (e.key === 'Enter') performSearch();
+        };
+
+        async function performSearch() {
+            const q = document.getElementById('searchInput').value.trim();
+            if (!q) return;
+
+            const btn = document.getElementById('searchBtn');
+            btn.textContent = 'Searching...';
+
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+                const data = await res.json();
+
+                const cont = document.getElementById('search-results');
+                cont.innerHTML = '';
+
+                if (data.Search) {
+                    data.Search.forEach(item => {
+                        const row = document.createElement('div');
+                        row.className = 'glass-panel';
+                        row.style.padding = '15px';
+                        row.style.display = 'flex';
+                        row.style.gap = '20px';
+                        row.style.alignItems = 'center';
+                        row.style.cursor = 'pointer';
+                        row.onclick = () => openSubmit(item);
+
+                        row.innerHTML = `
+                            <img src="${item.Poster !== 'N/A' ? item.Poster : '/icon32.png'}" style="width: 50px; height: 75px; object-fit: cover; border-radius: 6px;">
+                            <div style="flex: 1">
+                                <div style="font-weight: 600; font-size: 1.1rem;">${item.Title}</div>
+                                <div style="font-size: 0.85rem; color: var(--text-muted);">${item.Year} • ${item.Type}</div>
+                            </div>
+                            <span class="btn btn-secondary" style="font-size: 0.8rem;">Contribute</span>
+                        `;
+                        cont.appendChild(row);
+                    });
+                } else {
+                    cont.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No results found.</p>';
+                }
+            } catch (e) { console.error(e); }
+            finally { btn.textContent = 'Search'; }
+        }
+
+        function openSubmit(item) {
+            currentItem = item;
+            document.getElementById('submit-name').textContent = item.Title;
+            document.getElementById('submit-year').textContent = `${item.Year} (${item.imdbID})`;
+            document.getElementById('submit-poster').src = item.Poster !== 'N/A' ? item.Poster : '/icon32.png';
+
+            const epiSection = document.getElementById('episode-inputs');
+            if (item.Type === 'series' || item.Type === 'episode') {
+                epiSection.classList.remove('d-none');
+                document.getElementById('seriesOptionContainer').classList.remove('d-none');
+            } else {
+                epiSection.classList.add('d-none');
+                document.getElementById('seriesOptionContainer').classList.add('d-none');
+            }
+
+            // Reset series options
+            document.getElementById('applySeries').checked = false;
+            document.getElementById('seriesWarning').classList.add('d-none');
+
+            document.getElementById('submit-overlay').style.display = 'flex';
+        }
+
+        // Toggle warning
+        document.getElementById('applySeries').addEventListener('change', (e) => {
+            const warn = document.getElementById('seriesWarning');
+            if (e.target.checked) warn.classList.remove('d-none');
+            else warn.classList.add('d-none');
+        });
+
+        function openSubmitFromHistory(vid) {
+            // Pseudo-item for history
+            openSubmit({ Title: vid, imdbID: vid, Year: "History Item", Type: vid.includes(':') ? 'series' : 'movie' });
+        }
+
+        function closeSubmit() {
+            document.getElementById('submit-overlay').style.display = 'none';
+        }
+
+        function parseTime(v) {
+            if (v.includes(':')) {
+                const p = v.split(':').map(x => parseFloat(x));
+                return p[0] * 60 + p[1];
+            }
+            return parseFloat(v);
+        }
+
+        document.getElementById('submitBtn').onclick = async () => {
+            const startStr = document.getElementById('skipStart').value.trim();
+            const endStr = document.getElementById('skipEnd').value.trim();
+            const season = document.getElementById('seasonNum').value;
+            const episode = document.getElementById('episodeNum').value;
+
+            if (!startStr || !endStr) { return alert("Please enter times."); }
+
+            const start = parseTime(startStr);
+            const end = parseTime(endStr);
+
+            if (isNaN(start) || isNaN(end)) return alert("Invalid numbers.");
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Publishing...';
+
+            try {
+                const res = await fetch('/api/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        rdKey,
+                        imdbID: currentItem.imdbID,
+                        season,
+                        episode,
+                        start,
+                        end,
+                        label: 'Intro',
+                        applyToSeries: document.getElementById('applySeries').checked
+                    })
+                });
+
+                if (res.ok) {
+                    alert("Successfully submitted for moderation!");
+                    closeSubmit();
+                    loadDashboard();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || "Submission failed.");
+                }
+            } catch (e) { alert("Network error."); }
+            finally {
+                btn.disabled = false;
+                btn.textContent = 'Publish Skip';
+            }
+        };
+
+        async function reportIssue(videoId) {
+            if (!confirm("Report this skip segment as incorrect?")) return;
+            try {
+                const res = await fetch('/api/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rdKey, videoId, reason: "Manual report from community portal" })
+                });
+                if (res.ok) alert("Reported. Thank you!");
+            } catch (e) { console.error(e); }
+        }
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntroHater - Admin Moderation</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon32.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=2">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <a href="/" class="logo text-gradient">
+                <img src="/icon32.png" alt="Logo"> IntroHater Admin
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <section class="section">
+            <div class="container" style="padding-top: 100px;">
+
+                <div id="login-panel" class="glass-panel" style="max-width: 400px; margin: 0 auto; padding: 40px;">
+                    <h2 class="text-center" style="margin-bottom: 20px;">Admin Login</h2>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" id="adminPass" class="form-input" placeholder="Enter Admin Password">
+                    </div>
+                    <button id="loginBtn" class="btn btn-primary"
+                        style="width: 100%; justify-content: center; margin-top: 10px;">Login</button>
+                </div>
+
+                <div id="mod-panel" class="d-none">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                        <h1 class="text-gradient">Moderation Queue</h1>
+                        <button id="refreshBtn" class="btn btn-secondary">Refresh</button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <div>
+                            <h3 style="margin-bottom: 20px;">Pending Submissions</h3>
+                            <div id="pending-list" style="display: flex; flex-direction: column; gap: 15px;">
+                                <!-- Items -->
+                            </div>
+                        </div>
+                        <div>
+                            <h3 style="margin-bottom: 20px;">Reported Skips</h3>
+                            <div id="report-list" style="display: flex; flex-direction: column; gap: 15px;">
+                                <!-- Items -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let adminPass = "";
+
+        document.getElementById('loginBtn').onclick = async function () {
+            adminPass = document.getElementById('adminPass').value.trim();
+            if (!adminPass) return;
+            loadQueue();
+        };
+
+        async function loadQueue() {
+            const btn = document.getElementById('refreshBtn');
+            btn.textContent = '...';
+
+            try {
+                const res = await fetch('/api/admin/pending', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPass })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('login-panel').style.display = 'none';
+                    document.getElementById('mod-panel').classList.remove('d-none');
+                    document.getElementById('mod-panel').style.display = 'block';
+
+                    renderList('pending-list', data.pending, true);
+                    renderList('report-list', data.reported, false);
+                } else {
+                    alert("Wrong password!");
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                btn.textContent = 'Refresh';
+            }
+        }
+
+        document.getElementById('refreshBtn').onclick = loadQueue;
+
+        function renderList(targetId, items, isPending) {
+            const cont = document.getElementById(targetId);
+            cont.innerHTML = '';
+
+            if (items.length === 0) {
+                cont.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem;">No items found.</p>';
+                return;
+            }
+
+            items.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'glass-panel';
+                row.style.padding = '15px';
+                row.innerHTML = `
+                    <div style="margin-bottom: 10px;">
+                        <strong style="color:var(--primary)">${item.fullId}</strong>
+                        ${item.seriesSkip ? '<span style="background:#f59e0b; color:black; font-size:0.65rem; padding:2px 6px; border-radius:4px; font-weight:700; margin-left:8px; vertical-align:middle;">GLOBAL SERIES SKIP</span>' : ''}
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">${item.start}s - ${item.end}s (${item.label})</div>
+                        ${!isPending ? `<div style="color:#ef4444; font-size:0.75rem;">Reports: ${item.reportCount}</div>` : ''}
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-primary mod-approve" style="flex:1; font-size:0.75rem;">Approve</button>
+                        <button class="btn btn-secondary mod-delete" style="flex:1; font-size:0.75rem; background:#ef4444; border-color:#ef4444;">Delete</button>
+                    </div>
+                `;
+
+                row.querySelector('.mod-approve').onclick = () => resolve(item.fullId, item.index, 'approve');
+                row.querySelector('.mod-delete').onclick = () => resolve(item.fullId, item.index, 'delete');
+
+                cont.appendChild(row);
+            });
+        }
+
+        async function resolve(fullId, index, action) {
+            if (!confirm(`Are you sure you want to ${action} this?`)) return;
+
+            try {
+                const res = await fetch('/api/admin/resolve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPass, fullId, index, action })
+                });
+
+                if (res.ok) {
+                    loadQueue();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+
+</html>

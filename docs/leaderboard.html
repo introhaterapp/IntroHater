@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntroHater - Leaderboard</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css?v=2">
+
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <a href="/" class="logo text-gradient">
+                <img src="icon32.png" alt="Logo">
+                IntroHater
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="catalog.html">Catalog</a></li>
+                    <li><a href="leaderboard.html" class="active">Leaderboard</a></li>
+                    <li><a href="api.html">API</a></li>
+                    <li><a href="https://github.com/stremio-community/introhater" target="_blank">GitHub</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <a href="api-keys.html" class="btn btn-secondary btn-sm"
+                    style="padding: 6px 16px; font-size: 0.85rem;">Get API Key</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="section">
+            <div class="container" style="padding-top: 120px; padding-bottom: 60px;">
+                <div class="header-content reveal-on-scroll" style="text-align: center; margin-bottom: 40px;">
+                    <h1 class="text-gradient" style="font-size: 3rem; margin-bottom: 16px;">Top Contributors</h1>
+                    <p class="hero-subtitle" style="margin: 0 auto; margin-bottom: 8px;">
+                        The heroes making streaming smooth for everyone.
+                    </p>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">
+                        Last updated: <span id="update-time">Loading...</span>
+                    </p>
+                </div>
+
+                <div class="tab-container reveal-on-scroll">
+                    <button class="tab-btn active" data-tab="segments">Most Segments</button>
+                    <button class="tab-btn" data-tab="votes">Most Votes</button>
+                </div>
+
+                <div class="glass-panel text-center reveal-on-scroll" style="overflow: hidden;">
+                    <div class="table-container" style="margin-top: 0;">
+                        <table class="leaderboard-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 100px; text-align: center;">Rank</th>
+                                    <th>User</th>
+                                    <th style="text-align: right;">Segments</th>
+                                    <th style="text-align: right;">Votes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-body">
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 40px;">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-bottom" style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                <p>&copy; 2024 IntroHater. Thank you to all contributors!</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/main.js"></script>
+    <script>
+        let currentTab = 'segments';
+        let leaderboardData = null;
+
+        async function fetchLeaderboardData() {
+            try {
+                // Use relative URL to fetch from current instance
+                const response = await fetch('/api/leaderboard');
+                if (!response.ok) throw new Error('Failed to fetch');
+                const data = await response.json();
+                leaderboardData = data;
+                updateLastUpdated(data.lastUpdated);
+                displayLeaderboard(currentTab);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('leaderboard-body').innerHTML = `
+                    <tr><td colspan="4" style="text-align: center; padding: 40px;">Failed to load data.</td></tr>
+                `;
+            }
+        }
+
+        function updateLastUpdated(timestamp) {
+            const date = timestamp ? new Date(timestamp) : new Date();
+            document.getElementById('update-time').textContent = date.toLocaleString();
+        }
+
+        function displayLeaderboard(type) {
+            if (!leaderboardData?.users) return;
+
+            const tbody = document.getElementById('leaderboard-body');
+            const users = [...leaderboardData.users];
+
+            users.sort((a, b) => type === 'segments' ?
+                (b.segments || 0) - (a.segments || 0) :
+                (b.votes || 0) - (a.votes || 0)
+            );
+
+            tbody.innerHTML = users.slice(0, 50).map((user, index) => {
+                let rankClass = '';
+                if (index === 0) rankClass = 'rank-1';
+                if (index === 1) rankClass = 'rank-2';
+                if (index === 2) rankClass = 'rank-3';
+
+                return `
+                <tr>
+                    <td style="text-align: center; font-weight: 700; font-size: 1.2rem;" class="${rankClass}">#${index + 1}</td>
+                    <td><span class="user-cell" title="${user.userId}">${(user.userId || 'Unknown').substring(0, 8)}</span></td>
+                    <td style="text-align: right; font-weight: 600;">${(user.segments || 0).toLocaleString()}</td>
+                    <td style="text-align: right; font-weight: 600;">${(user.votes || 0).toLocaleString()}</td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentTab = e.target.dataset.tab;
+                displayLeaderboard(currentTab);
+            });
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', fetchLeaderboardData);
+    </script>
+
+</body>
+
+</html>

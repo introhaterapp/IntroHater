@@ -1,0 +1,32 @@
+{
+    "tt_test_series": [
+        {
+            "start": 10,
+            "end": 20,
+            "label": "Intro",
+            "votes": 1,
+            "verified": false,
+            "source": "user",
+            "reportCount": 0,
+            "seriesSkip": true,
+            "contributors": [
+                "tester"
+            ],
+            "createdAt": "2025-12-19T03:03:08.169Z"
+        },
+        {
+            "start": 10,
+            "end": 20,
+            "label": "Intro",
+            "votes": 1,
+            "verified": false,
+            "source": "user",
+            "reportCount": 0,
+            "seriesSkip": true,
+            "contributors": [
+                "tester"
+            ],
+            "createdAt": "2025-12-19T03:03:34.421Z"
+        }
+    ]
+}

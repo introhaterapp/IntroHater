@@ -1,0 +1,364 @@
+openapi: 3.0.0
+info:
+  title: IntroHater API
+  description: API for managing intro segments for videos
+  version: 1.0.0
+  
+servers:
+  - url: https://introhater.com/api
+    description: Production server
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+    SubmitSegmentRequest:
+      type: object
+      required:
+        - videoId
+        - startTime
+        - endTime
+        - category
+        - userId
+        - token
+        - timestamp
+        - nonce
+      properties:
+        videoId:
+          type: string
+          description: IMDB ID of the video. Format "tt1234567" for movies or "tt1234567:1:2" for series episodes
+          example: "tt3107288:1:1"
+        startTime:
+          type: number
+          description: Start time of the segment in seconds. Must be between 5 and 180 seconds
+          example: 120.5
+        endTime:
+          type: number
+          description: End time of the segment in seconds. Must be between 5 and 180 seconds
+          example: 180.2
+        category:
+          type: string
+          description: Type of segment. Currently only "intro" is supported
+          example: "intro"
+        userId:
+          type: string
+          description: User ID in the format "stremio:{ID}" or "guest:{UUID}"
+          example: "stremio:1234567890"
+        token:
+          type: string
+          description: Authentication token obtained from the /api/generate-token endpoint
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        timestamp:
+          type: number
+          description: Unix timestamp in milliseconds when the token was generated
+          example: 1678234567890
+        nonce:
+          type: string
+          description: Single-use random string returned by generate-token endpoint
+          example: "123e4567-e89b-12d3-a456-426614174000"
+    SubmitSegmentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        segmentId:
+          type: string
+          example: "abc123def456"
+    GenerateTokenRequest:
+      type: object
+      required:
+        - userId
+      properties:
+        userId:
+          type: string
+          description: User ID in the format "stremio:{ID}" or "guest:{UUID}"
+          example: "stremio:1234567890"
+    GenerateTokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Authentication token to use in requests
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        timestamp:
+          type: number
+          description: Timestamp when token was generated
+          example: 1678234567890
+        nonce:
+          type: string
+          description: Single-use nonce for the request
+          example: "123e4567-e89b-12d3-a456-426614174000"
+    VoteRequest:
+      type: object
+      required:
+        - vote
+        - userId
+        - token
+        - timestamp
+        - nonce
+      properties:
+        vote:
+          type: string
+          enum: [up, down]
+          description: Vote type
+          example: "up"
+        userId:
+          type: string
+          description: User ID in the format "stremio:{ID}" or "guest:{UUID}"
+          example: "stremio:1234567890"
+        token:
+          type: string
+          description: Authentication token obtained from the /api/generate-token endpoint
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        timestamp:
+          type: number
+          description: Unix timestamp in milliseconds when the token was generated
+          example: 1678234567890
+        nonce:
+          type: string
+          description: Single-use random string returned by generate-token endpoint
+          example: "123e4567-e89b-12d3-a456-426614174000"
+    VoteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        votes:
+          type: object
+          properties:
+            up:
+              type: number
+              example: 42
+            down:
+              type: number
+              example: 3
+    Segment:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "abc123def456"
+        videoId:
+          type: string
+          example: "tt3107288:1:1"
+        startTime:
+          type: number
+          example: 120.5
+        endTime:
+          type: number
+          example: 180.2
+        category:
+          type: string
+          example: "intro"
+        votes:
+          type: object
+          properties:
+            up:
+              type: number
+              example: 42
+            down:
+              type: number
+              example: 3
+        submittedBy:
+          type: string
+          example: "stremio:1234567890"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2023-09-15T14:32:00Z"
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /segments/{videoId}:
+    get:
+      summary: Get Segments
+      description: Retrieve all segments for a specific video
+      operationId: getSegments
+      tags:
+        - segments
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          description: The ID of the video to get segments for
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of segments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Segment'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too Many Requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /submit:
+    post:
+      summary: Submit Segment
+      description: Submit a new segment for a video
+      operationId: submitSegment
+      tags:
+        - segments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitSegmentRequest'
+      responses:
+        '200':
+          description: Segment submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitSegmentResponse'
+        '400':
+          description: Invalid parameters or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /generate-token:
+    post:
+      summary: Generate Authentication Token
+      description: Generate a new authentication token. Required before making authenticated requests.
+      operationId: generateToken
+      tags:
+        - authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateTokenRequest'
+      responses:
+        '200':
+          description: Token generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateTokenResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /segments/{segmentId}/vote:
+    patch:
+      summary: Vote on Segment
+      description: Vote on an existing segment
+      operationId: voteOnSegment
+      tags:
+        - segments
+      parameters:
+        - name: segmentId
+          in: path
+          required: true
+          description: The ID of the segment to vote on
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoteRequest'
+      responses:
+        '200':
+          description: Vote recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoteResponse'
+        '400':
+          description: Invalid parameters or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions or already voted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Segment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

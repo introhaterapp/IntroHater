@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configure IntroHater</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon32.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/style.css?v=2">
+</head>
+
+<body>
+
+    <header>
+        <div class="container">
+            <a href="/" class="logo text-gradient">
+                <img src="/icon32.png" alt="Logo">
+                IntroHater
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <section class="section">
+            <div class="container" style="padding-top: 100px; max-width: 600px;">
+
+                <div class="header-content text-center" style="margin-bottom: 40px;">
+                    <h1 class="text-gradient" style="font-size: 2.5rem; margin-bottom: 16px;">Configure Addon</h1>
+                    <p class="hero-subtitle">
+                        To skip intros, IntroHater needs permission to access your Real-Debrid streams.
+                    </p>
+                </div>
+
+                <div class="glass-panel" style="padding: 40px;">
+
+                    <form id="config-form">
+                        <div class="form-group">
+                            <label class="form-label" for="rdKey">Real-Debrid API Key</label>
+                            <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+                                <input type="text" id="rdKey" class="form-input"
+                                    placeholder="Paste your key here (e.g. F4...)" required>
+                                <a href="https://real-debrid.com/apitoken" target="_blank" class="btn btn-secondary"
+                                    style="white-space: nowrap;">
+                                    Get Key ↗
+                                </a>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button type="button" id="checkStatsBtn" class="btn btn-secondary"
+                                    style="flex: 1;">Check My Stats</button>
+                                <button type="button" id="logoutBtn" class="btn btn-secondary d-none"
+                                    style="flex: 1; border: 1px solid #ef4444; color: #ef4444;">Logout</button>
+                            </div>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 15px;">
+                                We need the <strong>Private Token</strong> to stream links via Torrentio.
+                            </p>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                                Generate Install Link
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Result Section (Hidden by default) -->
+                    <div id="result-section" class="d-none"
+                        style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 30px;">
+
+                        <div class="form-group">
+                            <label class="form-label">Your Install Link</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="installLink" class="form-input" readonly onclick="this.select()">
+                                <button id="copyBtn" class="btn btn-secondary">Copy</button>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 16px; margin-top: 20px;">
+                            <a id="installBtn" href="#" class="btn btn-primary"
+                                style="flex: 1; justify-content: center;">
+                                Install on Stremio
+                            </a>
+                        </div>
+
+                        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-top: 16px;">
+                            If installation fails, copy the link above and paste it into the Stremio search bar to
+                            install manually.
+                        </p>
+                    </div>
+
+                    <div
+                        style="margin-top: 24px; text-align: center; border-top: 1px solid var(--border); padding-top: 24px;">
+                        <p style="color: var(--text-muted); font-size: 0.9rem;">
+                            Want to contribute or check history?
+                            <br>
+                            Go to the <a href="/community.html" style="color: var(--primary);">Community Portal</a>.
+                        </p>
+                    </div>
+
+                </div>
+
+                <!-- Stats Panel (Hidden by default) -->
+                <div id="stats-panel" class="d-none" style="margin-top: 24px;">
+                    <div class="glass-panel"
+                        style="padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">User ID
+                            </div>
+                            <div id="userIdDisplay" style="font-weight: 700;">-</div>
+                        </div>
+                        <div style="display: flex; gap: 30px;">
+                            <div class="text-center">
+                                <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">
+                                    Rank</div>
+                                <div id="userRank" style="font-weight: 700;">-</div>
+                            </div>
+                            <div class="text-center">
+                                <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">
+                                    Votes</div>
+                                <div id="userVotes" style="font-weight: 700;">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Panel (Hidden by default) -->
+                <div id="history-panel" class="d-none" style="margin-top: 24px;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 12px; font-family: 'Space Grotesk', sans-serif;">Recent
+                        Activity</h3>
+                    <div id="history-list" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Items populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Search Panel -->
+                <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border);">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 12px; font-family: 'Space Grotesk', sans-serif;">Search
+                        & Contribute</h3>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <input type="text" id="searchInput" class="form-input"
+                            placeholder="Search for movies or series...">
+                        <button id="searchBtn" class="btn btn-primary" style="padding: 8px 16px;">Search</button>
+                    </div>
+                    <div id="search-results"
+                        style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
+                        <!-- Results populated by JS -->
+                    </div>
+                </div>
+
+                <div
+                    style="margin-top: 24px; text-align: center; border-top: 1px solid var(--border); padding-top: 24px;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">
+                        Don't have Real-Debrid?
+                        <br>
+                        This addon currently requires it to proxy streams efficiently.
+                    </p>
+                </div>
+
+            </div>
+
+            </div>
+        </section>
+    </main>
+
+    </main>
+
+    <script>
+        // Persistence Logic
+        (function () {
+            const savedKey = localStorage.getItem('introhater_rdkey');
+            if (savedKey) {
+                document.getElementById('rdKey').value = savedKey;
+                document.getElementById('logoutBtn').classList.remove('d-none');
+            }
+
+            // Path-based auto-fill (Stremio redirect fallback)
+            const parts = window.location.pathname.split('/').filter(p => p);
+            if (parts.length >= 2 && parts[parts.length - 1] === 'configure') {
+                const potentialKey = parts[0];
+                if (potentialKey.length > 5) {
+                    document.getElementById('rdKey').value = potentialKey;
+                }
+            }
+        })();
+
+        document.getElementById('logoutBtn').onclick = function () {
+            localStorage.removeItem('introhater_rdkey');
+            location.reload();
+        };
+
+        document.getElementById('config-form').onsubmit = function (e) {
+            e.preventDefault();
+            const key = document.getElementById('rdKey').value.trim();
+            if (!key) return;
+
+            // Construct Stremio Install URL
+            // Ensure we use stremio:// protocol (not stremios/https if mixed content is an issue locally, but standard is stremio://)
+            const protocol = 'stremio:';
+            const host = window.location.host;
+
+            // Format: stremio://DOMAIN/KEY/manifest.json
+            const installUrl = `${protocol}//${host}/${key}/manifest.json`;
+
+            // Show result
+            document.getElementById('installLink').value = installUrl;
+            document.getElementById('installBtn').href = installUrl;
+
+            // Unhide
+            document.getElementById('result-section').style.display = 'block';
+
+            // Hide generate button to reduce clutter? Or keep it.
+        };
+
+        // Check Stats Logic
+        document.getElementById('checkStatsBtn').onclick = async function () {
+            const key = document.getElementById('rdKey').value.trim();
+            if (!key) {
+                alert("Please enter your RD Key first!");
+                return;
+            }
+
+            const btn = this;
+            const originalText = btn.textContent;
+            btn.textContent = "Loading...";
+
+            try {
+                const res = await fetch('/api/stats/personal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rdKey: key })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    localStorage.setItem('introhater_rdkey', key);
+                    document.getElementById('logoutBtn').classList.remove('d-none');
+                    document.getElementById('userIdDisplay').classList.remove('d-none'); // Ensure visible
+
+                    // Show ID (Shortened)
+                    if (data.userId) {
+                        document.getElementById('userIdDisplay').textContent = data.userId.substr(0, 8);
+                        document.getElementById('userIdDisplay').title = data.userId; // Full ID on hover
+                    }
+
+                    document.getElementById('userRank').textContent = data.rank || '-';
+                    document.getElementById('userVotes').textContent = data.votes || 0;
+
+                    // Update History
+                    const historyList = document.getElementById('history-list');
+                    historyList.innerHTML = '';
+
+                    if (data.history && data.history.length > 0) {
+                        data.history.forEach(item => {
+                            const row = document.createElement('div');
+                            row.className = 'glass-panel';
+                            row.style.padding = '10px';
+                            row.style.display = 'flex';
+                            row.style.justifyContent = 'space-between';
+                            row.style.alignItems = 'center';
+                            row.style.fontSize = '0.85rem';
+
+                            const info = document.createElement('div');
+                            const titleEl = document.createElement('strong');
+                            titleEl.textContent = item.title || item.videoId;
+                            info.appendChild(titleEl);
+                            info.appendChild(document.createElement('br'));
+
+                            const timeSpan = document.createElement('span');
+                            timeSpan.style.color = 'var(--text-muted)';
+                            timeSpan.style.fontSize = '0.75rem';
+                            timeSpan.textContent = new Date(item.timestamp).toLocaleString();
+                            info.appendChild(timeSpan);
+
+                            const actions = document.createElement('div');
+                            const reportBtn = document.createElement('button');
+                            reportBtn.textContent = 'Report ⚠️';
+                            reportBtn.className = 'btn';
+                            reportBtn.style.padding = '4px 8px';
+                            reportBtn.style.fontSize = '0.7rem';
+                            reportBtn.onclick = () => reportIssue(item.videoId, reportBtn);
+
+                            actions.appendChild(reportBtn);
+                            row.appendChild(info);
+                            row.appendChild(actions);
+                            historyList.appendChild(row);
+                        });
+                        document.getElementById('history-panel').classList.remove('d-none');
+                    } else {
+                        document.getElementById('history-panel').classList.add('d-none');
+                    }
+
+                    const panel = document.getElementById('stats-panel');
+                    panel.classList.remove('d-none');
+                    panel.style.animation = "fadeIn 0.5s ease";
+                } else if (res.status === 401) {
+                    alert("Invalid Real-Debrid Key. Please verify your token.");
+                    localStorage.removeItem('introhater_rdkey');
+                    document.getElementById('logoutBtn').classList.add('d-none');
+                    document.getElementById('stats-panel').classList.add('d-none');
+                    document.getElementById('history-panel').classList.add('d-none');
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + (err.error || "Failed to fetch stats"));
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                btn.textContent = originalText;
+            }
+        };
+
+        async function reportIssue(videoId, btn) {
+            const key = document.getElementById('rdKey').value.trim();
+            if (!confirm("Is this skip incorrect? Report it to help improve the database.")) return;
+
+            btn.disabled = true;
+            btn.textContent = "Reporting...";
+
+            try {
+                const res = await fetch('/api/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rdKey: key, videoId, reason: "Manual report from dashboard" })
+                });
+                if (res.ok) {
+                    btn.textContent = "Reported ✅";
+                    btn.style.background = "var(--success)";
+                }
+            } catch (e) {
+                btn.disabled = false;
+                btn.textContent = "Failed";
+            }
+        }
+
+        // --- Search & Submit Logic ---
+        let currentSubmitItem = null;
+
+        document.getElementById('searchBtn').onclick = performSearch;
+        document.getElementById('searchInput').onkeypress = (e) => e.key === 'Enter' && performSearch();
+
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return;
+
+            const btn = document.getElementById('searchBtn');
+            btn.textContent = '...';
+
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+
+                const resultsCont = document.getElementById('search-results');
+                resultsCont.innerHTML = '';
+
+                if (data.Search) {
+                    data.Search.forEach(item => {
+                        const row = document.createElement('div');
+                        row.className = 'glass-panel';
+                        row.style.padding = '10px';
+                        row.style.display = 'flex';
+                        row.style.gap = '15px';
+                        row.style.alignItems = 'center';
+                        row.style.cursor = 'pointer';
+                        row.onclick = () => openSubmit(item);
+
+                        const img = document.createElement('img');
+                        img.src = item.Poster !== 'N/A' ? item.Poster : '/icon32.png';
+                        img.style.width = '40px';
+                        img.style.height = '60px';
+                        img.style.objectFit = 'cover';
+                        img.style.borderRadius = '4px';
+
+                        const details = document.createElement('div');
+                        details.style.flex = '1';
+
+                        const title = document.createElement('div');
+                        title.style.fontWeight = '600';
+                        title.textContent = item.Title;
+
+                        const sub = document.createElement('div');
+                        sub.style.fontSize = '0.8rem';
+                        sub.style.color = 'var(--text-muted)';
+                        sub.textContent = `${item.Year} • ${item.Type}`;
+
+                        details.appendChild(title);
+                        details.appendChild(sub);
+
+                        const badge = document.createElement('span');
+                        badge.className = 'btn btn-secondary';
+                        badge.style.fontSize = '0.7rem';
+                        badge.textContent = 'Contribute';
+
+                        row.appendChild(img);
+                        row.appendChild(details);
+                        row.appendChild(badge);
+                        resultsCont.appendChild(row);
+                    });
+                } else {
+                    resultsCont.innerHTML = '<p class="text-center" style="font-size: 0.9rem; color: var(--text-muted);">No results found.</p>';
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                btn.textContent = 'Search';
+            }
+        }
+
+        function openSubmit(item) {
+            currentSubmitItem = item;
+            document.getElementById('submit-name').textContent = item.Title;
+            document.getElementById('submit-year').textContent = `${item.Year} (${item.imdbID})`;
+            document.getElementById('submit-poster').src = item.Poster !== 'N/A' ? item.Poster : '/icon32.png';
+
+            document.getElementById('submit-overlay').classList.remove('d-none');
+            document.getElementById('submit-overlay').style.display = 'flex';
+        }
+
+        function closeSubmit() {
+            document.getElementById('submit-overlay').classList.add('d-none');
+            document.getElementById('submit-overlay').style.display = 'none';
+        }
+
+        function parseTime(val) {
+            if (val.includes(':')) {
+                const parts = val.split(':').map(p => parseFloat(p));
+                if (parts.length === 2) return parts[0] * 60 + parts[1];
+            }
+            return parseFloat(val);
+        }
+
+        document.getElementById('submitSkipBtn').onclick = async function () {
+            const rdKey = document.getElementById('rdKey').value.trim();
+            const startVal = document.getElementById('skipStart').value.trim();
+            const endVal = document.getElementById('skipEnd').value.trim();
+
+            if (!rdKey || !startVal || !endVal) {
+                alert("Please fill all fields!");
+                return;
+            }
+
+            const start = parseTime(startVal);
+            const end = parseTime(endVal);
+
+            if (isNaN(start) || isNaN(end) || end <= start) {
+                alert("Invalid durations!");
+                return;
+            }
+
+            this.disabled = true;
+            this.textContent = "Submitting...";
+
+            try {
+                const res = await fetch('/api/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        rdKey,
+                        videoId: currentSubmitItem.imdbID,
+                        start,
+                        end,
+                        label: 'Intro'
+                    })
+                });
+
+                if (res.ok) {
+                    alert("Submission successful! It will be reviewed by the community.");
+                    closeSubmit();
+                    // Refresh stats
+                    document.getElementById('checkStatsBtn').click();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + (err.error || "Submission failed"));
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Network error.");
+            } finally {
+                this.disabled = false;
+                this.textContent = "Submit";
+            }
+        };
+
+        document.getElementById('copyBtn').onclick = function () {
+            const link = document.getElementById('installLink');
+            link.select();
+            navigator.clipboard.writeText(link.value).then(() => {
+                const btn = this;
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = originalText, 2000);
+            });
+        };
+    </script>
+</body>
+
+</html>

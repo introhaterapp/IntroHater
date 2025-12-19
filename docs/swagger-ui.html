@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntroHater API Documentation</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="icon32.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Third Party Styles -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.min.css">
+
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="css/style.css?v=2">
+
+    <style>
+        /* Swagger UI Dark Mode Overrides */
+        .swagger-ui {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: var(--text-main);
+            margin-top: 40px;
+        }
+
+        .swagger-ui .topbar {
+            display: none;
+        }
+
+        .swagger-ui .info {
+            margin: 30px 0;
+        }
+
+        .swagger-ui .info .title {
+            color: var(--text-main);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .swagger-ui .info p,
+        .swagger-ui .info li,
+        .swagger-ui .info table {
+            color: var(--text-muted);
+        }
+
+        .swagger-ui .scheme-container {
+            background: var(--bg-card);
+            box-shadow: none;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .swagger-ui .opblock-tag {
+            color: var(--text-main) !important;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .swagger-ui .opblock-tag small {
+            color: var(--text-muted);
+        }
+
+        .swagger-ui .opblock {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: none;
+        }
+
+        .swagger-ui .opblock:hover {
+            border-color: var(--primary);
+        }
+
+        .swagger-ui .opblock-summary-operation-id {
+            color: var(--text-muted);
+        }
+
+        .swagger-ui .opblock-summary-path {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .swagger-ui .opblock-summary-description {
+            color: var(--text-muted);
+        }
+
+        .swagger-ui .opblock-description-wrapper p,
+        .swagger-ui .opblock-external-docs-wrapper p,
+        .swagger-ui .opblock-title_normal p {
+            color: var(--text-muted);
+        }
+
+        .swagger-ui .responses-wrapper {
+            background: var(--bg-elevated);
+        }
+
+        .swagger-ui .response-col_status {
+            color: var(--text-main);
+        }
+
+        .swagger-ui table thead tr td,
+        .swagger-ui table thead tr th {
+            color: var(--text-main);
+        }
+
+        .swagger-ui .response-col_description {
+            color: var(--text-muted);
+        }
+
+        .swagger-ui .btn {
+            background: var(--bg-elevated);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            box-shadow: none;
+        }
+
+        .swagger-ui .btn.execute {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .swagger-ui .btn:hover {
+            border-color: var(--primary);
+        }
+
+        .swagger-ui .parameter__name {
+            color: var(--text-main);
+        }
+
+        .swagger-ui .parameter__type {
+            color: var(--primary);
+        }
+
+        .swagger-ui section.models {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .swagger-ui section.models h4 {
+            color: var(--text-main);
+        }
+
+        .swagger-ui .model-box {
+            background: var(--bg-elevated);
+        }
+
+        .swagger-ui .model {
+            color: var(--text-muted);
+        }
+
+        .swagger-ui input.email,
+        .swagger-ui input.password,
+        .swagger-ui input.search,
+        .swagger-ui input.text,
+        .swagger-ui select {
+            background: var(--bg-elevated);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header (Standardized) -->
+    <header>
+        <div class="container">
+            <a href="/" class="logo text-gradient">
+                <img src="icon32.png" alt="Logo">
+                IntroHater
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="catalog.html">Catalog</a></li>
+                    <li><a href="leaderboard.html">Leaderboard</a></li>
+                    <li><a href="api.html" class="active">API</a></li>
+                    <li><a href="https://github.com/stremio-community/introhater" target="_blank">GitHub</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <a href="api.html" class="btn btn-secondary btn-sm" style="padding: 6px 16px; font-size: 0.85rem;">Docs
+                    Home</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container" style="padding-top: 100px; padding-bottom: 60px;">
+            <div id="swagger-ui"></div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.min.js"></script>
+    <script>
+        window.onload = function () {
+            const ui = SwaggerUIBundle({
+                url: "swagger.yaml", // Changed to relative path
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIBundle.SwaggerUIStandalonePreset
+                ],
+                layout: "BaseLayout",
+                syntaxHighlight: {
+                    activated: true,
+                    theme: "obsidian" // Better dark theme match
+                },
+                defaultModelsExpandDepth: 1,
+                defaultModelExpandDepth: 1,
+                docExpansion: "list",
+                filter: true,
+                operationsSorter: "alpha"
+            });
+            window.ui = ui;
+        };
+    </script>
+</body>
+
+</html>
