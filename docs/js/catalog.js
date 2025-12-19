@@ -1,5 +1,5 @@
 // Use current origin if served via http/s, fallback to production only if opening as a local file
-const API_BASE_URL = window.location.protocol === 'file:' ? 'https://introhater.com' : '';
+// API_BASE_URL is defined in main.js
 
 async function fetchCatalog() {
     try {

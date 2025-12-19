@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchStats();
 });
 
-const API_BASE_URL = window.location.protocol === 'file:' ? 'https://introhater.com' : '';
+const API_BASE_URL = window.location.protocol === 'file:' ? 'http://localhost:7005' : '';
 
 async function fetchStats() {
     try {

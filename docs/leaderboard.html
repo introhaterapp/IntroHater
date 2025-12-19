@@ -102,7 +102,7 @@
         async function fetchLeaderboardData() {
             try {
                 // Use relative URL to fetch from current instance
-                const response = await fetch('/api/leaderboard');
+                const response = await fetch(`${API_BASE_URL}/api/leaderboard`);
                 if (!response.ok) throw new Error('Failed to fetch');
                 const data = await response.json();
                 leaderboardData = data;
