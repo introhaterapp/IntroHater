@@ -163,7 +163,8 @@ async function registerShow(videoId) {
         media.episodes[epKey].count++;
     }
 
-    media.totalSegments++;
+    // Fix: Count unique episodes with segments, not total hits
+    media.totalSegments = Object.keys(media.episodes).length;
     media.lastUpdated = new Date().toISOString();
 
     await writeCatalogEntry(imdbId, media);

@@ -554,8 +554,8 @@ app.get('/api/catalog', async (req, res) => {
 
 
 // 4. API: Get Segments
-app.get('/api/segments/:videoId', (req, res) => {
-    const list = getSegments(req.params.videoId);
+app.get('/api/segments/:videoId', async (req, res) => {
+    const list = await getSegments(req.params.videoId);
     res.json(list);
 });
 
