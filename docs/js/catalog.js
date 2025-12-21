@@ -74,7 +74,7 @@ async function initializeCatalog() {
             { title: 'Type' },
             {
                 title: 'Segments',
-                className: 'min-tablet text-right',
+                className: 'all text-right', // Changed to 'all' to force visibility on mobile
                 render: function (data, type, row) {
                     if (type === 'display') {
                         // Index 0: Title, 1: Year, 2: Type, 3: Episodes Obj, 4: Count, 5: IMDb ID
@@ -97,15 +97,12 @@ async function initializeCatalog() {
             }
         ],
         drawCallback: function () {
-            // Re-attach listeners after draw
-            const btns = document.querySelectorAll('.episode-btn');
-            btns.forEach(btn => {
-                // Remove old listener to be safe (though drawCallback usually runs on fresh elements)
-                btn.removeEventListener('click', openSegmentModal);
-                btn.addEventListener('click', openSegmentModal);
-            });
+            // No longer attaching individual listeners here due to responsive rows re-rendering
         }
     });
+
+    // Event Delegation for Button Clicks (Handles Buttons in Child Rows / Pagination)
+    window.jQuery('#catalogTable').on('click', '.episode-btn', openSegmentModal);
 
     // Fetch and update data
     fetchCatalog().then(catalog => {
@@ -242,9 +239,18 @@ async function openSegmentModal(event) {
 
     uniqueSegments.forEach(seg => {
         const parts = seg.videoId.split(':');
-        let label = "Movie";
+        let label = "Movie"; // Default
+
+        // Robust S/E parsing
         if (parts.length >= 3) {
-            label = `S${parts[1]}E${parts[2]}`;
+            const s = parseInt(parts[1]);
+            const e = parseInt(parts[2]);
+            if (!isNaN(s) && !isNaN(e)) {
+                label = `S${s}E${e}`;
+            } else {
+                // If S/E are weird (e.g. 'null'), try to reuse main title or just show 'Unknown'
+                label = "Unknown Ep";
+            }
         }
 
         const duration = (seg.end - seg.start).toFixed(1);
