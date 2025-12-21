@@ -93,7 +93,6 @@ async function fetchStats() {
         animateValue('stat-shows', data.showCount || 0);
         animateValue('stat-skips', data.skips);
         animateValue('stat-episodes', data.episodeCount || 0);
-        animateValue('stat-votes', data.votes);
 
     } catch (e) {
         console.error("Stats error:", e);

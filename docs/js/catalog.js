@@ -110,16 +110,21 @@ async function initializeCatalog() {
     // Fetch and update data
     fetchCatalog().then(catalog => {
         const mediaEntries = catalog?.media ? Object.entries(catalog.media) : [];
-        const tableData = mediaEntries.map(([imdbId, media]) => {
-            return [
-                media.title || 'Unknown Title',
-                media.year || '????',
-                media.type === 'show' ? 'TV Show' : 'Movie',
-                media.episodes, // Store raw episodes object (hidden column effectively)
-                media.totalSegments || 0,
-                imdbId // Store ID for button
-            ];
-        });
+        const tableData = mediaEntries
+            .filter(([imdbId, media]) => {
+                // Double check validity on frontend
+                return media.title && media.title !== 'Unknown Title' && media.title !== 'null';
+            })
+            .map(([imdbId, media]) => {
+                return [
+                    media.title || 'Unknown Title',
+                    media.year || '????',
+                    media.type === 'show' ? 'TV Show' : 'Movie',
+                    media.episodes, // Store raw episodes object (hidden column effectively)
+                    media.totalSegments || 0,
+                    imdbId // Store ID for button
+                ];
+            });
 
         const dt = window.jQuery('#catalogTable').DataTable();
         dt.clear();

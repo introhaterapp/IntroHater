@@ -179,7 +179,11 @@ async function getCatalogData() {
     if (data.media) {
         const cleanMedia = {};
         for (const [id, item] of Object.entries(data.media)) {
-            if (item.title && item.year) {
+            // Strict filtering: logic to reject bad data
+            const hasTitle = item.title && item.title !== 'null' && item.title !== 'undefined' && item.title !== 'Unknown Title';
+            const hasYear = item.year && item.year !== '????';
+
+            if (hasTitle && hasYear) {
                 cleanMedia[id] = item;
             }
         }
