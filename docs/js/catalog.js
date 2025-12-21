@@ -169,24 +169,46 @@ async function openSegmentModal(event) {
 
     modalTitle.textContent = `Loading segments for ${title}...`;
     grid.innerHTML = '<div style="text-align:center; padding: 20px;">Fetching latest data...</div>';
-    document.getElementById('episodeModal').style.display = 'flex';
+
+    // Ensure modal is visible and responsive
+    const modal = document.getElementById('episodeModal');
+    modal.style.display = 'flex';
 
     // Fetch details
-    const segments = await fetchSegments(videoId);
+    const rawSegments = await fetchSegments(videoId);
 
     modalTitle.textContent = `Segments: ${title}`;
     grid.innerHTML = '';
 
-    if (segments.length === 0) {
+    if (rawSegments.length === 0) {
         grid.innerHTML = '<p style="text-align:center; color: var(--text-muted);">No segments found via API.</p>';
         return;
     }
+
+    // Deduplicate
+    const uniqueSegments = [];
+    const seen = new Set();
+    rawSegments.forEach(seg => {
+        // Create a signature for the segment
+        const key = `${seg.videoId}|${Math.round(seg.start)}|${Math.round(seg.end)}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueSegments.push(seg);
+        }
+    });
+
+    // Wrapper for mobile horizontal scrolling
+    const tableWrapper = document.createElement('div');
+    tableWrapper.style.overflowX = 'auto';
+    tableWrapper.style.width = '100%';
+    tableWrapper.style.webkitOverflowScrolling = 'touch'; // Smooth scroll on iOS
 
     // Wrap in a table for better view
     const table = document.createElement('table');
     table.className = 'table';
     table.style.width = '100%';
     table.style.fontSize = '0.9rem';
+    table.style.minWidth = '500px'; // Force min width to trigger scroll on small phones if needed
 
     let html = `
         <thead>
@@ -194,14 +216,13 @@ async function openSegmentModal(event) {
                 <th>Episode</th>
                 <th>Time (Start - End)</th>
                 <th>Type</th>
-                <th>Author</th>
             </tr>
         </thead>
         <tbody>
     `;
 
     // Sort: Season -> Episode -> StartTime
-    segments.sort((a, b) => {
+    uniqueSegments.sort((a, b) => {
         // Parse "S1:E1" from videoId if possible, else just title
         // Actually the API returns segments with 'videoId' like 'tt123456:1:1'
         // Let's try to extract season/ep
@@ -219,7 +240,7 @@ async function openSegmentModal(event) {
         return a.start - b.start;
     });
 
-    segments.forEach(seg => {
+    uniqueSegments.forEach(seg => {
         const parts = seg.videoId.split(':');
         let label = "Movie";
         if (parts.length >= 3) {
@@ -227,21 +248,23 @@ async function openSegmentModal(event) {
         }
 
         const duration = (seg.end - seg.start).toFixed(1);
-        const author = seg.contributorId ? seg.contributorId.substring(0, 6) : 'System';
+        // Use seg.label (e.g. "Intro") instead of category
+        const typeLabel = seg.label || seg.category || 'Skip';
 
         html += `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                 <td><span class="badge" style="background: rgba(255,255,255,0.1);">${label}</span></td>
                 <td>${seg.start}s - ${seg.end}s <span style="color:var(--text-muted); font-size:0.8em">(${duration}s)</span></td>
-                <td>${seg.category}</td>
-                <td title="${seg.contributorId}">${author}</td>
+                <td>${typeLabel}</td>
             </tr>
         `;
     });
 
     html += '</tbody>';
     table.innerHTML = html;
-    grid.appendChild(table);
+
+    tableWrapper.appendChild(table);
+    grid.appendChild(tableWrapper);
 }
 
 document.addEventListener('DOMContentLoaded', initializeCatalog);
