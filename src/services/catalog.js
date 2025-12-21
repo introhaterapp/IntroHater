@@ -193,8 +193,31 @@ async function getCatalogData() {
     return data;
 }
 
+async function repairCatalog() {
+    console.log('[Catalog] Running catalog repair...');
+    const catalog = await readCatalog();
+    let changes = 0;
+
+    if (catalog.media) {
+        for (const [id, item] of Object.entries(catalog.media)) {
+            const correctCount = Object.keys(item.episodes || {}).length;
+            if (item.totalSegments !== correctCount) {
+                item.totalSegments = correctCount;
+                if (correctCount === 0) {
+                    // Start fresh if corrupted
+                    item.episodes = {};
+                }
+                changes++;
+                await writeCatalogEntry(id, item);
+            }
+        }
+    }
+    console.log(`[Catalog] Repaired ${changes} entries.`);
+}
+
 module.exports = {
     updateCatalog,
     registerShow,
-    getCatalogData
+    getCatalogData,
+    repairCatalog
 };

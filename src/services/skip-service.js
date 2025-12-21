@@ -80,26 +80,40 @@ function escapeRegex(string) {
 }
 
 // Get all segments for a specific video ID
+// Get all segments for a specific video ID
 async function getSegments(fullId) {
     await ensureInit();
 
     const cleanId = String(fullId).trim();
     let segments = [];
+    const isSeriesRequest = !cleanId.includes(':'); // If no colons, assume it's a series ID asking for all eps
 
     if (useMongo && skipsCollection) {
         try {
-            // 1. Try Exact Match (Episode Level)
-            let doc = await skipsCollection.findOne({ fullId: cleanId });
-
-            // 2. Try Case-Insensitive Match (Regex)
-            if (!doc) {
-                const escapedId = escapeRegex(cleanId);
-                doc = await skipsCollection.findOne({
-                    fullId: { $regex: `^${escapedId}$`, $options: 'i' }
+            if (isSeriesRequest) {
+                // Fetch ALL episodes for this series
+                const cursor = skipsCollection.find({ fullId: { $regex: `^${escapeRegex(cleanId)}:` } });
+                const docs = await cursor.toArray();
+                docs.forEach(doc => {
+                    if (doc.segments) {
+                        // Attach videoId to each segment so UI knows which episode it is
+                        const epSegments = doc.segments.map(s => ({ ...s, videoId: doc.fullId }));
+                        segments.push(...epSegments);
+                    }
                 });
-            }
+            } else {
+                // 1. Try Exact Match (Episode Level)
+                let doc = await skipsCollection.findOne({ fullId: cleanId });
 
-            if (doc) segments = doc.segments || [];
+                // 2. Try Case-Insensitive Match (Regex)
+                if (!doc) {
+                    const escapedId = escapeRegex(cleanId);
+                    doc = await skipsCollection.findOne({
+                        fullId: { $regex: `^${escapedId}$`, $options: 'i' }
+                    });
+                }
+                if (doc) segments = doc.segments || [];
+            }
 
             // 3. Check for Global Series Skips
             // If ID is in format tt123:1:2, check tt123
@@ -112,7 +126,9 @@ async function getSegments(fullId) {
                     const seriesSkips = seriesDoc.segments.filter(s => s.seriesSkip);
                     if (seriesSkips.length > 0) {
                         console.log(`[SkipService] Found ${seriesSkips.length} GLOBAL SERIES skips for [${cleanId}]`);
-                        segments = [...segments, ...seriesSkips];
+                        // For global skips, we use the requested ID as the videoId
+                        const formatted = seriesSkips.map(s => ({ ...s, videoId: cleanId }));
+                        segments = [...segments, ...formatted];
                     }
                 }
             }
@@ -122,22 +138,38 @@ async function getSegments(fullId) {
             return [];
         }
     } else {
-        segments = skipsData[cleanId] || [];
+        if (isSeriesRequest) {
+            // Local JSON: Find all keys starting with "tt123:"
+            for (const key in skipsData) {
+                if (key.startsWith(`${cleanId}:`)) {
+                    const epSegments = skipsData[key].map(s => ({ ...s, videoId: key }));
+                    segments.push(...epSegments);
+                }
+            }
+        } else {
+            segments = skipsData[cleanId] || [];
 
-        // Check local series skips
-        const parts = cleanId.split(':');
-        if (parts.length >= 3) {
-            const seriesId = parts[0];
-            if (skipsData[seriesId]) {
-                const seriesSkips = skipsData[seriesId].filter(s => s.seriesSkip);
-                if (seriesSkips.length > 0) {
-                    segments = [...segments, ...seriesSkips];
+            // Attach ID if missing (normalization)
+            if (segments.length > 0 && !segments[0].videoId) {
+                segments = segments.map(s => ({ ...s, videoId: cleanId }));
+            }
+
+            // Check local series skips
+            const parts = cleanId.split(':');
+            if (parts.length >= 3) {
+                const seriesId = parts[0];
+                if (skipsData[seriesId]) {
+                    const seriesSkips = skipsData[seriesId].filter(s => s.seriesSkip);
+                    if (seriesSkips.length > 0) {
+                        const formatted = seriesSkips.map(s => ({ ...s, videoId: cleanId }));
+                        segments = [...segments, ...formatted];
+                    }
                 }
             }
         }
     }
 
-    if (segments.length > 0) {
+    if (segments.length > 0 && !isSeriesRequest) {
         console.log(`[SkipService] Found ${segments.length} segments total for [${cleanId}]`);
     }
 

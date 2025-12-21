@@ -63,6 +63,11 @@ async function loadMetadataCache() {
     }
 }
 
+// Startup Repair
+setTimeout(() => {
+    catalogService.repairCatalog().catch(e => console.error("Repair failed:", e));
+}, 5000);
+
 async function saveMetadataCache() {
     try {
         const dir = path.dirname(METADATA_CACHE_FILE);
