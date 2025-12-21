@@ -171,6 +171,9 @@ async function openSegmentModal(event) {
     const modal = document.getElementById('episodeModal');
     modal.style.display = 'flex';
 
+    // Fix Layout: Override grid display so table takes full width
+    grid.style.display = 'block';
+
     // Fetch details
     const rawSegments = await fetchSegments(videoId);
 
@@ -178,6 +181,7 @@ async function openSegmentModal(event) {
     grid.innerHTML = '';
 
     if (rawSegments.length === 0) {
+        grid.style.textAlign = 'center';
         grid.innerHTML = '<p style="text-align:center; color: var(--text-muted);">No segments found via API.</p>';
         return;
     }
@@ -186,7 +190,7 @@ async function openSegmentModal(event) {
     const uniqueSegments = [];
     const seen = new Set();
     rawSegments.forEach(seg => {
-        // Create a signature for the segment
+        // Create a signature for the segment - Rounding for dedupe key
         const key = `${seg.videoId}|${Math.round(seg.start)}|${Math.round(seg.end)}`;
         if (!seen.has(key)) {
             seen.add(key);
@@ -239,7 +243,7 @@ async function openSegmentModal(event) {
 
     uniqueSegments.forEach(seg => {
         const parts = seg.videoId.split(':');
-        let label = "Movie"; // Default
+        let label = "Common";
 
         // Robust S/E parsing
         if (parts.length >= 3) {
@@ -247,20 +251,27 @@ async function openSegmentModal(event) {
             const e = parseInt(parts[2]);
             if (!isNaN(s) && !isNaN(e)) {
                 label = `S${s}E${e}`;
-            } else {
-                // If S/E are weird (e.g. 'null'), try to reuse main title or just show 'Unknown'
-                label = "Unknown Ep";
             }
         }
 
-        const duration = (seg.end - seg.start).toFixed(1);
+        // If label is still default (Common), try to guess checking if btn has type
+        // But for now "Common" or "Series Skip" is safest if it's a show
+        if (label === 'Common' && parts.length === 1) {
+            label = 'Global';
+        }
+
+
+        const duration = Math.round(seg.end - seg.start);
+        const start = Math.round(seg.start);
+        const end = Math.round(seg.end);
+
         // Use seg.label (e.g. "Intro") instead of category
-        const typeLabel = seg.label || seg.category || 'Skip';
+        const typeLabel = seg.label || seg.category || 'Intro';
 
         html += `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                 <td><span class="badge" style="background: rgba(255,255,255,0.1);">${label}</span></td>
-                <td>${seg.start}s - ${seg.end}s <span style="color:var(--text-muted); font-size:0.8em">(${duration}s)</span></td>
+                <td>${start}s - ${end}s <span style="color:var(--text-muted); font-size:0.8em">(${duration}s)</span></td>
                 <td>${typeLabel}</td>
             </tr>
         `;
