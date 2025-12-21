@@ -426,19 +426,20 @@ async function approveAllTrusted() {
     const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot'];
     let count = 0;
 
-    if (useMongo) {
+    if (useMongo && skipsCollection) {
         const cursor = skipsCollection.find({});
         while (await cursor.hasNext()) {
             const doc = await cursor.next();
             let changed = false;
             if (doc.segments && Array.isArray(doc.segments)) {
-                doc.segments.forEach(seg => {
+                // Refactored to for..of to avoid scope issues
+                for (const seg of doc.segments) {
                     if (!seg.verified && seg.contributors && seg.contributors.some(c => TRUSTED_SOURCES.includes(c))) {
                         seg.verified = true;
                         changed = true;
                         count++;
                     }
-                });
+                }
             }
             if (changed) {
                 await skipsCollection.updateOne({ _id: doc._id }, { $set: { segments: doc.segments } });
@@ -446,12 +447,15 @@ async function approveAllTrusted() {
         }
     } else {
         for (const fullId in skipsData) {
-            skipsData[fullId].forEach(seg => {
-                if (!seg.verified && seg.contributors && seg.contributors.some(c => TRUSTED_SOURCES.includes(c))) {
-                    seg.verified = true;
-                    count++;
+            const segments = skipsData[fullId];
+            if (Array.isArray(segments)) {
+                for (const seg of segments) {
+                    if (!seg.verified && seg.contributors && seg.contributors.some(c => TRUSTED_SOURCES.includes(c))) {
+                        seg.verified = true;
+                        count++;
+                    }
                 }
-            });
+            }
         }
         if (count > 0) await saveSkips();
     }
