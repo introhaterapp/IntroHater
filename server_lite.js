@@ -262,7 +262,22 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // 2.5 API: Stats
+let statsCache = { timestamp: 0, data: null };
+
 app.get('/api/stats', async (req, res) => {
+    // Check Cache (Top of the hour invalidation)
+    const now = new Date();
+    if (statsCache.data && statsCache.timestamp > 0) {
+        const last = new Date(statsCache.timestamp);
+        // Valid if: Same Year, Same Month, Same Day, Same Hour
+        if (now.getFullYear() === last.getFullYear() &&
+            now.getMonth() === last.getMonth() &&
+            now.getDate() === last.getDate() &&
+            now.getHours() === last.getHours()) {
+            return res.json(statsCache.data);
+        }
+    }
+
     const { userCount, voteCount } = await userService.getStats();
     // Get total skips from all segments
     const allSkips = await getAllSegments();
@@ -302,7 +317,7 @@ app.get('/api/stats', async (req, res) => {
         console.warn("[Stats] Failed to calculate catalog counts:", e.message);
     }
 
-    res.json({
+    const responseData = {
         users: userCount,
         skips: localSegmentCount + ANISKIP_ESTIMATE + animeSkipCount, // Total skips served (Combined)
         votes: voteCount,
@@ -314,7 +329,15 @@ app.get('/api/stats', async (req, res) => {
             aniskip: ANISKIP_ESTIMATE,
             animeSkip: animeSkipCount
         }
-    });
+    };
+
+    // Update Cache
+    statsCache = {
+        timestamp: now.getTime(),
+        data: responseData
+    };
+
+    res.json(responseData);
 });
 
 // 2.6 API: Personal Stats (Protected by RD Key)
