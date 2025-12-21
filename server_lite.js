@@ -64,8 +64,13 @@ async function loadMetadataCache() {
 }
 
 // Startup Repair
-setTimeout(() => {
-    catalogService.repairCatalog().catch(e => console.error("Repair failed:", e));
+setTimeout(async () => {
+    try {
+        const allSkips = await skipService.getAllSegments();
+        await catalogService.repairCatalog(allSkips);
+    } catch (e) {
+        console.error("Repair failed:", e);
+    }
 }, 5000);
 
 async function saveMetadataCache() {

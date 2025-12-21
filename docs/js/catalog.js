@@ -113,7 +113,11 @@ async function initializeCatalog() {
         const tableData = mediaEntries
             .filter(([imdbId, media]) => {
                 // Double check validity on frontend
-                return media.title && media.title !== 'Unknown Title' && media.title !== 'null';
+                // Must have title AND more than 0 segments
+                return media.title &&
+                    media.title !== 'Unknown Title' &&
+                    media.title !== 'null' &&
+                    (media.totalSegments > 0);
             })
             .map(([imdbId, media]) => {
                 return [

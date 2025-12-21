@@ -193,26 +193,55 @@ async function getCatalogData() {
     return data;
 }
 
-async function repairCatalog() {
-    console.log('[Catalog] Running catalog repair...');
+async function repairCatalog(allSkips) {
+    if (!allSkips) return;
+    console.log('[Catalog] Running catalog repair from source of truth...');
     const catalog = await readCatalog();
     let changes = 0;
 
-    if (catalog.media) {
-        for (const [id, item] of Object.entries(catalog.media)) {
-            const correctCount = Object.keys(item.episodes || {}).length;
-            if (item.totalSegments !== correctCount) {
-                item.totalSegments = correctCount;
-                if (correctCount === 0) {
-                    // Start fresh if corrupted
-                    item.episodes = {};
-                }
-                changes++;
-                await writeCatalogEntry(id, item);
+    // 1. Reset / Prepare Catalog Entries
+    // We assume catalog entries exist for the shows. If not, they will be added lazily by future lookups.
+    // We want to fix counts for existing entries.
+    if (!catalog.media) return;
+
+    // Clear existing episode maps to ensure a clean rebuild
+    for (const item of Object.values(catalog.media)) {
+        item.episodes = {};
+        item.totalSegments = 0;
+    }
+
+    // 2. Iterate ALL Skips (Source of Truth)
+    // allSkips is expected to be a map: { "tt123:1:1": [segments], ... }
+    for (const fullId of Object.keys(allSkips)) {
+        const parts = fullId.split(':');
+        if (parts.length < 3) continue; // Skip movies or invalid IDs for now
+
+        const imdbId = parts[0];
+        const season = parseInt(parts[1]);
+        const episode = parseInt(parts[2]);
+
+        if (catalog.media[imdbId]) {
+            const media = catalog.media[imdbId];
+            const epKey = `${season}:${episode}`;
+
+            if (!media.episodes[epKey]) {
+                media.episodes[epKey] = { season, episode, count: 0 };
             }
+            media.episodes[epKey].count++; // We could count number of segments for this episode
         }
     }
-    console.log(`[Catalog] Repaired ${changes} entries.`);
+
+    // 3. Finalize Counts & Save
+    for (const [id, item] of Object.entries(catalog.media)) {
+        const correctCount = Object.keys(item.episodes || {}).length;
+        if (item.totalSegments !== correctCount || correctCount > 0) { // Save if it has segments or we changed it
+            item.totalSegments = correctCount;
+            // Only save if meaningful
+            changes++;
+            await writeCatalogEntry(id, item);
+        }
+    }
+    console.log(`[Catalog] Rebuilt counts for ${changes} shows.`);
 }
 
 module.exports = {
