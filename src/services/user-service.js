@@ -255,7 +255,7 @@ async function getStats() {
             { $group: { _id: null, totalVotes: { $sum: "$votes" } } }
         ]).toArray();
         const voteCount = agg[0] ? agg[0].totalVotes : 0;
-        const voteCount = agg[0] ? agg[0].totalVotes : 0;
+
 
         // Get global saved time
         const globalStats = await usersCollection.findOne({ userId: "GLOBAL_STATS" });
