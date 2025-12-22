@@ -216,7 +216,6 @@ async function openSegmentModal(event) {
             <tr style="color: var(--text-muted); text-align: left;">
                 <th>Episode</th>
                 <th>Time (Start - End)</th>
-                <th>Type</th>
             </tr>
         </thead>
         <tbody>
@@ -265,14 +264,10 @@ async function openSegmentModal(event) {
         const start = Math.round(seg.start);
         const end = Math.round(seg.end);
 
-        // Use seg.label (e.g. "Intro") instead of category
-        const typeLabel = seg.label || seg.category || 'Intro';
-
         html += `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                 <td><span class="badge" style="background: rgba(255,255,255,0.1);">${label}</span></td>
                 <td>${start}s - ${end}s <span style="color:var(--text-muted); font-size:0.8em">(${duration}s)</span></td>
-                <td>${typeLabel}</td>
             </tr>
         `;
     });
