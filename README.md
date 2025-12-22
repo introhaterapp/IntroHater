@@ -1,58 +1,66 @@
-# IntroHater Lite
+# IntroHater
 
 <div align="center">
   <img src="docs/icon32.png" alt="IntroHater Logo" width="128" height="128">
   
-  **Universal Skip Intro for Stremio using Smart HLS Proxying.**
+  **The Ultimate Skip Intro Addon for Stremio.**
+  
+  [![Stremio](https://img.shields.io/badge/Stremio-Addon-purple)](https://stremio.com)
+  [![GitHub](https://img.shields.io/github/stars/introhaterapp/IntroHater?style=social)](https://github.com/introhaterapp/IntroHater)
 </div>
 
 ## Overview
-IntroHater Lite is a specialized Stremio addon that automatically skips intros for movies and TV shows. Unlike traditional addons that rely on player seek-hints (which are often ignored), IntroHater **re-processes the video stream** into a custom HLS playlist, effectively splicing out the intro segment before it even reaches your player.
+IntroHater is a powerful Stremio addon that automatically skips intros and outros for movies and TV shows. Unlike simple seeking scripts, IntroHater uses **Smart HLS Proxying** to modify the video stream on the fly, physically removing unwanted segments before they reach your player.
 
-This ensures compatibility across almost all devices, including TVs (Android TV, Samsung Tizen, LG WebOS) and mobile apps.
+This technique ensures **100% compatibility** with:
+- **TVs**: Android TV, Samsung Tizen, LG WebOS
+- **Mobile**: Android & iOS (via VLC/Outplayer)
+- **Desktop**: Stremio PC/Mac
 
 ## Features
-*   **Smart HLS Proxying**: Converts streams to HLS and physically removes intro segments from the playback manifest.
-*   **Universal Compatibility**: Works on any device that supports HLS playback (TVs, Mobile, Desktop).
-*   **Real-Debrid Integration**: Fetches high-quality streams via Real-Debrid.
-*   **Community Database**: Uses a growing database of skip segments.
-*   **Fallback Mechanism**: If splicing fails, it gracefully falls back to the original stream.
+*   **⚡ Smart HLS Proxying**: Converts streams to HLS and stitches content to skip intros seamlessly.
+*   **🧠 Multiple skip Sources**:
+    *   **Community Database**: Custom database of user-submitted skips.
+    *   **Ani-Skip Integration**: Uses the vast 150k+ library of Anime-Skip.
+    *   **Chapter Detection**: Automatically detects "Intro" chapters in file metadata as a fallback.
+*   **🔗 Real-Debrid Powered**: stream high-quality content directly from Real-Debrid.
+*   **📊 Leaderboard & Stats**: Track your time saved and contribute to the community.
 
 ## Installation
 
-### Prerequisites
-*   Node.js (v18 or higher)
-*   **Real-Debrid Account**: Required for resolving cached streams.
-*   **FFmpeg**: 
-    *   **Windows**: Automatically handled via static binaries (included in dependencies).
-    *   **Linux/Docker**: Must be installed on the system (`apt-get install ffmpeg`).
+### For Users
+Simply visit [IntroHater.com](https://introhater.com) to configure and install the addon.
 
-### Run Locally
+### For Developers (Run Locally)
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/Rico-Rodriguez/IntroHater.git
+    git clone https://github.com/introhaterapp/IntroHater.git
     cd IntroHater
     ```
 2.  **Install dependencies**:
     ```bash
     npm install
     ```
-3.  **Start the server**:
+3.  **Setup Environment**:
+    Copy `.env.example` to `.env` and fill in optional keys (OMDB_API_KEY, ADMIN_PASSWORD).
+    ```bash
+    cp .env.example .env
+    ```
+4.  **Start the server**:
     ```bash
     npm start
     ```
-    The server provides a local addon interface at `http://127.0.0.1:7005`.
+    The server will run on `http://127.0.0.1:7005`.
 
-### Configuration
-1.  Navigate to `http://localhost:7005/docs/configure.html`.
-2.  Enter your **Real-Debrid API Key**.
-3.  Install the generated addon link into Stremio.
+## Architecture
+IntroHater operates as a middleware between Stremio/Real-Debrid and your video player:
+1.  **Intercept**: Stremio requests a stream from IntroHater.
+2.  **Resolve**: IntroHater resolves the link via Real-Debrid.
+3.  **Analyze**: It checks its internal DB, Ani-Skip, and finally the video file itself (ffmpeg probe) for skip timestamps.
+4.  **Proxy**: It generates a dynamic `.m3u8` playlist that instructs the player to play `0:00 -> IntroStart` and then jump to `IntroEnd -> Finish`.
 
-## How It Works
-1.  **Intercept**: The addon intercepts your stream request.
-2.  **Analyze**: It checks a database for known intro timestamps (start/end).
-3.  **Proxy**: If an intro is found, it generates a custom `.m3u8` HLS playlist.
-4.  **Splice**: This playlist instructs the player to play segments *before* the intro, then jump immediately to segments *after* the intro.
+## Contributing
+We welcome contributions! Please open an issue or submit a PR on [GitHub](https://github.com/introhaterapp/IntroHater).
 
 ## License
 MIT
