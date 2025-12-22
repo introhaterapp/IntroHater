@@ -317,12 +317,9 @@ app.get('/api/stats', async (req, res) => {
     let localShowCount = 0;
     let localEpisodeCount = 0;
     try {
-        const catalog = await catalogService.getCatalogData();
-        const mediaEntries = Object.values(catalog.media || {});
-        localShowCount = mediaEntries.length;
-        mediaEntries.forEach(m => {
-            localEpisodeCount += Object.keys(m.episodes || {}).length;
-        });
+        const stats = await catalogService.getCatalogStats();
+        localShowCount = stats.showCount;
+        localEpisodeCount = stats.episodeCount;
     } catch (e) {
         console.warn("[Stats] Failed to calculate catalog counts:", e.message);
     }

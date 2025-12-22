@@ -4,6 +4,8 @@ const mongoService = require('./mongodb');
 // Persistence State
 let useMongo = false;
 let catalogCollection = null;
+let statsCache = null;
+let lastStatsTime = 0;
 
 async function ensureInit() {
     if (catalogCollection) return;
@@ -193,6 +195,33 @@ async function getCatalogData() {
     return data;
 }
 
+async function getCatalogStats() {
+    const now = Date.now();
+    // Cache for 60 seconds to prevent 524 Timeouts on heavy load
+    if (statsCache && (now - lastStatsTime < 60000)) {
+        return statsCache;
+    }
+
+    const data = await readCatalog();
+    let showCount = 0;
+    let episodeCount = 0;
+
+    if (data.media) {
+        // Only count valid entries
+        const entries = Object.values(data.media).filter(item => {
+            return item.title && item.title !== 'null' && item.title !== 'undefined' && item.title !== 'Unknown Title' && item.year !== '????';
+        });
+        showCount = entries.length;
+        entries.forEach(item => {
+            episodeCount += Object.keys(item.episodes || {}).length;
+        });
+    }
+
+    statsCache = { showCount, episodeCount };
+    lastStatsTime = now;
+    return statsCache;
+}
+
 async function repairCatalog(allSkips) {
     if (!allSkips) return;
     console.log('[Catalog] Running catalog repair from source of truth...');
@@ -248,5 +277,6 @@ module.exports = {
     updateCatalog,
     registerShow,
     getCatalogData,
-    repairCatalog
+    repairCatalog,
+    getCatalogStats
 };

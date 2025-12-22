@@ -2,7 +2,7 @@ const { spawn } = require('child_process');
 const http = require('http');
 
 console.log("Starting server...");
-const server = spawn('node', ['server_lite.js'], { stdio: 'pipe' });
+const server = spawn('node', ['server.js'], { stdio: 'pipe' });
 
 server.stdout.on('data', (d) => process.stdout.write(d));
 server.stderr.on('data', (d) => process.stderr.write(d));
