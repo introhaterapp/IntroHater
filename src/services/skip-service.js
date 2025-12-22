@@ -170,10 +170,48 @@ async function getSegments(fullId) {
     }
 
     if (segments.length > 0 && !isSeriesRequest) {
-        console.log(`[SkipService] Found ${segments.length} segments total for [${cleanId}]`);
+        console.log(`[SkipService] Found ${segments.length} segments total for [${cleanId}] before merge`);
     }
 
-    return segments;
+    return mergeSegments(segments);
+}
+
+// Helper: Merge overlapping or adjacent segments
+function mergeSegments(segments) {
+    if (!segments || segments.length === 0) return [];
+
+    // Sort by start time
+    // We create a copy to avoid mutating the original array if it comes from cache
+    const sorted = [...segments].sort((a, b) => a.start - b.start);
+
+    const merged = [];
+    let current = sorted[0];
+
+    for (let i = 1; i < sorted.length; i++) {
+        const next = sorted[i];
+
+        // Ensure we only merge segments for the SAME videoId
+        if (current.videoId !== next.videoId) {
+            merged.push(current);
+            current = next;
+            continue;
+        }
+
+        // Check for overlap or adjacency (within 1 second)
+        // Using 1.5s tolerance for fuzzy matching
+        if (next.start <= (current.end + 1.5)) {
+            // Merge
+            current.end = Math.max(current.end, next.end);
+            // Optionally merge labels or votes here? 
+            // For now, keep the label of the first one or prioritize 'Intro'
+        } else {
+            merged.push(current);
+            current = next;
+        }
+    }
+    merged.push(current);
+
+    return merged;
 }
 
 // Get all skips (Heavy operation - used for catalog)
