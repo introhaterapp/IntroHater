@@ -119,10 +119,15 @@
                 row.style.padding = '15px';
                 row.innerHTML = `
                     <div style="margin-bottom: 10px;">
-                        <strong style="color:var(--primary)">${item.fullId}</strong>
+                        <strong style="color:var(--primary); font-size: 1.1rem;">${item.displayTitle || item.fullId}</strong>
+                        <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">ID: ${item.fullId}</div>
                         ${item.seriesSkip ? '<span style="background:#f59e0b; color:black; font-size:0.65rem; padding:2px 6px; border-radius:4px; font-weight:700; margin-left:8px; vertical-align:middle;">GLOBAL SERIES SKIP</span>' : ''}
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">${item.start}s - ${item.end}s (${item.label})</div>
-                        ${!isPending ? `<div style="color:#ef4444; font-size:0.75rem;">Reports: ${item.reportCount}</div>` : ''}
+                        <div style="font-size: 0.9rem; margin-top: 8px;">${item.start}s - ${item.end}s <span style="opacity:0.7">(${item.label})</span></div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                             Source: <span style="color: #ccc;">${item.source || 'User'}</span> 
+                             ${item.contributors ? `| Contributors: ${item.contributors.join(', ')}` : ''}
+                        </div>
+                        ${!isPending ? `<div style="color:#ef4444; font-size:0.75rem; margin-top:4px;">Reports: ${item.reportCount}</div>` : ''}
                     </div>
                     <div style="display: flex; gap: 10px;">
                         <button class="btn btn-primary mod-approve" style="flex:1; font-size:0.75rem;">Approve</button>

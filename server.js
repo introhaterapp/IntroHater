@@ -560,7 +560,35 @@ app.post('/api/admin/pending', async (req, res) => {
     if (password !== ADMIN_PASS) return res.status(401).json({ error: "Unauthorized" });
 
     const data = await skipService.getPendingModeration();
-    res.json(data);
+
+    // Helper to enrich items with titles
+    const enrich = async (list) => {
+        return Promise.all(list.map(async (item) => {
+            const parts = item.fullId.split(':');
+            const imdbId = parts[0];
+            const season = parts[1];
+            const episode = parts[2];
+
+            let title = imdbId;
+            // Check Server Cache
+            if (global.metadataCache && global.metadataCache[imdbId]) {
+                title = global.metadataCache[imdbId].Title;
+            } else {
+                // Try OMDb if key exists (optional, might be slow for many items, maybe skip for now to avoid timeout again?)
+                // Let's rely on what's in cache or just return ID if not found to be safe.
+                // Or check Catalog Service?
+                // For now, let's keep it fast. If it's in cache, great.
+            }
+
+            const displayTitle = season && episode ? `${title} S${season}E${episode}` : title;
+            return { ...item, displayTitle, imdbId };
+        }));
+    };
+
+    const pending = await enrich(data.pending);
+    const reported = await enrich(data.reported);
+
+    res.json({ pending, reported });
 });
 
 app.post('/api/admin/resolve', async (req, res) => {
