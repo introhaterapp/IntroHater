@@ -46,7 +46,19 @@
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
                         <div>
-                            <h3 style="margin-bottom: 20px;">Pending Submissions</h3>
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h3 style="margin: 0;">Pending Submissions</h3>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn btn-sm btn-secondary"
+                                        onclick="toggleSelectAll('pending-list')">Select All</button>
+                                    <button class="btn btn-sm btn-primary"
+                                        onclick="bulkResolve('approve')">Approve</button>
+                                    <button class="btn btn-sm btn-secondary"
+                                        style="background:#ef4444; border-color:#ef4444;"
+                                        onclick="bulkResolve('delete')">Delete</button>
+                                </div>
+                            </div>
                             <div id="pending-list" style="display: flex; flex-direction: column; gap: 15px;">
                                 <!-- Items -->
                             </div>
@@ -66,6 +78,7 @@
 
     <script>
         let adminPass = "";
+        let pendingItemsRef = []; // Keep track of rendered items to map checkboxes back to data
 
         document.getElementById('loginBtn').onclick = async function () {
             adminPass = document.getElementById('adminPass').value.trim();
@@ -90,6 +103,7 @@
                     document.getElementById('mod-panel').classList.remove('d-none');
                     document.getElementById('mod-panel').style.display = 'block';
 
+                    pendingItemsRef = data.pending; // Store for bulk actions
                     renderList('pending-list', data.pending, true);
                     renderList('report-list', data.reported, false);
                 } else {
@@ -113,25 +127,35 @@
                 return;
             }
 
-            items.forEach(item => {
+            items.forEach((item, i) => {
                 const row = document.createElement('div');
                 row.className = 'glass-panel';
                 row.style.padding = '15px';
+                row.style.display = 'flex';
+                row.style.gap = '15px';
+                row.style.alignItems = 'start';
+
+                // Checkbox for pending items
+                const checkboxHtml = isPending ? `<input type="checkbox" class="bulk-check" data-idx="${i}" style="margin-top: 5px; transform: scale(1.2);">` : '';
+
                 row.innerHTML = `
-                    <div style="margin-bottom: 10px;">
-                        <strong style="color:var(--primary); font-size: 1.1rem;">${item.displayTitle || item.fullId}</strong>
-                        <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">ID: ${item.fullId}</div>
-                        ${item.seriesSkip ? '<span style="background:#f59e0b; color:black; font-size:0.65rem; padding:2px 6px; border-radius:4px; font-weight:700; margin-left:8px; vertical-align:middle;">GLOBAL SERIES SKIP</span>' : ''}
-                        <div style="font-size: 0.9rem; margin-top: 8px;">${item.start}s - ${item.end}s <span style="opacity:0.7">(${item.label})</span></div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
-                             Source: <span style="color: #ccc;">${item.source || 'User'}</span> 
-                             ${item.contributors ? `| Contributors: ${item.contributors.join(', ')}` : ''}
+                    ${checkboxHtml}
+                    <div style="flex: 1;">
+                        <div style="margin-bottom: 10px;">
+                            <strong style="color:var(--primary); font-size: 1.1rem;">${item.displayTitle || item.fullId}</strong>
+                             <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">ID: ${item.fullId}</div>
+                            ${item.seriesSkip ? '<span style="background:#f59e0b; color:black; font-size:0.65rem; padding:2px 6px; border-radius:4px; font-weight:700; margin-left:8px; vertical-align:middle;">GLOBAL SERIES SKIP</span>' : ''}
+                            <div style="font-size: 0.9rem; margin-top: 8px;">${item.start}s - ${item.end}s <span style="opacity:0.7">(${item.label})</span></div>
+                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                                 Source: <span style="color: #ccc;">${item.source || 'User'}</span> 
+                                 ${item.contributors ? `| Contributors: ${item.contributors.join(', ')}` : ''}
+                            </div>
+                            ${!isPending ? `<div style="color:#ef4444; font-size:0.75rem;">Reports: ${item.reportCount}</div>` : ''}
                         </div>
-                        ${!isPending ? `<div style="color:#ef4444; font-size:0.75rem; margin-top:4px;">Reports: ${item.reportCount}</div>` : ''}
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-primary mod-approve" style="flex:1; font-size:0.75rem;">Approve</button>
-                        <button class="btn btn-secondary mod-delete" style="flex:1; font-size:0.75rem; background:#ef4444; border-color:#ef4444;">Delete</button>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-primary mod-approve" style="flex:1; font-size:0.75rem;">Approve</button>
+                            <button class="btn btn-secondary mod-delete" style="flex:1; font-size:0.75rem; background:#ef4444; border-color:#ef4444;">Delete</button>
+                        </div>
                     </div>
                 `;
 
@@ -143,7 +167,7 @@
         }
 
         async function resolve(fullId, index, action) {
-            if (!confirm(`Are you sure you want to ${action} this?`)) return;
+            // if (!confirm(`Are you sure you want to ${action} this?`)) return; // Remove confirm for speed
 
             try {
                 const res = await fetch('/api/admin/resolve', {
@@ -157,6 +181,47 @@
                 }
             } catch (e) {
                 console.error(e);
+            }
+        }
+
+        function toggleSelectAll(listId) {
+            const checks = document.querySelectorAll(`#${listId} .bulk-check`);
+            const firstState = checks.length > 0 ? checks[0].checked : false;
+            checks.forEach(c => c.checked = !firstState);
+        }
+
+        async function bulkResolve(action) {
+            const checks = document.querySelectorAll('#pending-list .bulk-check:checked');
+            if (checks.length === 0) return alert("No items selected");
+
+            if (!confirm(`Bulk ${action} ${checks.length} items?`)) return;
+
+            const items = [];
+            checks.forEach(c => {
+                const idx = parseInt(c.dataset.idx);
+                const item = pendingItemsRef[idx];
+                if (item) {
+                    items.push({ fullId: item.fullId, index: item.index });
+                }
+            });
+
+            try {
+                const res = await fetch('/api/admin/resolve-bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPass, items, action })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(`Successfully processed ${data.count} items.`);
+                    loadQueue();
+                } else {
+                    alert("Bulk action failed.");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error during bulk action");
             }
         }
     </script>

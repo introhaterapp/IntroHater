@@ -615,6 +615,78 @@ async function getPendingModeration() {
     return { pending, reported };
 }
 
+async function resolveModerationBulk(items, action) {
+    if (!items || !Array.isArray(items) || items.length === 0) return 0;
+    await ensureInit();
+
+    // Group by fullId to minimize DB operations and handle multiple updates per doc safely
+    const grouped = {};
+    for (const item of items) {
+        if (!grouped[item.fullId]) grouped[item.fullId] = [];
+        grouped[item.fullId].push(item.index);
+    }
+
+    let modifiedCount = 0;
+
+    for (const fullId in grouped) {
+        const indices = grouped[fullId].sort((a, b) => a - b); // Ascending order
+        const indicesSet = new Set(indices);
+
+        if (useMongo) {
+            const doc = await skipsCollection.findOne({ fullId });
+            if (!doc || !doc.segments) continue;
+
+            let changed = false;
+            // Filter or Modify
+            if (action === 'delete') {
+                const originalLength = doc.segments.length;
+                doc.segments = doc.segments.filter((_, i) => !indicesSet.has(i));
+                if (doc.segments.length !== originalLength) changed = true;
+            } else if (action === 'approve') {
+                indices.forEach(i => {
+                    if (doc.segments[i]) {
+                        doc.segments[i].verified = true;
+                        doc.segments[i].reportCount = 0;
+                        changed = true;
+                    }
+                });
+            }
+
+            if (changed) {
+                await skipsCollection.updateOne({ fullId }, { $set: { segments: doc.segments } });
+                modifiedCount += indices.length;
+            }
+        } else {
+            // Local JSON
+            if (!skipsData[fullId]) continue;
+            const segments = skipsData[fullId];
+            let changed = false;
+
+            if (action === 'delete') {
+                const originalLength = segments.length;
+                skipsData[fullId] = segments.filter((_, i) => !indicesSet.has(i));
+                if (skipsData[fullId].length !== originalLength) changed = true;
+            } else if (action === 'approve') {
+                indices.forEach(i => {
+                    if (segments[i]) {
+                        segments[i].verified = true;
+                        segments[i].reportCount = 0;
+                        changed = true;
+                    }
+                });
+            }
+
+            if (changed) modifiedCount += indices.length;
+        }
+    }
+
+    if (!useMongo && modifiedCount > 0) {
+        await saveSkips();
+    }
+
+    return modifiedCount;
+}
+
 async function resolveModeration(fullId, index, action) {
     await ensureInit();
     if (useMongo) {
@@ -726,6 +798,7 @@ module.exports = {
     cleanupDuplicates,
     getPendingModeration,
     resolveModeration,
+    resolveModerationBulk,
     reportSegment,
     forceSave
 };

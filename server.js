@@ -599,6 +599,15 @@ app.post('/api/admin/resolve', async (req, res) => {
     res.json({ success });
 });
 
+app.post('/api/admin/resolve-bulk', async (req, res) => {
+    const { password, items, action } = req.body;
+    if (password !== ADMIN_PASS) return res.status(401).json({ error: "Unauthorized" });
+    if (!items || !Array.isArray(items)) return res.status(400).json({ error: "Invalid items" });
+
+    const count = await skipService.resolveModerationBulk(items, action);
+    res.json({ success: true, count });
+});
+
 // 3. API: Catalog (Built from Skips)
 // 3. API: Catalog (Built from Skips with OMDB Metadata)
 // 3. API: Catalog (Universal Registry)
