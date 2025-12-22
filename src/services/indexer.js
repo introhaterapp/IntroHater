@@ -1,6 +1,10 @@
 const catalogService = require('./catalog');
 const skipService = require('./skip-service');
 const axios = require('axios');
+const fs = require('fs').promises;
+const path = require('path');
+
+const STATE_FILE = path.join(__dirname, '../../data/indexer_state.json');
 
 class IndexerService {
     constructor() {
@@ -16,6 +20,24 @@ class IndexerService {
         setInterval(() => this.runIndex(), this.interval);
     }
 
+    async loadState() {
+        try {
+            const data = await fs.readFile(STATE_FILE, 'utf8');
+            return JSON.parse(data);
+        } catch (e) {
+            return { page: 0, offset: 0, lastRun: null };
+        }
+    }
+
+    async saveState(state) {
+        try {
+            await fs.mkdir(path.dirname(STATE_FILE), { recursive: true });
+            await fs.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
+        } catch (e) {
+            console.error('[Indexer] Failed to save state:', e.message);
+        }
+    }
+
     async runIndex() {
         if (this.isRunning) {
             console.log('[Indexer] Already running, skipping cycle.');
@@ -23,10 +45,13 @@ class IndexerService {
         }
 
         this.isRunning = true;
-        console.log('[Indexer] Starting catalog indexing cycle (Source: Anime-Skip)...');
+
+        // Load State
+        const state = await this.loadState();
+        console.log(`[Indexer] Starting catalog indexing cycle (Resuming from Page ${state.page})...`);
 
         try {
-            await this.indexAnimeSkipCatalog();
+            await this.indexAnimeSkipCatalog(state);
         } catch (e) {
             console.error(`[Indexer] Cycle failed: ${e.message}`);
         } finally {
@@ -35,14 +60,14 @@ class IndexerService {
         }
     }
 
-    async indexAnimeSkipCatalog() {
+    async indexAnimeSkipCatalog(initialState) {
         const ANIME_SKIP_CLIENT_ID = 'th2oogUKrgOf1J8wMSIUPV0IpBMsLOJi';
         const BATCH_SIZE = 50;
-        const MAX_PAGES = 50; // Index top 2500 shows
+        const MAX_PAGES = 100; // Increased limit to cover more shows over time
 
-        let offset = 0;
+        let offset = initialState.offset || 0;
+        let page = initialState.page || 0;
         let running = true;
-        let page = 0;
 
         while (running && page < MAX_PAGES) {
             try {
@@ -68,12 +93,13 @@ class IndexerService {
                 const shows = res.data?.data?.searchShows || [];
 
                 if (shows.length === 0) {
-                    console.log('[Indexer] No more shows found (empty result).');
+                    console.log('[Indexer] No more shows found (empty result). Resetting indexer loop.');
+                    await this.saveState({ page: 0, offset: 0, lastRun: new Date().toISOString() });
                     running = false;
                     break;
                 }
 
-                console.log(`[Indexer] Processing batch ${page + 1} (${shows.length} shows)...`);
+                console.log(`[Indexer] Processing page ${page + 1} (Offset: ${offset}, Shows: ${shows.length})...`);
 
                 for (const show of shows) {
                     let imdbId = null;
@@ -101,7 +127,7 @@ class IndexerService {
 
                     // If registered, add to catalog AND fetch segments
                     if (imdbId) {
-                        console.log(`[Indexer] Found IMDb ID: ${imdbId} (${show.name}). Fetching segments...`);
+                        // console.log(`[Indexer] Found IMDb ID: ${imdbId} (${show.name}). Fetching segments...`);
                         await catalogService.registerShow(imdbId);
 
                         // --- FETCH SEGMENTS ---
@@ -137,21 +163,17 @@ class IndexerService {
                                     const start = intro.at;
                                     const end = next ? next.at : start + 90;
 
-                                    // Construct ID: tt123456:1:5 (Assuming Season 1 for simplicity if unknown, but usually AnimeSkip is absolute. Logic needed here?)
-                                    // Limitation: AnimeSkip uses absolute episode numbers usually. 
-                                    // We'll store as tt123456:1:X for now, but really we should try to map seasons.
-                                    // For now, let's assume Season 1 for simple anime, or use absolute if needed. 
-                                    // Actually, let's just use the absolute number as the episode and S1.
-                                    // Note: This relies on the user playing S1EX. 
+                                    // Construct ID: tt123456:1:5 (Assuming Season 1 for simplicity if unknown)
                                     const fullId = `${imdbId}:1:${ep.number}`;
 
+                                    // Use new duplicate-safe add method
                                     await skipService.addSkipSegment(fullId, start, end, 'Intro', 'auto-import', false, true); // skipSave = true
                                     importedCount++;
                                 }
                             }
 
                             if (importedCount > 0) {
-                                console.log(`[Indexer] Imported ${importedCount} segments for ${show.name}`);
+                                console.log(`[Indexer] Imported ${importedCount} segments for ${show.name} (${imdbId})`);
                             }
 
                         } catch (err) {
@@ -163,21 +185,25 @@ class IndexerService {
                     }
 
                     // Throttle inner loop slightly to avoid hammer
-                    await new Promise(r => setTimeout(r, 400)); // Increased delay for extra calls
+                    await new Promise(r => setTimeout(r, 200));
                 }
 
                 // Save after batch
-                // Save after batch (using outer scope skipService)
                 await skipService.forceSave();
 
                 offset += BATCH_SIZE;
                 page++;
+
+                // Save State Checkpoint
+                await this.saveState({ page, offset, lastRun: new Date().toISOString() });
 
                 // Throttle to avoid rate limits
                 await new Promise(r => setTimeout(r, 1000));
 
             } catch (e) {
                 console.error(`[Indexer] Error on page ${page}: ${e.message}`);
+                // Save state even on error to resume later
+                await this.saveState({ page, offset, error: e.message, lastRun: new Date().toISOString() });
                 running = false;
             }
         }

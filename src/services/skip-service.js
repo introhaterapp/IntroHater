@@ -457,6 +457,21 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
         }
     }
 
+    // Check for Duplicates (Fuzzy Match: 1s tolerance)
+    const existingSegments = await getSegments(cleanFullId);
+    if (existingSegments && existingSegments.length > 0) {
+        const isDuplicate = existingSegments.some(s => {
+            return Math.abs(s.start - start) < 1.0 &&
+                Math.abs(s.end - end) < 1.0;
+        });
+
+        if (isDuplicate) {
+            // console.log(`[SkipService] Ignored duplicate segment for ${cleanFullId}: ${start}-${end}`);
+            // Return dummy or existing segment to satisfy caller
+            return existingSegments.find(s => Math.abs(s.start - start) < 1.0);
+        }
+    }
+
     const newSegment = {
         start, end, label: cleanLabel,
         votes: 1,
@@ -611,11 +626,72 @@ async function reportSegment(fullId, index) {
     return true;
 }
 
+
+async function cleanupDuplicates() {
+    await ensureInit();
+    console.log('[SkipService] Starting duplicate cleanup...');
+    let totalRemoved = 0;
+    let showsEncoded = 0;
+
+    const processSegments = (segments) => {
+        if (!segments || segments.length < 2) return { cleaned: segments, removed: 0 };
+
+        const unique = [];
+        let removedCount = 0;
+
+        // Sort by start time to keep it deterministic
+        segments.sort((a, b) => a.start - b.start);
+
+        for (const seg of segments) {
+            // Check if this segment is effectively a duplicate of one we already kept
+            const isDup = unique.some(u =>
+                Math.abs(u.start - seg.start) < 1.0 &&
+                Math.abs(u.end - seg.end) < 1.0
+            );
+
+            if (isDup) {
+                removedCount++;
+            } else {
+                unique.push(seg);
+            }
+        }
+        return { cleaned: unique, removed: removedCount };
+    };
+
+    if (useMongo && skipsCollection) {
+        const cursor = skipsCollection.find({});
+        while (await cursor.hasNext()) {
+            const doc = await cursor.next();
+            const { cleaned, removed } = processSegments(doc.segments);
+
+            if (removed > 0) {
+                await skipsCollection.updateOne({ _id: doc._id }, { $set: { segments: cleaned } });
+                totalRemoved += removed;
+                showsEncoded++;
+            }
+        }
+    } else {
+        for (const fullId in skipsData) {
+            const { cleaned, removed } = processSegments(skipsData[fullId]);
+            if (removed > 0) {
+                skipsData[fullId] = cleaned;
+                totalRemoved += removed;
+                showsEncoded++;
+            }
+        }
+        if (totalRemoved > 0) await saveSkips();
+    }
+
+    console.log(`[SkipService] Cleanup complete. Removed ${totalRemoved} duplicates across ${showsEncoded} shows.`);
+    return totalRemoved;
+}
+
 module.exports = {
     getSkipSegment,
     getSegments,
     getAllSegments,
     addSkipSegment,
+    cleanupDuplicates,
     getPendingModeration,
     resolveModeration,
     reportSegment,
