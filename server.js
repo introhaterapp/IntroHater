@@ -265,7 +265,8 @@ app.get('/api/leaderboard', async (req, res) => {
             rank: i + 1,
             userId: u.userId,
             segments: u.segments,
-            votes: u.votes
+            votes: u.votes,
+            savedTime: u.savedTime || 0
         })),
         lastUpdated: new Date().toISOString()
     });

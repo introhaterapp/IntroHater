@@ -59,6 +59,7 @@
                 <div class="tab-container reveal-on-scroll">
                     <button class="tab-btn active" data-tab="segments">Most Segments</button>
                     <button class="tab-btn" data-tab="votes">Most Votes</button>
+                    <button class="tab-btn" data-tab="saved">Most Time Saved</button>
                 </div>
 
                 <div class="glass-panel text-center reveal-on-scroll" style="overflow: hidden;">
@@ -70,6 +71,7 @@
                                     <th>User</th>
                                     <th style="text-align: right;">Segments</th>
                                     <th style="text-align: right;">Votes</th>
+                                    <th style="text-align: right;">Time Saved</th>
                                 </tr>
                             </thead>
                             <tbody id="leaderboard-body">
@@ -121,16 +123,25 @@
             document.getElementById('update-time').textContent = date.toLocaleString();
         }
 
+        function formatDuration(seconds) {
+            if (!seconds) return '0s';
+            if (seconds < 60) return Math.round(seconds) + 's';
+            if (seconds < 3600) return Math.round(seconds / 60) + 'm';
+            return (seconds / 3600).toFixed(1) + 'h';
+        }
+
         function displayLeaderboard(type) {
             if (!leaderboardData?.users) return;
 
             const tbody = document.getElementById('leaderboard-body');
             const users = [...leaderboardData.users];
 
-            users.sort((a, b) => type === 'segments' ?
-                (b.segments || 0) - (a.segments || 0) :
-                (b.votes || 0) - (a.votes || 0)
-            );
+            users.sort((a, b) => {
+                if (type === 'segments') return (b.segments || 0) - (a.segments || 0);
+                if (type === 'votes') return (b.votes || 0) - (a.votes || 0);
+                if (type === 'saved') return (b.savedTime || 0) - (a.savedTime || 0);
+                return 0;
+            });
 
             tbody.innerHTML = users.slice(0, 50).map((user, index) => {
                 let rankClass = '';
@@ -144,6 +155,7 @@
                     <td><span class="user-cell" title="${user.userId}">${(user.userId || 'Unknown').substring(0, 8)}</span></td>
                     <td style="text-align: right; font-weight: 600;">${(user.segments || 0).toLocaleString()}</td>
                     <td style="text-align: right; font-weight: 600;">${(user.votes || 0).toLocaleString()}</td>
+                    <td style="text-align: right; font-weight: 600;">${formatDuration(user.savedTime || 0)}</td>
                 </tr>
                 `;
             }).join('');
