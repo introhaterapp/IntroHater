@@ -521,7 +521,8 @@ app.post('/api/generate-token', async (req, res) => {
     if (rdKey) {
         try {
             await axios.get('https://api.real-debrid.com/rest/1.0/user', {
-                headers: { 'Authorization': `Bearer ${rdKey}` }
+                headers: { 'Authorization': `Bearer ${rdKey}` },
+                timeout: 5000
             });
         } catch (e) {
             return res.status(401).json({ error: "Invalid RD Key" });

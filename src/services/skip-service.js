@@ -565,19 +565,51 @@ async function forceSave() {
 
 async function getPendingModeration() {
     await ensureInit();
-    const allSkips = await getAllSegments();
     const pending = [];
     const reported = [];
 
-    for (const [fullId, segments] of Object.entries(allSkips)) {
-        segments.forEach((seg, index) => {
-            if (!seg.verified) {
-                pending.push({ fullId, index, ...seg });
-            }
-            if (seg.reportCount > 0) {
-                reported.push({ fullId, index, ...seg });
-            }
-        });
+    if (useMongo && skipsCollection) {
+        try {
+            // Optimization: Only fetch documents that actually have pending or reported segments
+            // This prevents loading the entire database (potentially GBs of data) into memory
+            const cursor = skipsCollection.find({
+                $or: [
+                    { "segments.verified": { $ne: true } },
+                    { "segments.reportCount": { $gt: 0 } }
+                ]
+            });
+
+            const docs = await cursor.toArray();
+
+            docs.forEach(doc => {
+                if (doc.segments) {
+                    doc.segments.forEach((seg, index) => {
+                        // Extract only the relevant segments from the matched documents
+                        if (!seg.verified) {
+                            pending.push({ fullId: doc.fullId, index, ...seg });
+                        }
+                        if (seg.reportCount > 0) {
+                            reported.push({ fullId: doc.fullId, index, ...seg });
+                        }
+                    });
+                }
+            });
+        } catch (e) {
+            console.error("[SkipService] Error fetching pending moderation:", e);
+        }
+    } else {
+        // Fallback for local JSON (Scan everything)
+        const allSkips = await getAllSegments();
+        for (const [fullId, segments] of Object.entries(allSkips)) {
+            segments.forEach((seg, index) => {
+                if (!seg.verified) {
+                    pending.push({ fullId, index, ...seg });
+                }
+                if (seg.reportCount > 0) {
+                    reported.push({ fullId, index, ...seg });
+                }
+            });
+        }
     }
 
     return { pending, reported };

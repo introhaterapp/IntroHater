@@ -21,7 +21,7 @@ class MongoService {
         }
 
         try {
-            this.client = new MongoClient(this.uri);
+            this.client = new MongoClient(this.uri, { serverSelectionTimeoutMS: 5000 });
             await this.client.connect();
             this.db = this.client.db();
             const dbName = this.db.databaseName;
