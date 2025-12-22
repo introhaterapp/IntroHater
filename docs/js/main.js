@@ -94,6 +94,17 @@ async function fetchStats() {
         animateValue('stat-skips', data.skips);
         animateValue('stat-episodes', data.episodeCount || 0);
 
+        // Saved Time
+        const savedSec = data.savedTime || 0;
+        let savedText = "0s";
+        if (savedSec >= 86400) savedText = (savedSec / 86400).toFixed(1) + "d";
+        else if (savedSec >= 3600) savedText = (savedSec / 3600).toFixed(1) + "h";
+        else if (savedSec >= 60) savedText = (savedSec / 60).toFixed(0) + "m";
+        else savedText = savedSec.toFixed(0) + "s";
+
+        const savedEl = document.getElementById('stat-saved');
+        if (savedEl) savedEl.innerText = savedText;
+
     } catch (e) {
         console.error("Stats error:", e);
     }

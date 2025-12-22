@@ -143,6 +143,12 @@
                                         style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">
                                         Votes</div>
                                 </div>
+                                <div class="text-center">
+                                    <div id="userSaved" style="font-size: 1.25rem; font-weight: 700;">0h</div>
+                                    <div
+                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">
+                                        Saved</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -306,6 +312,16 @@
                 document.getElementById('userShortId').textContent = data.userId ? data.userId.substr(0, 8) : '-';
                 document.getElementById('userRank').textContent = data.rank || '-';
                 document.getElementById('userVotes').textContent = data.votes || 0;
+
+                // Format saved time
+                const seconds = data.savedTime || 0;
+                let savedText = "0s";
+                if (seconds > 86400) savedText = (seconds / 86400).toFixed(1) + "d";
+                else if (seconds > 3600) savedText = (seconds / 3600).toFixed(1) + "h";
+                else if (seconds > 60) savedText = (seconds / 60).toFixed(0) + "m";
+                else savedText = seconds.toFixed(0) + "s";
+
+                document.getElementById('userSaved').textContent = savedText;
 
                 const historyList = document.getElementById('history-list');
                 historyList.innerHTML = '';

@@ -28,7 +28,7 @@ async function initModules() {
 async function checkCredentials() {
     try {
         utils = await initModules();
-        
+
         const data = await storageGet(['userId', 'userToken', 'tokenTimestamp', 'tokenNonce']);
         if (!data.userId || !data.userToken || !data.tokenTimestamp || !data.tokenNonce) {
             const profileData = localStorage.getItem('profile');
@@ -40,22 +40,22 @@ async function checkCredentials() {
                         // Generate new token
                         const response = await fetch('https://introhater.com/api/generate-token', {
                             method: 'POST',
-                            headers: { 
+                            headers: {
                                 'Content-Type': 'application/json',
                                 'X-API-Key': utils.API_KEY
                             },
                             body: JSON.stringify({ userId })
                         });
-                        
+
                         if (!response.ok) {
                             throw new Error(`HTTP error! status: ${response.status}`);
                         }
-                        
+
                         const responseData = await response.json();
                         if (responseData.token && responseData.timestamp && responseData.nonce) {
-                            await storageSet({ 
+                            await storageSet({
                                 userId,
-                                userToken: responseData.token, 
+                                userToken: responseData.token,
                                 tokenTimestamp: responseData.timestamp,
                                 tokenNonce: responseData.nonce
                             });
@@ -79,7 +79,7 @@ async function loadModules() {
     try {
         // Load utils first since other modules depend on it
         const utils = await import(moduleURL + 'utils.js');
-        
+
         const modules = {
             utils,
             player: await import(moduleURL + 'player.js'),
@@ -87,7 +87,7 @@ async function loadModules() {
             notifications: await import(moduleURL + 'notifications.js'),
             controls: await import(moduleURL + 'controls.js')
         };
-        
+
         // Check credentials before initializing content script
         await checkCredentials();
         initializeContentScript(modules);
@@ -127,24 +127,33 @@ function initializeContentScript(modules) {
         const currentUrl = location.href;
         if (currentUrl !== lastUrl) {
             lastUrl = currentUrl;
-            
+
             // Clean up existing state
             cleanup();
-            
+
             // Wait a moment for any pending operations to complete
             await new Promise(resolve => setTimeout(resolve, 100));
-            
+
             // Start fresh
             startMonitoring();
         }
     }
 
-    function updateStats(wasSkipped) {
-        if (wasSkipped) {
-            storageGet(['userStats']).then(data => {
-                const stats = data.userStats || { segments: 0, votes: 0 };
-                // Removed votes increment as it should only happen when user actually votes
-                storageSet({ userStats: stats });
+    function updateStats(skipDetails) {
+        if (skipDetails && skipDetails.duration > 0) {
+            storageGet(['userId', 'userToken']).then(data => {
+                if (data.userId && data.userToken) {
+                    // Send to backend
+                    fetch('https://introhater.com/api/track/skip', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: data.userId,
+                            token: data.userToken,
+                            duration: skipDetails.duration
+                        })
+                    }).catch(e => console.error("Failed to track skip:", e));
+                }
             });
         }
     }
@@ -152,9 +161,9 @@ function initializeContentScript(modules) {
     function startMonitoring() {
         modules.player.findPlayer(async (foundPlayer) => {
             if (!foundPlayer) return;
-            
+
             videoPlayer = foundPlayer;
-            
+
             // Get video ID first
             const videoId = modules.utils.getVideoIdFromURL(window.location.href);
             if (!videoId) {
@@ -168,11 +177,11 @@ function initializeContentScript(modules) {
 
             currentVideoId = videoId;
             lastInitTime = currentTime;
-            
+
             try {
                 // Initialize visualizer with retries
                 segmentVisualizer = await modules.player.initializeVisualization(
-                    videoPlayer, 
+                    videoPlayer,
                     modules.visualization.createSegmentVisualizer
                 );
 
@@ -183,7 +192,7 @@ function initializeContentScript(modules) {
                 // Initialize segment UI controller
                 segmentUIController = new modules.controls.SegmentUIController(videoPlayer, (action, time) => {
                     if (!segmentVisualizer) return;
-                    
+
                     if (action === 'start') {
                         segmentVisualizer.setStartTime(time);
                     } else if (action === 'end') {
@@ -195,15 +204,15 @@ function initializeContentScript(modules) {
                     }
                 });
                 segmentUIController.createSegmentUI();
-                
+
                 // Fetch segments and visualize them
                 const segments = await modules.player.fetchSkipSegments(videoId, modules.utils.API_BASE_URL, segmentVisualizer);
-                
+
                 if (segments.length > 0 && videoId === currentVideoId) { // Only set up if video hasn't changed
                     checkInterval = setInterval(() => {
                         if (videoPlayer.readyState >= 1) {  // Only check if player is ready
                             const wasSkipped = modules.player.checkAndSkip(
-                                videoPlayer, 
+                                videoPlayer,
                                 segments,
                                 true,
                                 modules.notifications.showSkipNotification
@@ -245,7 +254,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 sendResponse({ userId: null });
                 return true;
             }
-            
+
             const profile = JSON.parse(profileData);
             // Fix: correct path to user ID in the profile object
             const userId = profile?.auth?.user?._id || null;

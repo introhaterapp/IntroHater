@@ -254,7 +254,9 @@ async function getRefinedOffsets(url, startSec, endSec) {
                         endOffset: parseInt(endPkt.pos)
                     });
                 } else {
-                    console.warn(`[HLS Proxy] Could not find packets for both ${startSec} and ${endSec}`);
+                    const lastPkt = data.packets[data.packets.length - 1];
+                    const maxTime = lastPkt ? lastPkt.pts_time : "unknown";
+                    console.warn(`[HLS Proxy] Could not find packets for both ${startSec} and ${endSec}. Max timestamp found: ${maxTime}s`);
                     resolve(null);
                 }
             } catch (e) {

@@ -170,7 +170,7 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
         const start = skipSeg ? skipSeg.start : 0;
         const end = skipSeg ? skipSeg.end : 0;
 
-        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${start}&end=${end}&id=${id}&user=${userId}`;
+        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&rdKey=${rdKey}`;
 
         modifiedStreams.push({
             ...stream,
@@ -190,7 +190,7 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://code.jquery.com", "https://cdn.datatables.net"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://code.jquery.com", "https://cdn.datatables.net", "https://static.cloudflareinsights.com"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.datatables.net", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             imgSrc: ["'self'", "data:", "https://cdn.datatables.net"],
@@ -288,7 +288,7 @@ app.get('/api/stats', async (req, res) => {
         }
     }
 
-    const { userCount, voteCount } = await userService.getStats();
+    const { userCount, voteCount, totalSavedTime } = await userService.getStats();
     // Get total skips from all segments
     const allSkips = await getAllSegments();
     const localSegmentCount = Object.values(allSkips).flat().length;
@@ -330,6 +330,7 @@ app.get('/api/stats', async (req, res) => {
     const responseData = {
         users: userCount,
         skips: localSegmentCount + ANISKIP_ESTIMATE + animeSkipCount, // Total skips served (Combined)
+        savedTime: totalSavedTime || 0, // Global Saved Time in seconds
         votes: voteCount,
         segments: localSegmentCount, // Local community segments
         showCount: localShowCount + animeSkipShows,
@@ -409,11 +410,12 @@ app.post('/api/stats/personal', async (req, res) => {
             res.json({
                 ...stats,
                 userId: userId,
+                savedTime: stats.savedTime || 0,
                 rank: rank > 0 ? rank : "-",
                 history: enrichedHistory
             });
         } else {
-            res.json({ userId: userId, segments: 0, votes: 0, rank: "-", history: [] });
+            res.json({ userId: userId, segments: 0, votes: 0, savedTime: 0, rank: "-", history: [] });
         }
     } catch (e) {
         console.error("Personal Stats error:", e);
@@ -530,7 +532,28 @@ app.post('/api/generate-token', async (req, res) => {
 
     const tokenData = generateUserToken(userId);
     await userService.storeUserToken(userId, tokenData.token, tokenData.timestamp, tokenData.nonce);
+    await userService.storeUserToken(userId, tokenData.token, tokenData.timestamp, tokenData.nonce);
     res.json(tokenData);
+});
+
+// 2.12 API: Track Skip (From Extension)
+app.post('/api/track/skip', async (req, res) => {
+    const { userId, token, duration } = req.body;
+
+    // 1. Verify Token
+    if (!userId || !token || !duration) {
+        return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const isValid = await verifyUserToken(userId, token);
+    if (!isValid) {
+        return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    // 2. Increment Stats
+    await userService.incrementSavedTime(userId, parseFloat(duration));
+
+    res.json({ success: true });
 });
 
 app.post('/api/admin/pending', async (req, res) => {
@@ -717,6 +740,15 @@ app.get('/hls/manifest.m3u8', async (req, res) => {
         }
         const totalLength = details.contentLength;
         console.log(`[HLS] Content-Length: ${totalLength || 'Unknown'}`);
+
+        // 0.5 Check for Invalid/Error Streams (e.g. failed_opening_v2.mp4)
+        // If the file is < 15MB or has "failed_opening" in the URL, it's likely an error video.
+        // We should just redirect to it so the user sees the error.
+        const URL_LOWER = streamUrl.toLowerCase();
+        if (URL_LOWER.includes('failed_opening') || (totalLength && totalLength < 15000000)) {
+            console.warn(`[HLS] Detected invalid/error stream (Size: ${totalLength}, URL: ...${streamUrl.slice(-20)}). Bypassing proxy.`);
+            return res.redirect(streamUrl);
+        }
 
         let manifest = "";
         let isSuccess = false;

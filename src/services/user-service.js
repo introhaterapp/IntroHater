@@ -7,7 +7,10 @@ const DATA_FILE = path.join(__dirname, '../data/users.json');
 // In-memory cache (Fallback)
 let usersData = {
     stats: [],
-    tokens: []
+    tokens: [],
+    globalStats: {
+        totalSavedTime: 0
+    }
 };
 
 // Persistence State
@@ -110,6 +113,12 @@ async function addWatchHistory(userId, item) {
         stats.watchHistory = stats.watchHistory.slice(0, 50);
     }
 
+    // Calculate skip duration if provided
+    if (item.skip && item.skip.end > item.skip.start) {
+        const saved = item.skip.end - item.skip.start;
+        await incrementSavedTime(userId, saved);
+    }
+
     return await updateUserStats(userId, { watchHistory: stats.watchHistory });
 }
 
@@ -150,6 +159,20 @@ async function updateUserStats(userId, updates) {
                 delete updates.videoId;
             }
 
+            // Handle Atomic Increments (savedTime)
+            if (updates.savedTime && updates.isIncrement) {
+                await usersCollection.updateOne(
+                    { userId },
+                    {
+                        $inc: { savedTime: updates.savedTime },
+                        $set: { lastUpdated: new Date().toISOString() }
+                    },
+                    { upsert: true }
+                );
+                delete updates.savedTime;
+                delete updates.isIncrement;
+            }
+
             // Handle remaining updates
             if (Object.keys(updates).length > 0) {
                 await usersCollection.updateOne(
@@ -181,6 +204,19 @@ async function updateUserStats(userId, updates) {
         }
         delete updates.votes;
         delete updates.videoId;
+        if (videoId && !stats.votedVideos.includes(videoId)) {
+            stats.votes = (stats.votes || 0) + updates.votes;
+            stats.votedVideos.push(videoId);
+            console.log(`[Users] Vote added for ${userId.substr(0, 6)}... on ${videoId}`);
+        }
+        delete updates.votes;
+        delete updates.videoId;
+    }
+
+    if (updates.savedTime && updates.isIncrement) {
+        stats.savedTime = (stats.savedTime || 0) + updates.savedTime;
+        delete updates.savedTime;
+        delete updates.isIncrement;
     }
 
     Object.assign(stats, updates);
@@ -219,12 +255,48 @@ async function getStats() {
             { $group: { _id: null, totalVotes: { $sum: "$votes" } } }
         ]).toArray();
         const voteCount = agg[0] ? agg[0].totalVotes : 0;
-        return { userCount, voteCount };
+        const voteCount = agg[0] ? agg[0].totalVotes : 0;
+
+        // Get global saved time
+        const globalStats = await usersCollection.findOne({ userId: "GLOBAL_STATS" });
+        const totalSavedTime = globalStats ? (globalStats.totalSavedTime || 0) : 0;
+
+        return { userCount, voteCount, totalSavedTime };
     }
 
     const userCount = usersData.stats.length;
     const voteCount = usersData.stats.reduce((sum, user) => sum + (user.votes || 0), 0);
-    return { userCount, voteCount };
+    const totalSavedTime = usersData.globalStats ? (usersData.globalStats.totalSavedTime || 0) : 0;
+
+    return { userCount, voteCount, totalSavedTime };
+}
+
+async function incrementSavedTime(userId, duration) {
+    if (!duration || duration <= 0) return;
+    await ensureInit();
+
+    // 1. Update Global Stats
+    if (useMongo && usersCollection) {
+        // Use a separate stats collection or a special document in users for global stats
+        // faster to just keep a 'global' document in users collection with a reserved ID?
+        // Let's us a dedicated document in users collection for now: "GLOBAL_STATS"
+        await usersCollection.updateOne(
+            { userId: "GLOBAL_STATS" },
+            { $inc: { totalSavedTime: duration } },
+            { upsert: true }
+        );
+    } else {
+        if (!usersData.globalStats) usersData.globalStats = { totalSavedTime: 0 };
+        usersData.globalStats.totalSavedTime = (usersData.globalStats.totalSavedTime || 0) + duration;
+    }
+
+    // 2. Update User Stats
+    if (userId && userId !== 'anonymous') {
+        await updateUserStats(userId, { savedTime: duration, isIncrement: true });
+    } else {
+        // Just save global if anonymous
+        if (!useMongo) await saveUsers();
+    }
 }
 
 // --- Token Operations ---
@@ -272,6 +344,8 @@ module.exports = {
     addWatchHistory,
     getLeaderboard,
     getStats,
+    getStats,
     getUserToken,
-    storeUserToken
+    storeUserToken,
+    incrementSavedTime
 };
