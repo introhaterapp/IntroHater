@@ -185,7 +185,7 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
 
 // Express Server
 const app = express();
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
