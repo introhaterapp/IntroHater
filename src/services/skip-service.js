@@ -180,9 +180,12 @@ async function getSegments(fullId) {
 function mergeSegments(segments) {
     if (!segments || segments.length === 0) return [];
 
-    // Sort by start time
-    // We create a copy to avoid mutating the original array if it comes from cache
-    const sorted = [...segments].sort((a, b) => a.start - b.start);
+    // Sort by videoId THEN start time to group episodes together
+    const sorted = [...segments].sort((a, b) => {
+        if (a.videoId < b.videoId) return -1;
+        if (a.videoId > b.videoId) return 1;
+        return a.start - b.start;
+    });
 
     const merged = [];
     let current = sorted[0];
