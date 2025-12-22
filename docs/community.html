@@ -243,6 +243,38 @@
         </div>
     </div>
 
+    <!-- Report Modal -->
+    <div id="report-overlay" class="d-none"
+        style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px;">
+        <div class="glass-panel" style="width: 100%; max-width: 450px; padding: 40px;">
+            <h2 style="margin-bottom: 15px; font-family: 'Space Grotesk', sans-serif; color: #ef4444;">Report Issue ⚠️
+            </h2>
+            <p style="color: var(--text-muted); margin-bottom: 25px;">
+                flagging this skip segment as incorrect or poor quality.
+            </p>
+
+            <div class="form-group">
+                <label class="form-label">Reason (Optional)</label>
+                <select id="reportReason" class="form-input" style="appearance: auto; cursor: pointer;">
+                    <option value="Incorrect Timestamp">Incorrect Timestamp</option>
+                    <option value="Did not skip">Did not skip</option>
+                    <option value="Skipped too much">Skipped too much</option>
+                    <option value="Spoiler content">Spoiler content</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <input type="hidden" id="reportVideoId">
+
+            <div style="display: flex; gap: 15px; margin-top: 30px;">
+                <button onclick="closeReport()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+                <button id="submitReportBtn" class="btn"
+                    style="flex: 1; justify-content: center; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid #ef4444;">Submit
+                    Report</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let rdKey = localStorage.getItem('introhater_rdkey') || "";
         let currentItem = null;
@@ -335,14 +367,18 @@
                         row.style.justifyContent = 'space-between';
                         row.style.alignItems = 'center';
 
+                        // Sanitized ID for attributes
+                        // Ensure videoId exists
+                        const vId = item.videoId || "";
+
                         row.innerHTML = `
                             <div>
-                                <div style="font-weight: 600;">${item.title || item.videoId}</div>
+                                <div style="font-weight: 600;">${item.title || vId}</div>
                                 <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</div>
                             </div>
                             <div style="display: flex; gap: 10px;">
-                                <button class="btn btn-secondary" style="font-size: 0.75rem;" onclick="openSubmitFromHistory('${item.videoId}')">Improve 🛠️</button>
-                                <button class="btn" style="font-size: 0.75rem; border: 1px solid #ef4444;" onclick="reportIssue('${item.videoId}')">Report ⚠️</button>
+                                <button class="btn btn-secondary action-btn" data-action="improve" data-id="${vId}" style="font-size: 0.75rem;">Improve 🛠️</button>
+                                <button class="btn btn-danger-outline action-btn" data-action="report" data-id="${vId}" style="font-size: 0.75rem;">Report ⚠️</button>
                             </div>
                         `;
                         historyList.appendChild(row);
@@ -352,6 +388,21 @@
                 }
             } catch (e) { console.error(e); }
         }
+
+        // Event Delegation for History List
+        document.getElementById('history-list').addEventListener('click', (e) => {
+            const btn = e.target.closest('.action-btn');
+            if (!btn) return;
+
+            const action = btn.dataset.action;
+            const id = btn.dataset.id;
+
+            if (action === 'improve') {
+                openSubmitFromHistory(id);
+            } else if (action === 'report') {
+                openReportModal(id);
+            }
+        });
 
         // --- Search/Submit Logic ---
         document.getElementById('searchBtn').onclick = performSearch;
@@ -495,16 +546,46 @@
             }
         };
 
-        async function reportIssue(videoId) {
-            if (!confirm("Report this skip segment as incorrect?")) return;
+        // --- Report Modal Logic ---
+        function openReportModal(videoId) {
+            document.getElementById('reportVideoId').value = videoId;
+            document.getElementById('report-overlay').style.display = 'flex';
+        }
+
+        function closeReport() {
+            document.getElementById('report-overlay').style.display = 'none';
+        }
+
+        document.getElementById('submitReportBtn').onclick = async () => {
+            const videoId = document.getElementById('reportVideoId').value;
+            const reason = document.getElementById('reportReason').value;
+
+            if (!videoId) return;
+
+            const btn = document.getElementById('submitReportBtn');
+            btn.textContent = 'Submitting...';
+            btn.disabled = true;
+
             try {
                 const res = await fetch('/api/report', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rdKey, videoId, reason: "Manual report from community portal" })
+                    body: JSON.stringify({ rdKey, videoId, reason })
                 });
-                if (res.ok) alert("Reported. Thank you!");
-            } catch (e) { console.error(e); }
+
+                if (res.ok) {
+                    alert("Reported. Thank you!");
+                    closeReport();
+                } else {
+                    alert("Failed to send report.");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Network error.");
+            } finally {
+                btn.textContent = 'Submit Report';
+                btn.disabled = false;
+            }
         }
     </script>
 
