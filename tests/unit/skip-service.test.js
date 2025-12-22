@@ -12,6 +12,10 @@ jest.mock('fs', () => ({
 }));
 jest.mock('axios');
 jest.mock('../../src/services/mongodb');
+jest.mock('../../src/services/catalog', () => ({
+    registerShow: jest.fn().mockResolvedValue(),
+    updateCatalog: jest.fn().mockResolvedValue()
+}));
 
 describe('Skip Service', () => {
     let skipService;
@@ -131,7 +135,7 @@ describe('Skip Service', () => {
     it('should prioritize Mongo if available', async () => {
         const mockCollection = {
             findOne: jest.fn().mockResolvedValue({
-                fullId: 'tt55555',
+                fullId: 'tt55555:1:1',
                 segments: [{ start: 50, end: 60, label: 'Intro' }]
             }),
             createIndex: jest.fn(),
@@ -141,7 +145,7 @@ describe('Skip Service', () => {
 
         await jest.isolateModules(async () => {
             skipService = loadService();
-            const result = await skipService.getSkipSegment('tt55555');
+            const result = await skipService.getSkipSegment('tt55555:1:1');
             expect(result).toEqual({ start: 50, end: 60 });
             expect(mockCollection.findOne).toHaveBeenCalled();
             expect(fs.readFile).not.toHaveBeenCalled(); // Should skip local load if Mongo present?

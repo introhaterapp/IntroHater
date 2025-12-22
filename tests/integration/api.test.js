@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('../../server_lite');
+const app = require('../../server');
 
 // Mocks
 // Mocks
@@ -30,6 +30,11 @@ jest.mock('../../src/services/user-service.js', () => ({
 jest.mock('../../src/services/indexer.js', () => ({
     start: jest.fn(),
     runIndex: jest.fn()
+}));
+
+jest.mock('../../src/services/catalog.js', () => ({
+    getCatalogData: jest.fn().mockResolvedValue({ media: {} }),
+    repairCatalog: jest.fn()
 }));
 
 // Mock rate-limit to avoid open handles (timer)
@@ -65,7 +70,7 @@ describe('API Integration', () => {
         it('GET /manifest.json should return the addon manifest', async () => {
             const res = await request(app).get('/manifest.json');
             expect(res.statusCode).toEqual(200);
-            expect(res.body).toHaveProperty('id', 'org.introhater.lite');
+            expect(res.body).toHaveProperty('id', 'org.introhater');
         });
     });
 

@@ -21,7 +21,7 @@ const { generateUserToken, verifyUserToken } = require('./src/utils/auth.js');
 const { SECURITY } = require('./src/config/constants');
 const fs = require('fs').promises;
 
-// In production (Lite), we use the system-installed ffmpeg (from apt-get)
+// In production, we use the system-installed ffmpeg (from apt-get)
 // We only use static binaries for local Windows dev if needed
 if (process.platform === 'win32') {
     try {
@@ -108,9 +108,9 @@ const PUBLIC_URL = process.env.PUBLIC_URL || `http://127.0.0.1:${PORT}`;
 
 // Manifest
 const manifest = {
-    id: "org.introhater.lite",
+    id: "org.introhater",
     version: "1.0.0",
-    name: "IntroHater Lite",
+    name: "IntroHater",
     description: "Universal Skip Intro for Stremio (TV/Mobile/PC)",
     resources: ["stream"],
     types: ["movie", "series", "anime"],
@@ -126,11 +126,11 @@ const builder = new addonBuilder(manifest);
 // Stream Handler Function
 async function handleStreamRequest(type, id, rdKey, baseUrl) {
     if (!rdKey) {
-        console.error("[Lite] No RD Key provided.");
+        console.error("[Server] No RD Key provided.");
         return { streams: [] };
     }
 
-    console.log(`[Lite] Request for ${type} ${id}`);
+    console.log(`[Server] Request for ${type} ${id}`);
     let originalStreams = [];
 
     try {
@@ -141,7 +141,7 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
             const data = response.data;
             if (data.streams) {
                 originalStreams = data.streams;
-                console.log(`[Lite] Fetched ${originalStreams.length} streams from upstream`);
+                console.log(`[Server] Fetched ${originalStreams.length} streams from upstream`);
             }
         }
     } catch (e) {
@@ -155,7 +155,7 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
     // FETCH SKIP (Async now because of Aniskip)
     const skipSeg = await getSkipSegment(id);
     if (skipSeg) {
-        console.log(`[Lite] Found skip for ${id}: ${skipSeg.start}-${skipSeg.end}s`);
+        console.log(`[Server] Found skip for ${id}: ${skipSeg.start}-${skipSeg.end}s`);
     }
 
     const modifiedStreams = [];

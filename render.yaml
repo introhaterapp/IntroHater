@@ -1,10 +1,10 @@
 services:
   - type: web
-    name: introhater-lite
+    name: introhater
     env: node
     plan: free
     buildCommand: "npm install && npm test"
-    dockerFilePath: ./Dockerfile.lite
+    dockerFilePath: ./Dockerfile
     envVars:
       - key: PORT
         value: 10000

@@ -15,7 +15,7 @@ COPY package*.json ./
 RUN npm install
 
 # Copy source code
-COPY server_lite.js .
+COPY server.js .
 COPY src ./src
 COPY docs ./docs
 COPY tests ./tests
@@ -34,4 +34,4 @@ ENV PORT=7000
 ENV NODE_ENV=production
 
 # Start command
-CMD ["node", "server_lite.js"]
+CMD ["node", "server.js"]

@@ -6,7 +6,7 @@ const axios = require('axios'); // Requires axios
 let ffprobePath = 'ffprobe';
 
 // We rely on 'ffprobe' being in the PATH (Docker/Linux or System install)
-// Static binaries are handled by the caller (server_lite.js) if necessary
+// Static binaries are handled by the caller (server.js) if necessary
 // But default to 'ffprobe' string
 try {
     if (process.platform === 'win32') {
@@ -14,7 +14,7 @@ try {
     }
 } catch (e) { }
 
-// SSRF Protection (Duplicate of server_lite logic for modularity)
+// SSRF Protection (Duplicate of server logic for modularity)
 function isSafeUrl(urlStr) {
     try {
         const url = new URL(urlStr);
