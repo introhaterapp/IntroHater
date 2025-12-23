@@ -250,11 +250,18 @@ function mergeSegments(segments) {
 async function getSegmentCount() {
     await ensureInit();
     if (useMongo && skipsCollection) {
-        const result = await skipsCollection.aggregate([
-            { $project: { numSegments: { $size: { $ifNull: ["$segments", []] } } } },
-            { $group: { _id: null, total: { $sum: "$numSegments" } } }
-        ]).toArray();
-        return result[0]?.total || 0;
+        try {
+            const t = Date.now();
+            const result = await skipsCollection.aggregate([
+                { $project: { numSegments: { $size: { $ifNull: ["$segments", []] } } } },
+                { $group: { _id: null, total: { $sum: "$numSegments" } } }
+            ]).toArray();
+            console.log(`[SkipService] MongoDB segment count aggregation took ${Date.now() - t}ms`);
+            return result[0]?.total || 0;
+        } catch (e) {
+            console.error("[SkipService] Aggregate Count Error:", e.message);
+            return 0;
+        }
     }
     // Local JSON count
     return Object.values(skipsData).flat().length;
