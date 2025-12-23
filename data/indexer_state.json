@@ -1,6 +1,6 @@
 {
   "page": 18,
   "offset": 900,
-  "error": "getaddrinfo ENOTFOUND ac-hctnn1w-shard-00-00.7suxcpq.mongodb.net",
-  "lastRun": "2025-12-23T02:31:44.162Z"
+  "error": "getaddrinfo ENOTFOUND api.anime-skip.com",
+  "lastRun": "2025-12-23T16:03:49.446Z"
 }

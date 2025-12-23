@@ -518,8 +518,18 @@ tr:last-child td {
 }
 
 tr:hover td {
-    background: var(--bg-card);
+    background: rgba(255, 255, 255, 0.03) !important;
     color: var(--text-main);
+}
+
+.leaderboard-table tr,
+#catalogTable tr {
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+#catalogTable tbody tr:hover {
+    background-color: rgba(99, 102, 241, 0.04) !important;
 }
 
 /* Search & Filters */

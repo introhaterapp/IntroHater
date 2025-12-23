@@ -69,17 +69,18 @@ async function initializeCatalog() {
             },
             {
                 title: 'Year',
-                className: 'min-tablet'
+                className: 'min-tablet',
+                width: '100px'
             },
-            { title: 'Type' },
             {
                 title: 'Segments',
-                className: 'all text-right', // Changed to 'all' to force visibility on mobile
+                className: 'all text-right',
+                width: '140px',
                 render: function (data, type, row) {
                     if (type === 'display') {
-                        // Index 0: Title, 1: Year, 2: Type, 3: Episodes Obj, 4: Count, 5: IMDb ID
-                        const imdbId = row[5];
-                        const count = row[4]; // Numeric count
+                        // Index 0: Title, 1: Year, 2: Episodes Obj, 3: Count, 4: IMDb ID
+                        const imdbId = row[4];
+                        const count = row[3]; // Numeric count
 
                         // Always show view button if there are segments
                         if (count > 0) {
@@ -120,10 +121,9 @@ async function initializeCatalog() {
                 return [
                     media.title || 'Unknown Title',
                     media.year || '????',
-                    media.type === 'show' ? 'TV Show' : 'Movie',
-                    media.episodes, // Store raw episodes object (hidden column effectively)
-                    media.totalSegments || 0,
-                    imdbId // Store ID for button
+                    media.episodes, // Store raw episodes object (index 2)
+                    media.totalSegments || 0, // index 3
+                    imdbId // Store ID for button (index 4)
                 ];
             });
 
