@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2025-12-19T00:13:48.857Z",
+  "lastUpdated": "2025-12-23T07:57:16.986Z",
   "media": {
     "tt0160622": {
       "title": "La P..... sentimentale",
@@ -56,9 +56,15 @@
         "aniskip": true,
         "animeSkip": false
       },
-      "episodes": {},
+      "episodes": {
+        "1:1": {
+          "season": 1,
+          "episode": 1,
+          "count": 1
+        }
+      },
       "addedAt": "2025-12-19T00:13:24.262Z",
-      "lastUpdated": "2025-12-19T00:13:24.262Z",
+      "lastUpdated": "2025-12-23T07:57:16.985Z",
       "totalSegments": 1
     },
     "tt0388629": {

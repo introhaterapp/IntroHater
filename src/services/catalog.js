@@ -185,21 +185,68 @@ async function updateCatalog(segment) {
     return await registerShow(segment.videoId);
 }
 
-async function getCatalogData() {
+async function getCatalogData(page = 1, limit = 50) {
+    await ensureInit();
+    const skip = (page - 1) * limit;
+
+    if (useMongo) {
+        // Filter at DB level for performance
+        const query = {
+            title: { $nin: [null, 'null', 'undefined', 'Unknown Title', ''] },
+            year: { $nin: [null, '????', ''] }
+        };
+
+        const total = await catalogCollection.countDocuments(query);
+        const items = await catalogCollection.find(query)
+            .sort({ lastUpdated: -1 })
+            .skip(skip)
+            .limit(limit)
+            .toArray();
+
+        const media = {};
+        items.forEach(item => {
+            const { _id, ...rest } = item;
+            media[item.imdbId] = rest;
+        });
+
+        return {
+            lastUpdated: new Date().toISOString(),
+            media,
+            pagination: {
+                page,
+                limit,
+                total,
+                pages: Math.ceil(total / limit)
+            }
+        };
+    }
+
+    // Fallback for local JSON
     const data = await readCatalog();
-    // Filter out entries with no title or year
     if (data.media) {
-        const cleanMedia = {};
-        for (const [id, item] of Object.entries(data.media)) {
-            // Strict filtering: logic to reject bad data
+        const entries = Object.entries(data.media).filter(([id, item]) => {
             const hasTitle = item.title && item.title !== 'null' && item.title !== 'undefined' && item.title !== 'Unknown Title';
             const hasYear = item.year && item.year !== '????';
+            return hasTitle && hasYear;
+        });
 
-            if (hasTitle && hasYear) {
-                cleanMedia[id] = item;
+        const total = entries.length;
+        const pagedEntries = entries
+            .sort((a, b) => new Date(b[1].lastUpdated) - new Date(a[1].lastUpdated))
+            .slice(skip, skip + limit);
+
+        const media = Object.fromEntries(pagedEntries);
+
+        return {
+            lastUpdated: data.lastUpdated,
+            media,
+            pagination: {
+                page,
+                limit,
+                total,
+                pages: Math.ceil(total / limit)
             }
-        }
-        data.media = cleanMedia;
+        };
     }
     return data;
 }

@@ -622,9 +622,12 @@ app.post('/api/admin/resolve-bulk', async (req, res) => {
 // 3. API: Catalog (Universal Registry)
 app.get('/api/catalog', async (req, res) => {
     try {
-        const catalog = await catalogService.getCatalogData();
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const catalog = await catalogService.getCatalogData(page, limit);
         res.json(catalog);
     } catch (e) {
+
         res.status(500).json({ error: "Failed to load catalog" });
     }
 });

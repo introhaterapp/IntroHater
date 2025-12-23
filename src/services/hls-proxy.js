@@ -14,6 +14,26 @@ try {
     }
 } catch (e) { }
 
+// Internal Cache for Probes
+const PROBE_CACHE = new Map();
+const MAX_PROBE_CACHE_SIZE = 1000;
+
+function getCachedProbe(key) {
+    if (!PROBE_CACHE.has(key)) return null;
+    const val = PROBE_CACHE.get(key);
+    PROBE_CACHE.delete(key);
+    PROBE_CACHE.set(key, val); // Move to end (MRU)
+    return val;
+}
+
+function setCachedProbe(key, val) {
+    if (PROBE_CACHE.has(key)) PROBE_CACHE.delete(key);
+    else if (PROBE_CACHE.size >= MAX_PROBE_CACHE_SIZE) {
+        PROBE_CACHE.delete(PROBE_CACHE.keys().next().value); // Remove oldest (LRU)
+    }
+    PROBE_CACHE.set(key, val);
+}
+
 // SSRF Protection (Duplicate of server logic for modularity)
 function isSafeUrl(urlStr) {
     try {
@@ -56,6 +76,13 @@ async function getStreamDetails(url) {
  * Uses 'read_intervals' which works on direct links.
  */
 async function getByteOffset(url, startTime) {
+    const cacheKey = `byte:${url}:${startTime}`;
+    const cached = getCachedProbe(cacheKey);
+    if (cached !== null) {
+        console.log(`[HLS Proxy] Using cached byte offset for ${startTime}s`);
+        return cached;
+    }
+
     return new Promise((resolve, reject) => {
         // Arguments for ffprobe with read_intervals
         // We ensure we read significantly PAST the start time to find a keyframe
@@ -121,12 +148,16 @@ async function getByteOffset(url, startTime) {
 
                 if (packet && packet.pos) {
                     console.log(`[HLS Proxy] Found precise offset: ${packet.pos} (pts: ${packet.pts_time})`);
-                    resolve(parseInt(packet.pos));
+                    const pos = parseInt(packet.pos);
+                    setCachedProbe(cacheKey, pos);
+                    resolve(pos);
                 } else if (firstPkt.pos) {
                     // Fallback: If we couldn't find exact >= start, but we have *something* close (e.g. 88s for 90s)
                     // We take the closest one we have.
                     console.log(`[HLS Proxy] Exact >= seek failed, using closest packet at ${firstPts}s`);
-                    resolve(parseInt(firstPkt.pos));
+                    const pos = parseInt(firstPkt.pos);
+                    setCachedProbe(cacheKey, pos);
+                    resolve(pos);
                 } else {
                     resolve(0);
                 }
@@ -186,6 +217,13 @@ ${videoUrl}
  * Returns precise byte offsets for both.
  */
 async function getRefinedOffsets(url, startSec, endSec) {
+    const cacheKey = `refined:${url}:${startSec}:${endSec}`;
+    const cached = getCachedProbe(cacheKey);
+    if (cached) {
+        console.log(`[HLS Proxy] Using cached refined offsets for ${startSec}s & ${endSec}s`);
+        return cached;
+    }
+
     return new Promise((resolve, reject) => {
         // We probe both intervals in one command to save overhead
         // ffprobe read_intervals syntax: start%+duration,start2%+duration
@@ -249,10 +287,12 @@ async function getRefinedOffsets(url, startSec, endSec) {
 
                 if (startPkt && endPkt) {
                     console.log(`[HLS Proxy] Splice points found: ${startPkt.pts_time}s (${startPkt.pos}) -> ${endPkt.pts_time}s (${endPkt.pos})`);
-                    return resolve({
+                    const res = {
                         startOffset: parseInt(startPkt.pos),
                         endOffset: parseInt(endPkt.pos)
-                    });
+                    };
+                    setCachedProbe(cacheKey, res);
+                    return resolve(res);
                 } else {
                     const lastPkt = data.packets[data.packets.length - 1];
                     const maxTime = lastPkt ? lastPkt.pts_time : "unknown";

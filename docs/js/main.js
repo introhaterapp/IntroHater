@@ -3,11 +3,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const header = document.querySelector('header');
 
     window.addEventListener('scroll', () => {
-        if (window.scrollY > 50) {
-            header.style.background = 'rgba(5, 5, 16, 0.95)';
-            header.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.4)';
+        if (window.scrollY > 20) {
+            header.style.background = 'rgba(9, 9, 11, 0.85)';
+            header.style.borderBottom = '1px solid rgba(255, 255, 255, 0.1)';
+            header.style.boxShadow = '0 10px 30px -10px rgba(0, 0, 0, 0.5)';
         } else {
-            header.style.background = 'rgba(5, 5, 16, 0.8)';
+            header.style.background = 'transparent';
+            header.style.borderBottom = '1px solid transparent';
             header.style.boxShadow = 'none';
         }
     });
@@ -45,22 +47,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Intersection Observer for fade-in animations
     const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px'
+        threshold: 0.15,
+        rootMargin: '0px 0px -50px 0px'
     };
 
     const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
+        entries.forEach((entry, index) => {
             if (entry.isIntersecting) {
-                entry.target.classList.add('animate-fade-in');
+                // Add staggered delay based on elements within same group if possible
+                // For now, just trigger the animation
+                setTimeout(() => {
+                    entry.target.classList.add('animate-active');
+                }, index * 100);
                 observer.unobserve(entry.target);
             }
         });
     }, observerOptions);
 
-    document.querySelectorAll('.reveal-on-scroll').forEach(el => {
+    document.querySelectorAll('.reveal-on-scroll, .card, .stat-card').forEach(el => {
+        el.classList.add('reveal-init');
         observer.observe(el);
     });
 

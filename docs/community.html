@@ -249,10 +249,12 @@
         <section class="section">
             <div class="container" style="padding-top: 100px; max-width: 800px;">
 
-                <div class="tabs">
-                    <button class="tab-btn active" data-tab="dashboard">My Activity</button>
-                    <button class="tab-btn" data-tab="search">Search & Contribute</button>
-                    <button id="logoutBtn" class="tab-btn" style="margin-left: auto; color: #ef4444;">Logout</button>
+                <div class="tabs-premium">
+                    <div id="tab-indicator" class="tab-indicator"></div>
+                    <button class="tab-btn-premium active" data-tab="dashboard">My Activity</button>
+                    <button class="tab-btn-premium" data-tab="search">Search & Contribute</button>
+                    <button id="logoutBtn" class="tab-btn-premium"
+                        style="margin-left: auto; color: #ef4444;">Logout</button>
                 </div>
 
                 <!-- Dashboard Tab -->
@@ -469,15 +471,28 @@
         });
 
         // --- Tab Logic ---
-        document.querySelectorAll('.tab-btn').forEach(btn => {
+        function updateTabIndicator() {
+            const activeBtn = document.querySelector('.tab-btn-premium.active');
+            const indicator = document.getElementById('tab-indicator');
+            if (activeBtn && indicator) {
+                indicator.style.width = `${activeBtn.offsetWidth}px`;
+                indicator.style.left = `${activeBtn.offsetLeft}px`;
+            }
+        }
+
+        document.querySelectorAll('.tab-btn-premium').forEach(btn => {
             if (!btn.dataset.tab) return;
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-btn-premium').forEach(b => b.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 btn.classList.add('active');
                 document.getElementById(btn.dataset.tab).classList.add('active');
+                updateTabIndicator();
             });
         });
+
+        window.addEventListener('resize', updateTabIndicator);
+        setTimeout(updateTabIndicator, 100);
 
         // --- Dashboard Logic ---
         async function loadDashboard() {

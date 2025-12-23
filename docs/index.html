@@ -46,67 +46,46 @@
     </header>
 
     <main>
-        <!-- Professional Hero -->
-        <section class="section hero text-center" style="padding-top: 120px; padding-bottom: 80px;">
-            <div class="container">
-                <h1 class="hero-title animate-fade-in"
-                    style="font-size: 3.5rem; margin-bottom: 24px; letter-spacing: -0.04em;">
+        <section class="section hero text-center">
+            <div class="container hero-container">
+                <h1 class="hero-title reveal-on-scroll">
                     Skip the Boring.<br>
-                    <span>Focus on the Story.</span>
+                    <span class="text-gradient-primary accent-glow">Focus on the Story.</span>
                 </h1>
-                <p class="hero-subtitle animate-fade-in"
-                    style="font-size: 1.25rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 40px auto; animation-delay: 0.1s;">
+                <p class="hero-subtitle reveal-on-scroll">
                     The most advanced auto-skip extension for Stremio. Enhanced by community data.
                 </p>
 
-                <div class="hero-buttons justify-center animate-fade-in"
-                    style="justify-content: center; animation-delay: 0.2s;">
-                    <a href="configure.html" class="btn btn-primary" style="font-size: 1.1rem; padding: 12px 32px;">
+                <div class="hero-buttons justify-center reveal-on-scroll">
+                    <a href="configure.html" class="btn btn-primary">
                         Install Addon
                     </a>
-                    <a href="community.html" class="btn btn-secondary" style="font-size: 1.1rem; padding: 12px 32px;">
+                    <a href="community.html" class="btn btn-secondary">
                         Community Portal
                     </a>
                 </div>
 
                 <!-- Social Proof / Stats in a single sleek bar -->
-                <div class="stats-bar animate-fade-in"
-                    style="margin-top: 60px; padding-top: 40px; border-top: 1px solid var(--border); animation-delay: 0.3s; display: flex; justify-content: center; gap: 60px; flex-wrap: wrap;">
-                    <div class="text-center">
-                        <div id="stat-users" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">...
-                        </div>
-                        <div
-                            style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
-                            Users</div>
+                <div class="stats-bar reveal-on-scroll">
+                    <div class="stat-item">
+                        <div id="stat-users" class="stat-value-sm">...</div>
+                        <div class="stat-label-sm">Users</div>
                     </div>
-                    <div class="text-center">
-                        <div id="stat-shows" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">...
-                        </div>
-                        <div
-                            style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
-                            Shows</div>
+                    <div class="stat-item">
+                        <div id="stat-shows" class="stat-value-sm">...</div>
+                        <div class="stat-label-sm">Shows</div>
                     </div>
-                    <div class="text-center">
-                        <div id="stat-episodes" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">
-                            ...
-                        </div>
-                        <div
-                            style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
-                            Episodes</div>
+                    <div class="stat-item">
+                        <div id="stat-episodes" class="stat-value-sm">...</div>
+                        <div class="stat-label-sm">Episodes</div>
                     </div>
-                    <div class="text-center">
-                        <div id="stat-skips" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">...
-                        </div>
-                        <div
-                            style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
-                            Segments</div>
+                    <div class="stat-item">
+                        <div id="stat-skips" class="stat-value-sm">...</div>
+                        <div class="stat-label-sm">Segments</div>
                     </div>
-                    <div class="text-center">
-                        <div id="stat-saved" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">...
-                        </div>
-                        <div
-                            style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
-                            Time Saved</div>
+                    <div class="stat-item">
+                        <div id="stat-saved" class="stat-value-sm">...</div>
+                        <div class="stat-label-sm">Time Saved</div>
                     </div>
                 </div>
             </div>
@@ -123,42 +102,24 @@
                 </div>
 
                 <div class="grid-3">
-                    <!-- Feature 1 -->
                     <div class="card">
-                        <div
-                            style="width: 48px; height: 48px; background: rgba(14, 165, 233, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.5rem; margin-bottom: 20px;">
-                            ⚡
-                        </div>
-                        <h3 style="font-size: 1.25rem; margin-bottom: 12px;">Instant Processing</h3>
-                        <p style="color: var(--text-muted);">
-                            Skips intros cleanly without buffering or delay. The extension pre-fetches segment data for
-                            seamless playback.
-                        </p>
+                        <div class="feature-icon">⚡</div>
+                        <h3>Instant Processing</h3>
+                        <p>Skips intros cleanly without buffering or delay. The extension pre-fetches segment data for
+                            seamless playback.</p>
                     </div>
 
-                    <!-- Feature 2 -->
                     <div class="card">
-                        <div
-                            style="width: 48px; height: 48px; background: rgba(14, 165, 233, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.5rem; margin-bottom: 20px;">
-                            🧠
-                        </div>
-                        <h3 style="font-size: 1.25rem; margin-bottom: 12px;">Smart Recognition</h3>
-                        <p style="color: var(--text-muted);">
-                            Combines external and user-submitted data to ensure accurate start and end
-                            times for any show.
-                        </p>
+                        <div class="feature-icon">🧠</div>
+                        <h3>Smart Recognition</h3>
+                        <p>Combines external and user-submitted data to ensure accurate start and end times for any
+                            show.</p>
                     </div>
 
-                    <!-- Feature 3 -->
                     <div class="card">
-                        <div
-                            style="width: 48px; height: 48px; background: rgba(14, 165, 233, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.5rem; margin-bottom: 20px;">
-                            🛡️
-                        </div>
-                        <h3 style="font-size: 1.25rem; margin-bottom: 12px;">Privacy Focused</h3>
-                        <p style="color: var(--text-muted);">
-                            Open source and transparent. No tracking of your personal viewing habits, ever.
-                        </p>
+                        <div class="feature-icon">🛡️</div>
+                        <h3>Privacy Focused</h3>
+                        <p>Open source and transparent. No tracking of your personal viewing habits, ever.</p>
                     </div>
                 </div>
             </div>

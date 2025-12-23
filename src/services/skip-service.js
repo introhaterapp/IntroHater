@@ -12,8 +12,35 @@ let skipsData = {}; // Format: { "imdb:s:e": [ { start, end, label, votes } ] }
 // Persistence State
 let useMongo = false;
 let skipsCollection = null;
-const MAL_CACHE = {}; // Cache for Aniskip Mapping
-const SKIP_CACHE = {}; // Cache for Aniskip Results
+const MAL_CACHE_FILE = path.join(__dirname, '../../data/mal_cache.json');
+const SKIP_CACHE_FILE = path.join(__dirname, '../../data/third_party_skip_cache.json');
+
+let MAL_CACHE = {}; // Cache for Aniskip Mapping
+let SKIP_CACHE = {}; // Cache for Aniskip Results
+
+async function loadCache() {
+    try {
+        const malData = await fs.readFile(MAL_CACHE_FILE, 'utf8');
+        MAL_CACHE = JSON.parse(malData);
+        console.log(`[SkipService] Loaded ${Object.keys(MAL_CACHE).length} MAL mappings.`);
+    } catch (e) { }
+
+    try {
+        const skipData = await fs.readFile(SKIP_CACHE_FILE, 'utf8');
+        SKIP_CACHE = JSON.parse(skipData);
+        console.log(`[SkipService] Loaded ${Object.keys(SKIP_CACHE).length} third-party skip segments from cache.`);
+    } catch (e) { }
+}
+
+async function saveCache() {
+    try {
+        await fs.mkdir(path.dirname(MAL_CACHE_FILE), { recursive: true });
+        await fs.writeFile(MAL_CACHE_FILE, JSON.stringify(MAL_CACHE, null, 2));
+        await fs.writeFile(SKIP_CACHE_FILE, JSON.stringify(SKIP_CACHE, null, 2));
+    } catch (e) {
+        console.error("[SkipService] Cache Save Error:", e.message);
+    }
+}
 
 // Initialize
 let initPromise = null;
@@ -37,9 +64,11 @@ function ensureInit() {
                 console.log('[SkipService] MongoDB not available. Using local JSON.');
                 await loadSkips();
             }
+            await loadCache();
         } catch (e) {
             console.error("[SkipService] Init Error:", e);
             await loadSkips();
+            await loadCache();
         }
     })();
 
@@ -247,6 +276,7 @@ async function getMalId(imdbId) {
             const malId = jikanRes.data.data[0].mal_id;
             console.log(`[SkipService] Mapped ${imdbId} (${name}) -> MAL ${malId}`);
             MAL_CACHE[imdbId] = malId;
+            saveCache().catch(() => { }); // Persist
             return malId;
         }
     } catch (e) {
@@ -279,6 +309,7 @@ async function fetchAniskip(malId, episode) {
 
     // Cache null to stop hammering for 404s
     SKIP_CACHE[cacheKey] = null;
+    saveCache().catch(() => { });
     return null;
 }
 
@@ -372,6 +403,7 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
     }
 
     SKIP_CACHE[cacheKey] = null;
+    saveCache().catch(() => { });
     return null;
 }
 

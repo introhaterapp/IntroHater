@@ -136,6 +136,7 @@ class IndexerService {
                                 query ($showId: ID!) {
                                     findEpisodesByShowId(showId: $showId) {
                                         number
+                                        season
                                         timestamps {
                                             at
                                             type {
@@ -150,6 +151,7 @@ class IndexerService {
                                 variables: { showId: show.id }
                             }, { headers: { 'X-Client-ID': ANIME_SKIP_CLIENT_ID } });
 
+
                             const episodes = epRes.data?.data?.findEpisodesByShowId || [];
                             let importedCount = 0;
 
@@ -163,11 +165,13 @@ class IndexerService {
                                     const start = intro.at;
                                     const end = next ? next.at : start + 90;
 
-                                    // Construct ID: tt123456:1:5 (Assuming Season 1 for simplicity if unknown)
-                                    const fullId = `${imdbId}:1:${ep.number}`;
+                                    // Construct ID: tt123456:1:5 (Dynamic season from API)
+                                    const season = ep.season || 1;
+                                    const fullId = `${imdbId}:${season}:${ep.number}`;
 
                                     // Use new duplicate-safe add method
                                     await skipService.addSkipSegment(fullId, start, end, 'Intro', 'auto-import', false, true); // skipSave = true
+
                                     importedCount++;
                                 }
                             }

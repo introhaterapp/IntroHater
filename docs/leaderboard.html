@@ -45,21 +45,24 @@
 
     <main>
         <section class="section">
-            <div class="container" style="padding-top: 120px; padding-bottom: 60px;">
-                <div class="header-content reveal-on-scroll" style="text-align: center; margin-bottom: 40px;">
-                    <h1 class="text-gradient" style="font-size: 3rem; margin-bottom: 16px;">Top Contributors</h1>
-                    <p class="hero-subtitle" style="margin: 0 auto; margin-bottom: 8px;">
+            <div class="container hero-container text-center">
+                <div class="header-content reveal-on-scroll">
+                    <h1 class="hero-title reveal-on-scroll">Top <span class="text-gradient-primary">Contributors</span>
+                    </h1>
+                    <p class="hero-subtitle reveal-on-scroll">
                         The heroes making streaming smooth for everyone.
                     </p>
-                    <p style="font-size: 0.9rem; color: var(--text-muted);">
+                    <p style="font-size: 0.9rem; color: var(--text-dim); margin-top: -30px; margin-bottom: 40px;">
                         Last updated: <span id="update-time">Loading...</span>
                     </p>
                 </div>
 
-                <div class="tab-container reveal-on-scroll">
-                    <button class="tab-btn active" data-tab="segments">Most Segments</button>
-                    <button class="tab-btn" data-tab="votes">Most Votes</button>
-                    <button class="tab-btn" data-tab="saved">Most Time Saved</button>
+                <div class="tabs-premium reveal-on-scroll"
+                    style="max-width: 600px; margin-left: auto; margin-right: auto;">
+                    <div id="tab-indicator" class="tab-indicator"></div>
+                    <button class="tab-btn-premium active" data-tab="segments">Most Segments</button>
+                    <button class="tab-btn-premium" data-tab="votes">Most Votes</button>
+                    <button class="tab-btn-premium" data-tab="saved">Most Time Saved</button>
                 </div>
 
                 <div class="glass-panel text-center reveal-on-scroll" style="overflow: hidden;">
@@ -161,14 +164,27 @@
             }).join('');
         }
 
-        document.querySelectorAll('.tab-btn').forEach(btn => {
+        function updateTabIndicator() {
+            const activeBtn = document.querySelector('.tab-btn-premium.active');
+            const indicator = document.getElementById('tab-indicator');
+            if (activeBtn && indicator) {
+                indicator.style.width = `${activeBtn.offsetWidth}px`;
+                indicator.style.left = `${activeBtn.offsetLeft}px`;
+            }
+        }
+
+        document.querySelectorAll('.tab-btn-premium').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-btn-premium').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
                 currentTab = e.target.dataset.tab;
                 displayLeaderboard(currentTab);
+                updateTabIndicator();
             });
         });
+
+        window.addEventListener('resize', updateTabIndicator);
+        setTimeout(updateTabIndicator, 100);
 
         // Initialize
         document.addEventListener('DOMContentLoaded', fetchLeaderboardData);

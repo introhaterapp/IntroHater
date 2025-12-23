@@ -1,1 +1,18 @@
-{}
+{
+    "tt0409591:1:1": [
+        {
+            "start": 124.32,
+            "end": 214.32,
+            "label": "Intro",
+            "votes": 1,
+            "verified": true,
+            "source": "aniskip",
+            "reportCount": 0,
+            "seriesSkip": false,
+            "contributors": [
+                "aniskip"
+            ],
+            "createdAt": "2025-12-23T07:57:16.983Z"
+        }
+    ]
+}
