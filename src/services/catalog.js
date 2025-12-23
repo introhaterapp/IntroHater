@@ -181,6 +181,55 @@ async function registerShow(videoId) {
     await writeCatalogEntry(imdbId, media);
 }
 
+/**
+ * Enhanced registerShow to handle segment updates without metadata fetch if entry exists
+ */
+async function registerShowV2(videoId, segmentCount = 1) {
+    const parts = videoId.split(':');
+    const imdbId = parts[0];
+    const season = parts[1] ? parseInt(parts[1]) : null;
+    const episode = parts[2] ? parseInt(parts[2]) : null;
+
+    if (!imdbId.match(/^tt\d+$/)) return;
+
+    await ensureInit();
+    let media = null;
+    if (useMongo) {
+        media = await catalogCollection.findOne({ imdbId });
+    } else {
+        const catalog = await readCatalog();
+        media = catalog.media[imdbId];
+    }
+
+    if (!media) {
+        const meta = await fetchMetadata(imdbId);
+        if (!meta) return;
+        media = {
+            title: meta.Title,
+            year: meta.Year,
+            poster: meta.Poster,
+            type: season && episode ? 'show' : 'movie',
+            episodes: {},
+            addedAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString(),
+            totalSegments: 0
+        };
+    }
+
+    if (season && episode) {
+        const epKey = `${season}:${episode}`;
+        if (!media.episodes[epKey]) {
+            media.episodes[epKey] = { season, episode, count: 0 };
+        }
+        media.episodes[epKey].count = segmentCount;
+    }
+
+    media.totalSegments = Object.keys(media.episodes || {}).length;
+    media.lastUpdated = new Date().toISOString();
+
+    await writeCatalogEntry(imdbId, media);
+}
+
 async function updateCatalog(segment) {
     return await registerShow(segment.videoId);
 }
@@ -304,53 +353,61 @@ async function getCatalogStats() {
 
 async function repairCatalog(allSkips) {
     if (!allSkips) return;
-    console.log('[Catalog] Running catalog repair from source of truth...');
-    const catalog = await readCatalog();
-    let changes = 0;
 
-    // 1. Reset / Prepare Catalog Entries
-    // We assume catalog entries exist for the shows. If not, they will be added lazily by future lookups.
-    // We want to fix counts for existing entries.
-    if (!catalog.media) return;
+    const skipKeys = Object.keys(allSkips);
+    console.log(`[Catalog] Running catalog repair/sync from ${skipKeys.length} items...`);
 
-    // Clear existing episode maps to ensure a clean rebuild
-    for (const item of Object.values(catalog.media)) {
-        item.episodes = {};
-        item.totalSegments = 0;
+    // SAFETY CHECK: If the source of truth is tiny but we suspect it should be large, abort.
+    // This prevents wiping the catalog if skipService fails to load but somehow returns an empty map.
+    if (skipKeys.length < 50) {
+        console.warn('[Catalog] Aborting repair: Source of truth looks too small. Is DB connected?');
+        return;
     }
 
-    // 2. Iterate ALL Skips (Source of Truth)
-    // allSkips is expected to be a map: { "tt123:1:1": [segments], ... }
-    for (const fullId of Object.keys(allSkips)) {
+    let changes = 0;
+    const showMap = {}; // imdbId -> { epKey -> count }
+
+    // 1. Rebuild Episode Maps from Skips
+    for (const fullId of skipKeys) {
         const parts = fullId.split(':');
-        if (parts.length < 3) continue; // Skip movies or invalid IDs for now
+        if (parts.length < 3) continue;
 
         const imdbId = parts[0];
         const season = parseInt(parts[1]);
         const episode = parseInt(parts[2]);
+        const epKey = `${season}:${episode}`;
 
-        if (catalog.media[imdbId]) {
+        if (!showMap[imdbId]) showMap[imdbId] = {};
+        showMap[imdbId][epKey] = (showMap[imdbId][epKey] || 0) + 1;
+    }
+
+    // 2. Sync Rebuilt Data to Catalog
+    // We iterate the showMap (which came from Skips) to ensure all shows with segments exist.
+    for (const [imdbId, episodes] of Object.entries(showMap)) {
+        try {
+            await registerShowV2(imdbId + ":1:1", 0); // Ensure show exists (dummy ep update)
+
+            // Now fetch it and update all episodes
+            const catalog = await readCatalog();
             const media = catalog.media[imdbId];
-            const epKey = `${season}:${episode}`;
+            if (media) {
+                media.episodes = {}; // Reset before rebuild
+                for (const [epKey, count] of Object.entries(episodes)) {
+                    const [s, e] = epKey.split(':').map(Number);
+                    media.episodes[epKey] = { season: s, episode: e, count };
+                }
+                media.totalSegments = Object.keys(media.episodes).length;
+                media.lastUpdated = new Date().toISOString();
 
-            if (!media.episodes[epKey]) {
-                media.episodes[epKey] = { season, episode, count: 0 };
+                await writeCatalogEntry(imdbId, media);
+                changes++;
             }
-            media.episodes[epKey].count++; // We could count number of segments for this episode
+        } catch (e) {
+            console.error(`[Catalog] Failed to sync ${imdbId}:`, e.message);
         }
     }
 
-    // 3. Finalize Counts & Save
-    for (const [id, item] of Object.entries(catalog.media)) {
-        const correctCount = Object.keys(item.episodes || {}).length;
-        if (item.totalSegments !== correctCount || correctCount > 0) { // Save if it has segments or we changed it
-            item.totalSegments = correctCount;
-            // Only save if meaningful
-            changes++;
-            await writeCatalogEntry(id, item);
-        }
-    }
-    console.log(`[Catalog] Rebuilt counts for ${changes} shows.`);
+    console.log(`[Catalog] Rebuilt/Synced ${changes} shows.`);
 }
 
 module.exports = {

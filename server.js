@@ -73,7 +73,15 @@ async function loadMetadataCache() {
 setTimeout(async () => {
     try {
         const allSkips = await skipService.getAllSegments();
-        await catalogService.repairCatalog(allSkips);
+        const skipKeys = Object.keys(allSkips);
+
+        // Safety check: Don't run repair if source of truth looks suspicious (too small)
+        if (skipKeys.length > 100) {
+            console.log(`[Server] Starting startup repair with ${skipKeys.length} segments...`);
+            await catalogService.repairCatalog(allSkips);
+        } else {
+            console.warn(`[Server] Skipping startup repair: only ${skipKeys.length} segments found. This may indicate a DB connection issue.`);
+        }
     } catch (e) {
         console.error("Repair failed:", e);
     }
