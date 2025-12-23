@@ -273,81 +273,78 @@ app.get('/api/leaderboard', async (req, res) => {
     });
 });
 
-// 2.5 API: Stats
-let statsCache = { timestamp: 0, data: null };
+// 2.5 API: Stats (with Background Refresh)
+let globalStats = {
+    users: 0,
+    skips: 0,
+    savedTime: 0,
+    votes: 0,
+    segments: 0,
+    showCount: 0,
+    episodeCount: 0,
+    sources: { local: 0, aniskip: 145000, animeSkip: 0 }
+};
 
-app.get('/api/stats', async (req, res) => {
-    // Check Cache (Top of the hour invalidation)
-    const now = new Date();
-    if (statsCache.data && statsCache.timestamp > 0) {
-        const last = new Date(statsCache.timestamp);
-        // Valid if: Same Year, Same Month, Same Day, Same Hour
-        if (now.getFullYear() === last.getFullYear() &&
-            now.getMonth() === last.getMonth() &&
-            now.getDate() === last.getDate() &&
-            now.getHours() === last.getHours()) {
-            return res.json(statsCache.data);
-        }
-    }
-
-    const { userCount, voteCount, totalSavedTime } = await userService.getStats();
-    // Get total skips from all segments
-    const allSkips = await getAllSegments();
-    const localSegmentCount = Object.values(allSkips).flat().length;
-
-    // Ani-Skip Estimate (Educated guess based on community data)
-    const ANISKIP_ESTIMATE = 145000;
-
-    // Anime-Skip Live Stats
-    let animeSkipCount = 0;
-    let animeSkipShows = 0;
-    let animeSkipEpisodes = 0;
+async function refreshGlobalStats() {
     try {
-        const query = `query { counts { timestamps shows episodes } }`;
-        const asRes = await axios.post('https://api.anime-skip.com/graphql',
-            { query },
-            { headers: { 'X-Client-ID': 'th2oogUKrgOf1J8wMSIUPV0IpBMsLOJi' }, timeout: 2000 }
-        );
-        animeSkipCount = asRes.data?.data?.counts?.timestamps || 0;
-        animeSkipShows = asRes.data?.data?.counts?.shows || 0;
-        animeSkipEpisodes = asRes.data?.data?.counts?.episodes || 0;
+        console.log("[Stats] Refreshing global stats...");
+        const { userCount, voteCount, totalSavedTime } = await userService.getStats();
+
+        // Get total skips from all segments (Expensive - consider building a counter)
+        const allSkips = await getAllSegments();
+        const localSegmentCount = Object.values(allSkips).flat().length;
+
+        const ANISKIP_ESTIMATE = 145000;
+
+        let animeSkipCount = 0;
+        let animeSkipShows = 0;
+        let animeSkipEpisodes = 0;
+        try {
+            const query = `query { counts { timestamps shows episodes } }`;
+            const asRes = await axios.post('https://api.anime-skip.com/graphql',
+                { query },
+                { headers: { 'X-Client-ID': 'th2oogUKrgOf1J8wMSIUPV0IpBMsLOJi' }, timeout: 3000 }
+            );
+            animeSkipCount = asRes.data?.data?.counts?.timestamps || 0;
+            animeSkipShows = asRes.data?.data?.counts?.shows || 0;
+            animeSkipEpisodes = asRes.data?.data?.counts?.episodes || 0;
+        } catch (e) { }
+
+        let localShowCount = 0;
+        let localEpisodeCount = 0;
+        try {
+            const stats = await catalogService.getCatalogStats();
+            localShowCount = stats.showCount;
+            localEpisodeCount = stats.episodeCount;
+        } catch (e) { }
+
+        globalStats = {
+            users: userCount,
+            skips: localSegmentCount + ANISKIP_ESTIMATE + animeSkipCount,
+            savedTime: totalSavedTime || 0,
+            votes: voteCount,
+            segments: localSegmentCount,
+            showCount: localShowCount + animeSkipShows,
+            episodeCount: localEpisodeCount + animeSkipEpisodes,
+            sources: {
+                local: localSegmentCount,
+                aniskip: ANISKIP_ESTIMATE,
+                animeSkip: animeSkipCount
+            },
+            lastUpdated: new Date().toISOString()
+        };
+        console.log("[Stats] Global stats updated.");
     } catch (e) {
-        console.warn("[Stats] Failed to fetch live Anime-Skip stats:", e.message);
+        console.error("[Stats] Refresh failed:", e.message);
     }
+}
 
-    // Get catalog data for shows/episodes counts
-    let localShowCount = 0;
-    let localEpisodeCount = 0;
-    try {
-        const stats = await catalogService.getCatalogStats();
-        localShowCount = stats.showCount;
-        localEpisodeCount = stats.episodeCount;
-    } catch (e) {
-        console.warn("[Stats] Failed to calculate catalog counts:", e.message);
-    }
+// Initial refresh and then every 15 minutes
+refreshGlobalStats();
+setInterval(refreshGlobalStats, 15 * 60 * 1000);
 
-    const responseData = {
-        users: userCount,
-        skips: localSegmentCount + ANISKIP_ESTIMATE + animeSkipCount, // Total skips served (Combined)
-        savedTime: totalSavedTime || 0, // Global Saved Time in seconds
-        votes: voteCount,
-        segments: localSegmentCount, // Local community segments
-        showCount: localShowCount + animeSkipShows,
-        episodeCount: localEpisodeCount + animeSkipEpisodes,
-        sources: {
-            local: localSegmentCount,
-            aniskip: ANISKIP_ESTIMATE,
-            animeSkip: animeSkipCount
-        }
-    };
-
-    // Update Cache
-    statsCache = {
-        timestamp: now.getTime(),
-        data: responseData
-    };
-
-    res.json(responseData);
+app.get('/api/stats', (req, res) => {
+    res.json(globalStats);
 });
 
 // 2.6 API: Personal Stats (Protected by RD Key)
@@ -539,7 +536,6 @@ app.post('/api/generate-token', async (req, res) => {
     }
 
     const tokenData = generateUserToken(userId);
-    await userService.storeUserToken(userId, tokenData.token, tokenData.timestamp, tokenData.nonce);
     await userService.storeUserToken(userId, tokenData.token, tokenData.timestamp, tokenData.nonce);
     res.json(tokenData);
 });

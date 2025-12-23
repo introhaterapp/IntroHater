@@ -190,28 +190,25 @@ ul {
     box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
 }
 
-.btn-secondary {
-    background: transparent;
-    border: 1px solid var(--border);
+.btn-secondary:hover {
+    background: var(--bg-elevated);
+    border-color: var(--border-bright);
     color: var(--text-main);
 }
 
-.btn-secondary:hover {
-    background: var(--bg-elevated);
-    border-color: var(--text-muted);
-}
-
 .btn-danger-outline {
-    background: transparent;
-    border: 1px solid #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.2);
     color: #ef4444;
 }
 
 .btn-danger-outline:hover {
-    background: #ef4444;
-    color: #ffffff;
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    color: #ef4444;
 }
+
+
 
 
 
@@ -899,6 +896,7 @@ table.dataTable tbody td {
     border-radius: 14px;
     border: 1px solid var(--border);
     margin-bottom: 40px;
+    width: max-content;
 }
 
 .tab-btn-premium {
@@ -909,7 +907,12 @@ table.dataTable tbody td {
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-muted);
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
+    background: none;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
 }
 
 .tab-btn-premium.active {

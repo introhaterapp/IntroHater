@@ -253,24 +253,40 @@ async function getCatalogData(page = 1, limit = 50) {
 
 async function getCatalogStats() {
     const now = Date.now();
-    // Cache for 60 seconds to prevent 524 Timeouts on heavy load
+    // Cache for 60 seconds
     if (statsCache && (now - lastStatsTime < 60000)) {
         return statsCache;
     }
 
-    const data = await readCatalog();
+    await ensureInit();
     let showCount = 0;
     let episodeCount = 0;
 
-    if (data.media) {
-        // Only count valid entries
-        const entries = Object.values(data.media).filter(item => {
-            return item.title && item.title !== 'null' && item.title !== 'undefined' && item.title !== 'Unknown Title' && item.year !== '????';
-        });
-        showCount = entries.length;
-        entries.forEach(item => {
-            episodeCount += Object.keys(item.episodes || {}).length;
-        });
+    if (useMongo) {
+        const query = {
+            title: { $nin: [null, 'null', 'undefined', 'Unknown Title', ''] },
+            year: { $nin: [null, '????', ''] }
+        };
+        showCount = await catalogCollection.countDocuments(query);
+
+        // Simplified episode count for Mongo (total of all episode keys)
+        const result = await catalogCollection.aggregate([
+            { $match: query },
+            { $project: { numEpisodes: { $size: { $objectToArray: "$episodes" } } } },
+            { $group: { _id: null, total: { $sum: "$numEpisodes" } } }
+        ]).toArray();
+        episodeCount = result[0]?.total || 0;
+    } else {
+        const data = await readCatalog();
+        if (data.media) {
+            const entries = Object.values(data.media).filter(item => {
+                return item.title && item.title !== 'null' && item.title !== 'undefined' && item.title !== 'Unknown Title' && item.year !== '????';
+            });
+            showCount = entries.length;
+            entries.forEach(item => {
+                episodeCount += Object.keys(item.episodes || {}).length;
+            });
+        }
     }
 
     statsCache = { showCount, episodeCount };
