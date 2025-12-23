@@ -194,7 +194,7 @@ app.use(helmet({
             scriptSrc: ["'self'", "'unsafe-inline'", "https://code.jquery.com", "https://cdn.datatables.net", "https://static.cloudflareinsights.com"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.datatables.net", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            imgSrc: ["'self'", "data:", "https://cdn.datatables.net"],
+            imgSrc: ["'self'", "data:", "https://cdn.datatables.net", "https://m.media-amazon.com", "https://v3-cinemeta.strem.io"],
             connectSrc: ["'self'"], // Add external APIs here if client-side fetches are needed later
         },
     },

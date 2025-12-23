@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IntroHater - Community Portal</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="/icon32.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icon32.png">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +15,7 @@
         rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/css/style.css?v=2">
+    <link rel="stylesheet" href="css/style.css?v=2">
 
     <style>
         .tabs {
@@ -91,6 +91,10 @@
             padding: 35px;
             position: relative;
             overflow: hidden;
+        }
+
+        .d-none {
+            display: none !important;
         }
 
         .required-label::after {
@@ -221,17 +225,23 @@
 
     <header>
         <div class="container">
-            <a href="/" class="logo text-gradient">
-                <img src="/icon32.png" alt="Logo">
+            <a href="index.html" class="logo text-gradient">
+                <img src="icon32.png" alt="Logo">
                 IntroHater
             </a>
             <nav>
                 <ul class="nav-links">
-                    <li><a href="/">Home</a></li>
-                    <li><a href="#" class="active">Community</a></li>
-                    <li><a href="/configure.html">Install</a></li>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="catalog.html">Catalog</a></li>
+                    <li><a href="leaderboard.html">Leaderboard</a></li>
+                    <li><a href="community.html" class="active">Community</a></li>
+                    <li><a href="https://github.com/introhaterapp/IntroHater" target="_blank">GitHub</a></li>
                 </ul>
             </nav>
+            <div class="header-actions">
+                <a href="configure.html" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Install
+                    Addon</a>
+            </div>
         </div>
     </header>
 
@@ -308,7 +318,9 @@
 
     <!-- Submission Modal -->
     <div id="submit-overlay" class="modal-overlay">
-        <div class="glass-panel premium-modal">
+        <div class="glass-panel premium-modal" style="position: relative;">
+            <button onclick="closeSubmit()"
+                style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
             <h2 id="submit-title"
                 style="margin-bottom: 25px; font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem;">Submit Skip
                 Segment</h2>
@@ -373,9 +385,10 @@
     </div>
 
     <!-- Report Modal -->
-    <div id="report-overlay" class="d-none"
-        style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px;">
-        <div class="glass-panel" style="width: 100%; max-width: 450px; padding: 40px;">
+    <div id="report-overlay" class="modal-overlay">
+        <div class="glass-panel" style="width: 100%; max-width: 450px; padding: 40px; position: relative;">
+            <button onclick="closeReport()"
+                style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
             <h2 style="margin-bottom: 15px; font-family: 'Space Grotesk', sans-serif; color: #ef4444;">Report Issue ⚠️
             </h2>
             <p style="color: var(--text-muted); margin-bottom: 25px;">
@@ -751,6 +764,18 @@
             } finally {
                 btn.textContent = 'Submit Report';
                 btn.disabled = false;
+            }
+        }
+
+        // --- Global Modal Close ---
+        window.onclick = function (event) {
+            const submitOverlay = document.getElementById('submit-overlay');
+            const reportOverlay = document.getElementById('report-overlay');
+            if (event.target == submitOverlay) {
+                closeSubmit();
+            }
+            if (event.target == reportOverlay) {
+                closeReport();
             }
         }
     </script>

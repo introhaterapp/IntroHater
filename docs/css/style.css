@@ -206,8 +206,9 @@ ul {
 }
 
 .btn-danger-outline:hover {
-    background: rgba(239, 68, 68, 0.1);
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+    background: #ef4444;
+    color: #ffffff;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
 }
 
 
