@@ -50,13 +50,10 @@
                                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                                 <h3 style="margin: 0;">Pending Submissions</h3>
                                 <div style="display: flex; gap: 10px;">
-                                    <button class="btn btn-sm btn-secondary"
-                                        onclick="toggleSelectAll('pending-list')">Select All</button>
-                                    <button class="btn btn-sm btn-primary"
-                                        onclick="bulkResolve('approve')">Approve</button>
-                                    <button class="btn btn-sm btn-secondary"
-                                        style="background:#ef4444; border-color:#ef4444;"
-                                        onclick="bulkResolve('delete')">Delete</button>
+                                    <button id="selectAllBtn" class="btn btn-sm btn-secondary">Select All</button>
+                                    <button id="bulkApproveBtn" class="btn btn-sm btn-primary">Approve</button>
+                                    <button id="bulkDeleteBtn" class="btn btn-sm btn-secondary"
+                                        style="background:#ef4444; border-color:#ef4444;">Delete</button>
                                 </div>
                             </div>
                             <div id="pending-list" style="display: flex; flex-direction: column; gap: 15px;">
@@ -80,11 +77,18 @@
         let adminPass = "";
         let pendingItemsRef = []; // Keep track of rendered items to map checkboxes back to data
 
-        document.getElementById('loginBtn').onclick = async function () {
+        document.getElementById('loginBtn').addEventListener('click', async function () {
             adminPass = document.getElementById('adminPass').value.trim();
             if (!adminPass) return;
             loadQueue();
-        };
+        });
+
+        // Bulk Actions Event Listeners
+        document.getElementById('selectAllBtn').addEventListener('click', () => toggleSelectAll('pending-list'));
+        document.getElementById('bulkApproveBtn').addEventListener('click', () => bulkResolve('approve'));
+        document.getElementById('bulkDeleteBtn').addEventListener('click', () => bulkResolve('delete'));
+
+        document.getElementById('refreshBtn').addEventListener('click', loadQueue);
 
         async function loadQueue() {
             const btn = document.getElementById('refreshBtn');
@@ -115,8 +119,6 @@
                 btn.textContent = 'Refresh';
             }
         }
-
-        document.getElementById('refreshBtn').onclick = loadQueue;
 
         function renderList(targetId, items, isPending) {
             const cont = document.getElementById(targetId);
@@ -153,14 +155,16 @@
                             ${!isPending ? `<div style="color:#ef4444; font-size:0.75rem;">Reports: ${item.reportCount}</div>` : ''}
                         </div>
                         <div style="display: flex; gap: 10px;">
-                            <button class="btn btn-primary mod-approve" style="flex:1; font-size:0.75rem;">Approve</button>
-                            <button class="btn btn-secondary mod-delete" style="flex:1; font-size:0.75rem; background:#ef4444; border-color:#ef4444;">Delete</button>
+                            <button class="btn btn-primary mod-approve" style="flex:1; font-size:0.75rem;" data-fullid="${item.fullId}" data-index="${item.index}">Approve</button>
+                            <button class="btn btn-secondary mod-delete" style="flex:1; font-size:0.75rem; background:#ef4444; border-color:#ef4444;" data-fullid="${item.fullId}" data-index="${item.index}">Delete</button>
                         </div>
                     </div>
                 `;
 
-                row.querySelector('.mod-approve').onclick = () => resolve(item.fullId, item.index, 'approve');
-                row.querySelector('.mod-delete').onclick = () => resolve(item.fullId, item.index, 'delete');
+                // Use simple closure or event delegation? Closure is easier here since we create elements.
+                // BUT inline onclick is banned. So we must addEventListener.
+                row.querySelector('.mod-approve').addEventListener('click', () => resolve(item.fullId, item.index, 'approve'));
+                row.querySelector('.mod-delete').addEventListener('click', () => resolve(item.fullId, item.index, 'delete'));
 
                 cont.appendChild(row);
             });

@@ -150,8 +150,6 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
 
     if (originalStreams.length === 0) return { streams: [] };
 
-    if (originalStreams.length === 0) return { streams: [] };
-
     // FETCH SKIP (Async now because of Aniskip)
     const skipSeg = await getSkipSegment(id);
     if (skipSeg) {
@@ -482,7 +480,12 @@ app.post('/api/submit', async (req, res) => {
     }
 
     const userId = generateUserId(rdKey);
-    const fullId = season && episode ? `${imdbID}:${season}:${episode}` : imdbID;
+
+    // Improved ID Construction: Prevent doubling if imdbID already contains colons (full ID)
+    let fullId = imdbID;
+    if (season && episode && !imdbID.includes(':')) {
+        fullId = `${imdbID}:${season}:${episode}`;
+    }
 
     // Log proper context
     if (applyToSeries) {
@@ -743,7 +746,7 @@ app.get('/hls/manifest.m3u8', async (req, res) => {
             }
 
             // GC old history logs every hour
-            if (Object.keys(global.loggedHistory).length > 2000) {
+            if (global.loggedHistory && Object.keys(global.loggedHistory).length > 2000) {
                 const cutoff = Date.now() - 3600000;
                 for (const k in global.loggedHistory) {
                     if (global.loggedHistory[k] < cutoff) delete global.loggedHistory[k];
@@ -781,8 +784,8 @@ app.get('/hls/manifest.m3u8', async (req, res) => {
         // If the file is < 15MB or has "failed_opening" in the URL, it's likely an error video.
         // We should just redirect to it so the user sees the error.
         const URL_LOWER = streamUrl.toLowerCase();
-        if (URL_LOWER.includes('failed_opening') || (totalLength && totalLength < 15000000)) {
-            console.warn(`[HLS] Detected invalid/error stream (Size: ${totalLength}, URL: ...${streamUrl.slice(-20)}). Bypassing proxy.`);
+        if (URL_LOWER.includes('failed_opening')) {
+            console.warn(`[HLS] Detected error stream (URL: ...${streamUrl.slice(-20)}). Bypassing proxy.`);
             return res.redirect(streamUrl);
         }
 
@@ -851,13 +854,16 @@ app.get('/hls/manifest.m3u8', async (req, res) => {
             }
         }
 
-        // If all logic failed, just return the original stream via redirect (uncached) to ensure playback works
+        // If all logic failed, just return the original stream as a pass-through manifest
         if (!manifest || !isSuccess) {
-            console.log("Fallback: Redirecting to original stream (Server-side redirect)");
-            return res.redirect(req.query.stream);
+            console.log(`[HLS] No valid skip points found. Generating pass-through manifest for: ...${streamUrl.slice(-30)}`);
+            // Create a manifest that just plays the whole file (0 to end)
+            // Using 0 as startTime ensures generateSmartManifest doesn't try to splice
+            manifest = generateSmartManifest(streamUrl, 7200, 0, totalLength, 0);
+            isSuccess = true;
         }
 
-        // Store in Cache ONLY on Success
+        // Store in Cache - We cache even "failed" or pass-through manifests to prevent spamming ffprobe
         manifestCache.set(cacheKey, manifest);
 
         // 3. Serve
