@@ -384,25 +384,28 @@ app.post('/api/stats/personal', async (req, res) => {
                 const episode = parts[2];
 
                 let title = imdbId;
+                let poster = null;
                 if (!global.metadataCache) global.metadataCache = {};
 
                 // Use cached title if available, otherwise just use ID for speed
                 if (global.metadataCache[imdbId]) {
                     title = global.metadataCache[imdbId].Title;
+                    poster = global.metadataCache[imdbId].Poster !== "N/A" ? global.metadataCache[imdbId].Poster : null;
                 } else if (omdbKey) {
                     // Quick fetch (fire and forget for next time if we want, but let's try await for now)
                     try {
                         const data = await fetchOMDbData(imdbId, omdbKey);
-                        if (data && data.Title) {
-                            global.metadataCache[imdbId] = data;
-                            title = data.Title;
+                        if (data) {
+                            if (data.Title) title = data.Title;
+                            if (data.Poster && data.Poster !== "N/A") poster = data.Poster;
                         }
                     } catch (e) { }
                 }
 
                 return {
                     ...item,
-                    title: season && episode ? `${title} S${season}E${episode}` : title
+                    title: season && episode ? `${title} S${season}E${episode}` : title,
+                    poster: poster
                 };
             }));
 

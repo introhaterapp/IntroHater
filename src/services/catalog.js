@@ -109,6 +109,15 @@ async function fetchMetadata(imdbId) {
         }
     }
 
+    // 3. Last Resort
+    if (!data) {
+        data = {
+            Title: imdbId,
+            Year: "????",
+            Poster: null
+        };
+    }
+
     return data;
 }
 

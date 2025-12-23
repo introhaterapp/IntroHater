@@ -70,6 +70,130 @@
             justify-content: center;
             padding: 20px;
         }
+
+        /* Improved Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 3000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .premium-modal {
+            width: 100%;
+            max-width: 580px;
+            padding: 35px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .required-label::after {
+            content: ' (required)';
+            color: #ef4444;
+            font-size: 0.7rem;
+            font-weight: 400;
+            opacity: 0.8;
+        }
+
+        .poster-wrapper {
+            width: 100px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .poster-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.3s;
+        }
+
+        .poster-placeholder {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .submit-meta-card {
+            display: flex;
+            gap: 25px;
+            align-items: stretch;
+            margin-bottom: 25px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 600px) {
+            .premium-modal {
+                padding: 20px;
+            }
+
+            .submit-meta-card {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                gap: 15px;
+                padding: 15px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .poster-wrapper {
+                width: 120px;
+                height: 180px;
+            }
+
+            .modal-overlay {
+                padding: 10px;
+            }
+
+            #history-list .glass-panel {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            #history-list .glass-panel>div {
+                justify-content: center;
+            }
+
+            #search-results .glass-panel {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+                padding: 20px !important;
+            }
+
+            #search-results .glass-panel img {
+                width: 80px !important;
+                height: 120px !important;
+            }
+        }
     </style>
 </head>
 
@@ -183,62 +307,67 @@
     </main>
 
     <!-- Submission Modal -->
-    <div id="submit-overlay" class="d-none"
-        style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 20px;">
-        <div class="glass-panel" style="width: 100%; max-width: 550px; padding: 40px;">
-            <h2 id="submit-title" style="margin-bottom: 25px; font-family: 'Space Grotesk', sans-serif;">Submit Skip
+    <div id="submit-overlay" class="modal-overlay">
+        <div class="glass-panel premium-modal">
+            <h2 id="submit-title"
+                style="margin-bottom: 25px; font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem;">Submit Skip
                 Segment</h2>
 
-            <div
-                style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 30px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px;">
-                <img id="submit-poster" src=""
-                    style="width: 80px; height: 120px; object-fit: cover; border-radius: 8px;">
-                <div style="flex: 1">
-                    <div id="submit-name" style="font-size: 1.25rem; font-weight: 700;">-</div>
-                    <div id="submit-year" style="color: var(--text-muted); font-size: 0.9rem;">-</div>
+            <div class="submit-meta-card">
+                <div class="poster-wrapper">
+                    <img id="submit-poster" class="poster-img" src="" alt="">
+                    <div id="poster-placeholder" class="poster-placeholder d-none">No Poster</div>
+                </div>
+                <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                    <div id="submit-name"
+                        style="font-size: 1.3rem; font-weight: 700; line-height: 1.2; margin-bottom: 4px;">-</div>
+                    <div id="submit-year" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px;">-
+                    </div>
 
-                    <div id="episode-inputs" class="episode-grid d-none">
+                    <div id="episode-inputs" class="episode-grid d-none" style="margin-top: 5px;">
                         <div class="form-group">
-                            <label class="form-label" style="font-size: 0.75rem;">Season</label>
+                            <label class="form-label required-label" style="font-size: 0.75rem;">Season</label>
                             <input type="number" id="seasonNum" class="form-input" placeholder="S" min="1">
                         </div>
                         <div class="form-group">
-                            <label class="form-label" style="font-size: 0.75rem;">Episode</label>
+                            <label class="form-label required-label" style="font-size: 0.75rem;">Episode</label>
                             <input type="number" id="episodeNum" class="form-input" placeholder="E" min="1">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="grid-2" style="gap: 20px;">
+            <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Start Time</label>
+                    <label class="form-label required-label">Start Time</label>
                     <input type="text" id="skipStart" class="form-input" placeholder="e.g. 01:25 or 85">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">End Time</label>
+                    <label class="form-label required-label">End Time</label>
                     <input type="text" id="skipEnd" class="form-input" placeholder="e.g. 03:00 or 180">
                 </div>
             </div>
 
-            <div id="seriesOptionContainer" class="d-none" style="margin-top: 15px; margin-bottom: 5px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
+            <div id="seriesOptionContainer" class="d-none" style="margin-top: 5px;">
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0;">
                     <input type="checkbox" id="applySeries"
-                        style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
-                    <label for="applySeries" style="font-weight: 500; cursor: pointer; color: var(--text-main);">Apply
-                        to entire series?</label>
+                        style="width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; border-radius: 4px;">
+                    <label for="applySeries"
+                        style="font-weight: 500; cursor: pointer; color: var(--text-main); font-size: 0.95rem;">Apply to
+                        entire series?</label>
                 </div>
                 <div id="seriesWarning" class="d-none"
-                    style="color: #fbbf24; font-size: 0.85rem; margin-top: 8px; background: rgba(251, 191, 36, 0.1); padding: 10px; border-radius: 6px; border: 1px solid rgba(251, 191, 36, 0.2);">
-                    ⚠️ <strong>Warning:</strong> This will add this skip segment to <u>ALL episodes</u> of this series.
-                    Only use this for consistent intros that appear at the exact same timestamp every time.
+                    style="color: #fbbf24; font-size: 0.8rem; margin-top: 8px; background: rgba(251, 191, 36, 0.08); padding: 12px; border-radius: 10px; border: 1px solid rgba(251, 191, 36, 0.2); line-height: 1.4;">
+                    ⚠️ <strong>Warning:</strong> This applies this skip to <u>ALL episodes</u>. Use only for intros that
+                    appear at the exact same timestamp.
                 </div>
             </div>
 
             <div style="display: flex; gap: 15px; margin-top: 30px;">
-                <button onclick="closeSubmit()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
-                <button id="submitBtn" class="btn btn-primary" style="flex: 1; justify-content: center;">Publish
-                    Skip</button>
+                <button onclick="closeSubmit()" class="btn btn-secondary"
+                    style="flex: 1; border-radius: 12px;">Cancel</button>
+                <button id="submitBtn" class="btn btn-primary"
+                    style="flex: 1; justify-content: center; border-radius: 12px;">Publish Skip</button>
             </div>
         </div>
     </div>
@@ -368,16 +497,20 @@
                         row.style.alignItems = 'center';
 
                         // Sanitized ID for attributes
-                        // Ensure videoId exists
                         const vId = item.videoId || "";
+                        const title = item.title || vId;
+                        const poster = item.poster || "";
 
                         row.innerHTML = `
-                            <div>
-                                <div style="font-weight: 600;">${item.title || vId}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</div>
+                            <div style="display: flex; gap: 15px; align-items: center;">
+                                ${poster ? `<img src="${poster}" style="width: 40px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">` : `<div style="width: 40px; height: 60px; background: rgba(255,255,255,0.05); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--text-muted);">No Img</div>`}
+                                <div>
+                                    <div style="font-weight: 600;">${title}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</div>
+                                </div>
                             </div>
                             <div style="display: flex; gap: 10px;">
-                                <button class="btn btn-secondary action-btn" data-action="improve" data-id="${vId}" style="font-size: 0.75rem;">Improve 🛠️</button>
+                                <button class="btn btn-secondary action-btn" data-action="improve" data-id="${vId}" data-title="${title}" data-poster="${poster}" style="font-size: 0.75rem;">Improve 🛠️</button>
                                 <button class="btn btn-danger-outline action-btn" data-action="report" data-id="${vId}" style="font-size: 0.75rem;">Report ⚠️</button>
                             </div>
                         `;
@@ -398,7 +531,9 @@
             const id = btn.dataset.id;
 
             if (action === 'improve') {
-                openSubmitFromHistory(id);
+                const title = btn.dataset.title;
+                const poster = btn.dataset.poster;
+                openSubmitFromHistory(id, title, poster);
             } else if (action === 'report') {
                 openReportModal(id);
             }
@@ -456,12 +591,33 @@
             currentItem = item;
             document.getElementById('submit-name').textContent = item.Title;
             document.getElementById('submit-year').textContent = `${item.Year} (${item.imdbID})`;
-            document.getElementById('submit-poster').src = item.Poster !== 'N/A' ? item.Poster : '/icon32.png';
+
+            const posterImg = document.getElementById('submit-poster');
+            const posterPlaceholder = document.getElementById('poster-placeholder');
+
+            if (item.Poster && item.Poster !== 'N/A') {
+                posterImg.src = item.Poster;
+                posterImg.classList.remove('d-none');
+                posterPlaceholder.classList.add('d-none');
+            } else {
+                posterImg.src = '';
+                posterImg.classList.add('d-none');
+                posterPlaceholder.classList.remove('d-none');
+            }
 
             const epiSection = document.getElementById('episode-inputs');
-            if (item.Type === 'series' || item.Type === 'episode') {
+            if (item.Type === 'series' || item.Type === 'episode' || (item.imdbID && item.imdbID.includes(':'))) {
                 epiSection.classList.remove('d-none');
                 document.getElementById('seriesOptionContainer').classList.remove('d-none');
+
+                // Pre-fill season/episode if present in ID
+                if (item.imdbID && item.imdbID.includes(':')) {
+                    const parts = item.imdbID.split(':');
+                    if (parts.length >= 3) {
+                        document.getElementById('seasonNum').value = parts[1];
+                        document.getElementById('episodeNum').value = parts[2];
+                    }
+                }
             } else {
                 epiSection.classList.add('d-none');
                 document.getElementById('seriesOptionContainer').classList.add('d-none');
@@ -481,9 +637,19 @@
             else warn.classList.add('d-none');
         });
 
-        function openSubmitFromHistory(vid) {
+        function openSubmitFromHistory(vid, title, poster) {
             // Pseudo-item for history
-            openSubmit({ Title: vid, imdbID: vid, Year: "History Item", Type: vid.includes(':') ? 'series' : 'movie' });
+            const parts = vid.split(':');
+            const imdbID = parts[0];
+            const isSeries = parts.length >= 3;
+
+            openSubmit({
+                Title: title || vid,
+                imdbID: vid,
+                Year: isSeries ? "Series Item" : "Movie",
+                Type: isSeries ? 'series' : 'movie',
+                Poster: poster
+            });
         }
 
         function closeSubmit() {
