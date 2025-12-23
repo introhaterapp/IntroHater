@@ -847,6 +847,7 @@ module.exports = {
     getSkipSegment,
     getSegments,
     getAllSegments,
+    getSegmentCount,
     addSkipSegment,
     cleanupDuplicates,
     getPendingModeration,
