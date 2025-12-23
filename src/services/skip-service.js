@@ -551,11 +551,9 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
         }
     }
 
-    // Auto-register in catalog if it's a user submission (local)
-    // For bulk import, we handle catalog registration separately in the indexer
-    if (!isTrusted) {
-        catalogService.registerShow(cleanFullId).catch(() => { });
-    }
+    // Auto-register in catalog
+    // We update the catalog to reflect that this show/episode has segments
+    catalogService.registerShow(cleanFullId).catch(() => { });
 
     return newSegment;
 }

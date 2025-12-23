@@ -650,7 +650,7 @@ app.post('/api/admin/resolve-bulk', async (req, res) => {
 app.get('/api/catalog', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 50;
+        const limit = parseInt(req.query.limit) || 1000;
         const catalog = await catalogService.getCatalogData(page, limit);
         res.json(catalog);
     } catch (e) {

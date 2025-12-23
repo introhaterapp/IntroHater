@@ -1,6 +1,5 @@
 {
-  "page": 18,
-  "offset": 900,
-  "error": "getaddrinfo ENOTFOUND api.anime-skip.com",
-  "lastRun": "2025-12-23T16:03:49.446Z"
+  "page": 1,
+  "offset": 50,
+  "lastRun": "2025-12-23T23:51:16.474Z"
 }

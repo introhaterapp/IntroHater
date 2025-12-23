@@ -133,7 +133,6 @@ async function isSeries(imdbId) {
  * @param {string} videoId Format: tt123456 or tt123456:S:E
  */
 async function registerShow(videoId) {
-    const catalog = await readCatalog();
     const parts = videoId.split(':');
     const imdbId = parts[0];
 
@@ -146,11 +145,21 @@ async function registerShow(videoId) {
     const season = parts[1] ? parseInt(parts[1]) : null;
     const episode = parts[2] ? parseInt(parts[2]) : null;
 
-    if (!catalog.media[imdbId]) {
+    await ensureInit();
+    let media = null;
+    if (useMongo) {
+        media = await catalogCollection.findOne({ imdbId });
+    } else {
+        const catalog = await readCatalog();
+        media = catalog.media[imdbId];
+    }
+
+    if (!media) {
         const meta = await fetchMetadata(imdbId);
         if (!meta) return;
 
-        catalog.media[imdbId] = {
+        media = {
+            imdbId, // Ensure ID is stored
             title: meta.Title,
             year: meta.Year,
             poster: meta.Poster,
@@ -161,8 +170,6 @@ async function registerShow(videoId) {
             totalSegments: 0
         };
     }
-
-    const media = catalog.media[imdbId];
 
     if (season && episode) {
         const epKey = `${season}:${episode}`;
@@ -175,7 +182,7 @@ async function registerShow(videoId) {
     }
 
     // Fix: Count unique episodes with segments, not total hits
-    media.totalSegments = Object.keys(media.episodes).length;
+    media.totalSegments = Object.keys(media.episodes || {}).length;
     media.lastUpdated = new Date().toISOString();
 
     await writeCatalogEntry(imdbId, media);
@@ -234,15 +241,17 @@ async function updateCatalog(segment) {
     return await registerShow(segment.videoId);
 }
 
-async function getCatalogData(page = 1, limit = 50) {
+async function getCatalogData(page = 1, limit = 1000) {
     await ensureInit();
     const skip = (page - 1) * limit;
 
     if (useMongo) {
         // Filter at DB level for performance
+        // Only show items that have segments to avoid empty catalog rows
         const query = {
             title: { $nin: [null, 'null', 'undefined', 'Unknown Title', ''] },
-            year: { $nin: [null, '????', ''] }
+            year: { $nin: [null, '????', ''] },
+            totalSegments: { $gt: 0 }
         };
 
         const total = await catalogCollection.countDocuments(query);
