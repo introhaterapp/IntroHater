@@ -5,7 +5,13 @@ const cors = require('cors');
 const path = require('path');
 const { getByteOffset, generateSmartManifest, getStreamDetails, getRefinedOffsets, generateSpliceManifest, getChapters } = require('./src/services/hls-proxy');
 const skipService = require('./src/services/skip-service');
-const { getSkipSegment, getSegments, getAllSegments } = skipService;
+const {
+    getSkipSegment,
+    getSegments,
+    getAllSegments,
+    getSegmentCount,
+    addSkipSegment
+} = skipService;
 const catalogService = require('./src/services/catalog');
 const userService = require('./src/services/user-service');
 const indexerService = require('./src/services/indexer');
@@ -290,9 +296,8 @@ async function refreshGlobalStats() {
         console.log("[Stats] Refreshing global stats...");
         const { userCount, voteCount, totalSavedTime } = await userService.getStats();
 
-        // Get total skips from all segments (Expensive - consider building a counter)
-        const allSkips = await getAllSegments();
-        const localSegmentCount = Object.values(allSkips).flat().length;
+        // Use optimized counter instead of loading all segments
+        const localSegmentCount = await getSegmentCount();
 
         const ANISKIP_ESTIMATE = 145000;
 

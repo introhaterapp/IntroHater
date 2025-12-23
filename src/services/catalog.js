@@ -272,7 +272,15 @@ async function getCatalogStats() {
         // Simplified episode count for Mongo (total of all episode keys)
         const result = await catalogCollection.aggregate([
             { $match: query },
-            { $project: { numEpisodes: { $size: { $objectToArray: "$episodes" } } } },
+            {
+                $project: {
+                    numEpisodes: {
+                        $size: {
+                            $objectToArray: { $ifNull: ["$episodes", {}] }
+                        }
+                    }
+                }
+            },
             { $group: { _id: null, total: { $sum: "$numEpisodes" } } }
         ]).toArray();
         episodeCount = result[0]?.total || 0;

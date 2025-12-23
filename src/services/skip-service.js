@@ -246,6 +246,20 @@ function mergeSegments(segments) {
     return merged;
 }
 
+// Get total count of segments across all episodes
+async function getSegmentCount() {
+    await ensureInit();
+    if (useMongo && skipsCollection) {
+        const result = await skipsCollection.aggregate([
+            { $project: { numSegments: { $size: { $ifNull: ["$segments", []] } } } },
+            { $group: { _id: null, total: { $sum: "$numSegments" } } }
+        ]).toArray();
+        return result[0]?.total || 0;
+    }
+    // Local JSON count
+    return Object.values(skipsData).flat().length;
+}
+
 // Get all skips (Heavy operation - used for catalog)
 async function getAllSegments() {
     await ensureInit();
