@@ -344,7 +344,6 @@ module.exports = {
     addWatchHistory,
     getLeaderboard,
     getStats,
-    getStats,
     getUserToken,
     storeUserToken,
     incrementSavedTime
