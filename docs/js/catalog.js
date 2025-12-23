@@ -51,7 +51,7 @@ async function initializeCatalog() {
                 }
             }
         },
-        order: [[3, 'desc']], // Sort by segment count by default
+        order: [[2, 'desc']], // Sort by segment count by default
         pageLength: 25,
         language: {
             emptyTable: "Loading catalog items... please wait.",
