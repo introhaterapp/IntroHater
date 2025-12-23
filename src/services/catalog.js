@@ -256,7 +256,7 @@ async function getCatalogData(page = 1, limit = 1000) {
 
         const total = await catalogCollection.countDocuments(query);
         const items = await catalogCollection.find(query)
-            .sort({ lastUpdated: -1 })
+            .sort({ title: 1 })
             .skip(skip)
             .limit(limit)
             .toArray();

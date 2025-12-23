@@ -51,7 +51,7 @@ async function initializeCatalog() {
                 }
             }
         },
-        order: [[2, 'desc']], // Sort by segment count by default
+        order: [[0, 'asc']], // Sort by Title by default
         pageLength: 25,
         language: {
             emptyTable: "Loading catalog items... please wait.",
@@ -60,6 +60,7 @@ async function initializeCatalog() {
         columns: [
             {
                 title: 'Title',
+                data: 0,
                 render: function (data, type, row) {
                     if (type === 'display') {
                         return `<span class="user-cell" style="font-size: 1rem;">${data}</span>`;
@@ -69,18 +70,20 @@ async function initializeCatalog() {
             },
             {
                 title: 'Year',
+                data: 1,
                 className: 'min-tablet',
                 width: '100px'
             },
             {
                 title: 'Segments',
+                data: 3, // Use the totalSegments count for sorting/filtering
                 className: 'all text-right',
                 width: '140px',
                 render: function (data, type, row) {
                     if (type === 'display') {
-                        // Index 0: Title, 1: Year, 2: Episodes Obj, 3: Count, 4: IMDb ID
+                        // row[4] is imdbId, row[0] is title
                         const imdbId = row[4];
-                        const count = row[3]; // Numeric count
+                        const count = data; // data is now the totalSegments from index 3
 
                         // Always show view button if there are segments
                         if (count > 0) {
@@ -93,7 +96,7 @@ async function initializeCatalog() {
                             return `<span class="text-muted">–</span>`;
                         }
                     }
-                    return row[4];
+                    return data; // Return count for sorting
                 }
             }
         ],
