@@ -319,7 +319,7 @@
     <!-- Submission Modal -->
     <div id="submit-overlay" class="modal-overlay">
         <div class="glass-panel premium-modal" style="position: relative;">
-            <button onclick="closeSubmit()"
+            <button id="closeSubmitX"
                 style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
             <h2 id="submit-title"
                 style="margin-bottom: 25px; font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem;">Submit Skip
@@ -376,7 +376,7 @@
             </div>
 
             <div style="display: flex; gap: 15px; margin-top: 30px;">
-                <button onclick="closeSubmit()" class="btn btn-secondary"
+                <button id="closeSubmitBtn" class="btn btn-secondary"
                     style="flex: 1; border-radius: 12px;">Cancel</button>
                 <button id="submitBtn" class="btn btn-primary"
                     style="flex: 1; justify-content: center; border-radius: 12px;">Publish Skip</button>
@@ -387,7 +387,7 @@
     <!-- Report Modal -->
     <div id="report-overlay" class="modal-overlay">
         <div class="glass-panel" style="width: 100%; max-width: 450px; padding: 40px; position: relative;">
-            <button onclick="closeReport()"
+            <button id="closeReportX"
                 style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
             <h2 style="margin-bottom: 15px; font-family: 'Space Grotesk', sans-serif; color: #ef4444;">Report Issue ⚠️
             </h2>
@@ -409,7 +409,7 @@
             <input type="hidden" id="reportVideoId">
 
             <div style="display: flex; gap: 15px; margin-top: 30px;">
-                <button onclick="closeReport()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+                <button id="closeReportBtn" class="btn btn-secondary" style="flex: 1;">Cancel</button>
                 <button id="submitReportBtn" class="btn"
                     style="flex: 1; justify-content: center; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid #ef4444;">Submit
                     Report</button>
@@ -426,6 +426,12 @@
             document.getElementById('login-overlay').style.display = 'none';
             loadDashboard();
         }
+
+        // --- Event Listeners (Fix for CSP) ---
+        document.getElementById('closeSubmitX')?.addEventListener('click', closeSubmit);
+        document.getElementById('closeSubmitBtn')?.addEventListener('click', closeSubmit);
+        document.getElementById('closeReportX')?.addEventListener('click', closeReport);
+        document.getElementById('closeReportBtn')?.addEventListener('click', closeReport);
 
         document.getElementById('enterBtn').onclick = async () => {
             const key = document.getElementById('authKey').value.trim();

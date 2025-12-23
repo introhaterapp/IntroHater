@@ -91,7 +91,7 @@
                         <div class="form-group">
                             <label class="form-label">Your Install Link</label>
                             <div style="display: flex; gap: 10px;">
-                                <input type="text" id="installLink" class="form-input" readonly onclick="this.select()">
+                                <input type="text" id="installLink" class="form-input" readonly>
                                 <button id="copyBtn" class="btn btn-secondary">Copy</button>
                             </div>
                         </div>
@@ -510,6 +510,10 @@
                 btn.textContent = 'Copied!';
                 setTimeout(() => btn.textContent = originalText, 2000);
             });
+        };
+
+        document.getElementById('installLink').onclick = function () {
+            this.select();
         };
     </script>
 </body>
