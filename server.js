@@ -170,10 +170,13 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
 
         const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&rdKey=${rdKey}`;
 
+        // Determine indicator
+        const indicator = skipSeg ? "🚀" : "🔍";
+
         modifiedStreams.push({
             ...stream,
             url: proxyUrl,
-            title: `🚀 [IntroHater] ${stream.title || stream.name}`,
+            title: `${indicator} [IntroHater] ${stream.title || stream.name}`,
             behaviorHints: { notWebReady: false }
         });
     });

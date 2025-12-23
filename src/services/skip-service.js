@@ -387,7 +387,7 @@ async function getSkipSegment(fullId) {
         if (intro) {
             // Also ensure it's in catalog as local source
             catalogService.registerShow(fullId).catch(() => { });
-            return { start: intro.start, end: intro.end };
+            return { start: intro.start, end: intro.end, source: intro.source || 'community' };
         }
     }
 
