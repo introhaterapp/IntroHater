@@ -79,37 +79,84 @@ const API_BASE_URL = window.location.protocol === 'file:' ? 'http://localhost:70
 async function fetchStats() {
     try {
         const res = await fetch(`${API_BASE_URL}/api/stats`);
-        if (!res.ok) return; // Silent fail
+        if (!res.ok) return;
         const data = await res.json();
 
-        // Helper to animate/format numbers
-        const animateValue = (id, value) => {
+        /**
+         * Smoothly animates a numeric value
+         */
+        const animateCount = (id, targetValue, duration = 1500, suffix = '') => {
             const el = document.getElementById(id);
             if (!el) return;
 
-            // formatting k/m
-            let display = value;
-            if (value >= 1000000) display = (value / 1000000).toFixed(1) + 'M';
-            else if (value >= 1000) display = (value / 1000).toFixed(1) + 'k';
+            const startValue = 0;
+            const startTime = performance.now();
 
-            el.innerText = display;
+            const update = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Ease out cubic
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                const currentValue = Math.floor(easeProgress * (targetValue - startValue) + startValue);
+
+                let displayValue = currentValue;
+                // Formatting for large numbers
+                if (currentValue >= 1000000) displayValue = (currentValue / 1000000).toFixed(1) + 'M';
+                else if (currentValue >= 10000) displayValue = (currentValue / 1000).toFixed(0) + 'k';
+                else if (currentValue >= 1000) displayValue = (currentValue / 1000).toFixed(1) + 'k';
+
+                el.innerText = displayValue + suffix;
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    // Final precise formatting
+                    let finalDisplay = targetValue;
+                    if (targetValue >= 1000000) finalDisplay = (targetValue / 1000000).toFixed(1) + 'M';
+                    else if (targetValue >= 10000) finalDisplay = (targetValue / 1000).toFixed(0) + 'k';
+                    else if (targetValue >= 1000) finalDisplay = (targetValue / 1000).toFixed(1) + 'k';
+                    el.innerText = finalDisplay + suffix;
+                }
+            };
+
+            requestAnimationFrame(update);
         };
 
-        animateValue('stat-users', data.users);
-        animateValue('stat-shows', data.showCount || 0);
-        animateValue('stat-skips', data.skips);
-        animateValue('stat-episodes', data.episodeCount || 0);
+        animateCount('stat-users', data.users || 0);
+        animateCount('stat-shows', data.showCount || 0);
+        animateCount('stat-skips', data.skips || 0);
+        animateCount('stat-episodes', data.episodeCount || 0);
 
-        // Saved Time
+        // Saved Time - Animate the numeric part if possible, but simpler to just set the string for time units
         const savedSec = data.savedTime || 0;
-        let savedText = "0s";
-        if (savedSec >= 86400) savedText = (savedSec / 86400).toFixed(1) + "d";
-        else if (savedSec >= 3600) savedText = (savedSec / 3600).toFixed(1) + "h";
-        else if (savedSec >= 60) savedText = (savedSec / 60).toFixed(0) + "m";
-        else savedText = savedSec.toFixed(0) + "s";
+        let targetValue = 0;
+        let suffix = 's';
 
-        const savedEl = document.getElementById('stat-saved');
-        if (savedEl) savedEl.innerText = savedText;
+        if (savedSec >= 86400) { targetValue = savedSec / 86400; suffix = 'd'; }
+        else if (savedSec >= 3600) { targetValue = savedSec / 3600; suffix = 'h'; }
+        else if (savedSec >= 60) { targetValue = savedSec / 60; suffix = 'm'; }
+        else { targetValue = savedSec; suffix = 's'; }
+
+        // For units like days/hours, we want one decimal place in the count-up too
+        const animateTime = (id, target, suff) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const startTime = performance.now();
+            const duration = 1500;
+
+            const updateTime = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
+                const current = (easeProgress * target).toFixed(suff === 's' || suff === 'm' ? 0 : 1);
+                el.innerText = current + suff;
+                if (progress < 1) requestAnimationFrame(updateTime);
+            };
+            requestAnimationFrame(updateTime);
+        };
+
+        animateTime('stat-saved', targetValue, suffix);
 
     } catch (e) {
         console.error("Stats error:", e);
