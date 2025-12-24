@@ -30,9 +30,14 @@ async function initializeCatalog() {
     const table = document.getElementById('catalogTable');
     if (!table) return;
 
-    // Initialize DataTable immediately with empty data and loading state
+    // Initialize DataTable with server-side processing
     const dt = window.jQuery('#catalogTable').DataTable({
-        data: [],
+        serverSide: true,
+        ajax: {
+            url: `${API_BASE_URL}/api/catalog`,
+            type: 'GET',
+            dataSrc: 'data'
+        },
         responsive: {
             details: {
                 type: 'column',
@@ -54,7 +59,7 @@ async function initializeCatalog() {
         order: [[0, 'asc']], // Sort by Title by default
         pageLength: 25,
         language: {
-            emptyTable: "Loading catalog items... please wait.",
+            emptyTable: "No entries found in the catalog.",
             processing: '<div class="spinner"></div>'
         },
         columns: [
@@ -81,11 +86,9 @@ async function initializeCatalog() {
                 width: '140px',
                 render: function (data, type, row) {
                     if (type === 'display') {
-                        // row[4] is imdbId, row[0] is title
                         const imdbId = row[4];
-                        const count = data; // data is now the totalSegments from index 3
+                        const count = data;
 
-                        // Always show view button if there are segments
                         if (count > 0) {
                             return `<button class="btn btn-secondary btn-sm episode-btn" 
                                     data-id="${imdbId}"
@@ -96,7 +99,7 @@ async function initializeCatalog() {
                             return `<span class="text-muted">–</span>`;
                         }
                     }
-                    return data; // Return count for sorting
+                    return data;
                 }
             }
         ],
@@ -107,55 +110,22 @@ async function initializeCatalog() {
 
     // Event Delegation for Button Clicks (Handles Buttons in Child Rows / Pagination)
     window.jQuery('#catalogTable').on('click', '.episode-btn', openSegmentModal);
+}
 
-    // Fetch and update data
-    fetchCatalog().then(catalog => {
-        const mediaEntries = catalog?.media ? Object.entries(catalog.media) : [];
-        const tableData = mediaEntries
-            .filter(([imdbId, media]) => {
-                // Double check validity on frontend
-                // Must have title AND more than 0 segments
-                return media.title &&
-                    media.title !== 'Unknown Title' &&
-                    media.title !== 'null' &&
-                    (media.totalSegments > 0);
-            })
-            .map(([imdbId, media]) => {
-                return [
-                    media.title || 'Unknown Title',
-                    media.year || '????',
-                    media.episodes, // Store raw episodes object (index 2)
-                    media.totalSegments || 0, // index 3
-                    imdbId // Store ID for button (index 4)
-                ];
-            });
+// Modal Logic
+const modal = document.getElementById('episodeModal');
+const closeBtn = document.getElementById('closeEpisodeModal');
+const closeBtn2 = document.getElementById('closeModalBtn');
 
-        const dt = window.jQuery('#catalogTable').DataTable();
-        dt.clear();
-        dt.rows.add(tableData);
-        dt.draw();
+function closeModal() {
+    modal.style.display = 'none';
+}
 
-        if (tableData.length === 0) {
-            dt.settings()[0].oLanguage.sEmptyTable = "No entries found in the catalog.";
-            dt.draw();
-        }
-    });
-
-    // Modal Logic
-    const modal = document.getElementById('episodeModal');
-    const closeBtn = document.getElementById('closeEpisodeModal');
-    const closeBtn2 = document.getElementById('closeModalBtn');
-
-    function closeModal() {
-        modal.style.display = 'none';
-    }
-
-    if (closeBtn) closeBtn.onclick = closeModal;
-    if (closeBtn2) closeBtn2.onclick = closeModal;
-    window.onclick = function (event) {
-        if (event.target == modal) {
-            closeModal();
-        }
+if (closeBtn) closeBtn.onclick = closeModal;
+if (closeBtn2) closeBtn2.onclick = closeModal;
+window.onclick = function (event) {
+    if (event.target == modal) {
+        closeModal();
     }
 }
 
@@ -180,55 +150,20 @@ async function openSegmentModal(event) {
     // Fetch details
     const rawSegments = await fetchSegments(videoId);
 
+    // Display details
+    const uniqueSegments = rawSegments; // Already deduplicated and rounded on server
+
     modalTitle.textContent = `Segments: ${title}`;
     grid.innerHTML = '';
 
-    if (rawSegments.length === 0) {
+    if (uniqueSegments.length === 0) {
         grid.style.textAlign = 'center';
         grid.innerHTML = '<p style="text-align:center; color: var(--text-muted);">No segments found via API.</p>';
         return;
     }
 
-    // Deduplicate
-    const uniqueSegments = [];
-    const seen = new Set();
-    rawSegments.forEach(seg => {
-        // Create a signature for the segment - Rounding for dedupe key
-        const key = `${seg.videoId}|${Math.round(seg.start)}|${Math.round(seg.end)}`;
-        if (!seen.has(key)) {
-            seen.add(key);
-            uniqueSegments.push(seg);
-        }
-    });
-
-    // Wrapper for mobile horizontal scrolling
-    const tableWrapper = document.createElement('div');
-    tableWrapper.style.overflowX = 'auto';
-    tableWrapper.style.width = '100%';
-    tableWrapper.style.webkitOverflowScrolling = 'touch'; // Smooth scroll on iOS
-
-    // Wrap in a table for better view
-    const table = document.createElement('table');
-    table.className = 'table';
-    table.style.width = '100%';
-    table.style.fontSize = '0.9rem';
-    table.style.minWidth = '500px'; // Force min width to trigger scroll on small phones if needed
-
-    let html = `
-        <thead>
-            <tr style="color: var(--text-muted); text-align: left;">
-                <th>Episode</th>
-                <th>Time (Start - End)</th>
-            </tr>
-        </thead>
-        <tbody>
-    `;
-
     // Sort: Season -> Episode -> StartTime
     uniqueSegments.sort((a, b) => {
-        // Parse "S1:E1" from videoId if possible, else just title
-        // Actually the API returns segments with 'videoId' like 'tt123456:1:1'
-        // Let's try to extract season/ep
         const getSE = (vid) => {
             const parts = vid.split(':');
             if (parts.length >= 3) return { s: parseInt(parts[1]), e: parseInt(parts[2]) };
@@ -243,11 +178,34 @@ async function openSegmentModal(event) {
         return a.start - b.start;
     });
 
-    uniqueSegments.forEach(seg => {
+    const displaySegments = uniqueSegments.slice(0, 500);
+
+    // Wrapper for mobile horizontal scrolling
+    const tableWrapper = document.createElement('div');
+    tableWrapper.style.overflowX = 'auto';
+    tableWrapper.style.width = '100%';
+    tableWrapper.style.webkitOverflowScrolling = 'touch';
+
+    const table = document.createElement('table');
+    table.className = 'table';
+    table.style.width = '100%';
+    table.style.fontSize = '0.9rem';
+    table.style.minWidth = '500px';
+
+    let html = `
+        <thead>
+            <tr style="color: var(--text-muted); text-align: left;">
+                <th>Episode</th>
+                <th>Time (Start - End)</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+    displaySegments.forEach(seg => {
         const parts = seg.videoId.split(':');
         let label = "Common";
 
-        // Robust S/E parsing
         if (parts.length >= 3) {
             const s = parseInt(parts[1]);
             const e = parseInt(parts[2]);
@@ -256,21 +214,15 @@ async function openSegmentModal(event) {
             }
         }
 
-        // If label is still default (Common), try to guess checking if btn has type
-        // But for now "Common" or "Series Skip" is safest if it's a show
         if (label === 'Common' && parts.length === 1) {
             label = 'Global';
         }
 
-
-        const duration = Math.round(seg.end - seg.start);
-        const start = Math.round(seg.start);
-        const end = Math.round(seg.end);
-
+        const duration = seg.end - seg.start;
         html += `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                 <td><span class="badge" style="background: rgba(255,255,255,0.1);">${label}</span></td>
-                <td>${start}s - ${end}s <span style="color:var(--text-muted); font-size:0.8em">(${duration}s)</span></td>
+                <td>${seg.start}s - ${seg.end}s <span style="color:var(--text-muted); font-size:0.8em">(${duration}s)</span></td>
             </tr>
         `;
     });
@@ -280,6 +232,16 @@ async function openSegmentModal(event) {
 
     tableWrapper.appendChild(table);
     grid.appendChild(tableWrapper);
+
+    if (uniqueSegments.length > 500) {
+        const note = document.createElement('p');
+        note.style.textAlign = 'center';
+        note.style.fontSize = '0.8rem';
+        note.style.color = 'var(--text-muted)';
+        note.style.marginTop = '10px';
+        note.textContent = `Showing first 500 of ${uniqueSegments.length} segments.`;
+        grid.appendChild(note);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initializeCatalog);

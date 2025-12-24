@@ -649,12 +649,57 @@ app.post('/api/admin/resolve-bulk', async (req, res) => {
 // 3. API: Catalog (Universal Registry)
 app.get('/api/catalog', async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 1000;
-        const catalog = await catalogService.getCatalogData(page, limit);
+        console.log("[API] Catalog Request Query:", JSON.stringify(req.query));
+        // DataTables parameters
+        const draw = parseInt(req.query.draw) || 1;
+        const start = parseInt(req.query.start) || 0;
+        const length = parseInt(req.query.length) || 1000;
+        const search = req.query.search?.value || '';
+
+        // Sorting
+        let sort = { title: 1 };
+        const orderData = req.query.order;
+        if (orderData) {
+            let colIdx, dir;
+            if (Array.isArray(orderData) && orderData[0]) {
+                colIdx = parseInt(orderData[0].column);
+                dir = orderData[0].dir === 'desc' ? -1 : 1;
+            } else if (typeof orderData === 'object') {
+                // Support both indexed { '0': { ... } } and flat { column, dir }
+                const firstOrder = orderData[0] || orderData;
+                colIdx = parseInt(firstOrder.column);
+                dir = firstOrder.dir === 'desc' ? -1 : 1;
+            }
+
+            if (colIdx !== undefined) {
+                const colMap = ['title', 'year', 'totalSegments'];
+                const field = colMap[colIdx] || 'title';
+                sort = { [field]: dir };
+            }
+        }
+
+        const page = Math.floor(start / length) + 1;
+        const catalog = await catalogService.getCatalogData(page, length, search, sort);
+
+        // Return DataTables format if 'draw' is present, otherwise standard format
+        if (req.query.draw) {
+            return res.json({
+                draw: draw,
+                recordsTotal: catalog.total || 0,
+                recordsFiltered: catalog.filteredTotal || 0,
+                data: Object.entries(catalog.media || {}).map(([id, item]) => [
+                    item.title,
+                    item.year,
+                    item.episodes,
+                    item.totalSegments,
+                    id
+                ])
+            });
+        }
+
         res.json(catalog);
     } catch (e) {
-
+        console.error("[API] Catalog Error:", e);
         res.status(500).json({ error: "Failed to load catalog" });
     }
 });

@@ -182,8 +182,15 @@ async function getSegments(fullId) {
 function mergeSegments(segments) {
     if (!segments || segments.length === 0) return [];
 
-    // Sort by videoId THEN start time to group episodes together
-    const sorted = [...segments].sort((a, b) => {
+    // Round values for consistency before merging
+    const processed = segments.map(seg => ({
+        ...seg,
+        start: Math.round(seg.start),
+        end: Math.round(seg.end)
+    }));
+
+    // Sort by videoId THEN start time
+    const sorted = [...processed].sort((a, b) => {
         if (a.videoId < b.videoId) return -1;
         if (a.videoId > b.videoId) return 1;
         return a.start - b.start;
@@ -195,7 +202,6 @@ function mergeSegments(segments) {
     for (let i = 1; i < sorted.length; i++) {
         const next = sorted[i];
 
-        // Ensure we only merge segments for the SAME videoId
         if (current.videoId !== next.videoId) {
             merged.push(current);
             current = next;
@@ -203,12 +209,12 @@ function mergeSegments(segments) {
         }
 
         // Check for overlap or adjacency (within 1 second)
-        // Using 1.5s tolerance for fuzzy matching
-        if (next.start <= (current.end + 1.5)) {
-            // Merge
+        if (next.start <= (current.end + 1)) {
             current.end = Math.max(current.end, next.end);
-            // Optionally merge labels or votes here? 
-            // For now, keep the label of the first one or prioritize 'Intro'
+            // Label prioritization: Prefer 'Intro' over 'Common'
+            if (next.label === 'Intro' && current.label !== 'Intro') {
+                current.label = 'Intro';
+            }
         } else {
             merged.push(current);
             current = next;

@@ -1,4 +1,4 @@
-const BaseRepository = require('./base.repository');
+const { BaseRepository } = require('./base.repository');
 
 class CatalogRepository extends BaseRepository {
     constructor() {
@@ -14,19 +14,28 @@ class CatalogRepository extends BaseRepository {
         }
     }
 
-    async getCatalogData(query, skip, limit) {
+    async getCatalogData(query, skip, limit, search = '', sort = { title: 1 }) {
         await this.ensureInit();
         if (this.useMongo) {
+            let finalQuery = { ...query };
+            if (search) {
+                finalQuery.$or = [
+                    { title: { $regex: search, $options: 'i' } },
+                    { imdbId: { $regex: search, $options: 'i' } }
+                ];
+            }
+
             const total = await this.collection.countDocuments(query);
-            const items = await this.collection.find(query)
-                .sort({ title: 1 })
+            const filteredTotal = search ? await this.collection.countDocuments(finalQuery) : total;
+            const items = await this.collection.find(finalQuery)
+                .sort(sort)
                 .skip(skip)
                 .limit(limit)
                 .toArray();
 
-            return { items, total };
+            return { items, total, filteredTotal };
         }
-        return { items: [], total: 0 };
+        return { items: [], total: 0, filteredTotal: 0 };
     }
 
     async getCatalogStats(query) {

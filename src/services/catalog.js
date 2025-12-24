@@ -204,7 +204,7 @@ async function updateCatalog(segment) {
     return await registerShow(segment.videoId);
 }
 
-async function getCatalogData(page = 1, limit = 1000) {
+async function getCatalogData(page = 1, limit = 1000, search = '', sort = { title: 1 }) {
     await ensureInit();
     const skip = (page - 1) * limit;
 
@@ -215,7 +215,7 @@ async function getCatalogData(page = 1, limit = 1000) {
             totalSegments: { $gt: 0 }
         };
 
-        const { items, total } = await catalogRepository.getCatalogData(query, skip, limit);
+        const { items, total, filteredTotal } = await catalogRepository.getCatalogData(query, skip, limit, search, sort);
 
         const media = {};
         items.forEach(item => {
@@ -226,11 +226,13 @@ async function getCatalogData(page = 1, limit = 1000) {
         return {
             lastUpdated: new Date().toISOString(),
             media,
+            total,
+            filteredTotal,
             pagination: {
                 page,
                 limit,
-                total,
-                pages: Math.ceil(total / limit)
+                total: filteredTotal,
+                pages: Math.ceil(filteredTotal / limit)
             }
         };
     }
@@ -238,15 +240,27 @@ async function getCatalogData(page = 1, limit = 1000) {
     // Fallback for local JSON
     const data = await readCatalog();
     if (data.media) {
-        const entries = Object.entries(data.media).filter(([id, item]) => {
+        let entries = Object.entries(data.media).filter(([id, item]) => {
             const hasTitle = item.title && item.title !== 'null' && item.title !== 'undefined' && item.title !== 'Unknown Title';
             const hasYear = item.year && item.year !== '????';
-            return hasTitle && hasYear;
+            const matchesSearch = !search ||
+                (item.title && item.title.toLowerCase().includes(search.toLowerCase())) ||
+                id.toLowerCase().includes(search.toLowerCase());
+            return hasTitle && hasYear && matchesSearch;
         });
 
-        const total = entries.length;
+        const total = Object.keys(data.media).length;
+        const filteredTotal = entries.length;
+
         const pagedEntries = entries
-            .sort((a, b) => new Date(b[1].lastUpdated) - new Date(a[1].lastUpdated))
+            .sort((a, b) => {
+                // Basic sort for fallback
+                const field = Object.keys(sort)[0] || 'title';
+                const dir = sort[field] || 1;
+                const valA = a[1][field] || '';
+                const valB = b[1][field] || '';
+                return dir === 1 ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            })
             .slice(skip, skip + limit);
 
         const media = Object.fromEntries(pagedEntries);
@@ -254,11 +268,13 @@ async function getCatalogData(page = 1, limit = 1000) {
         return {
             lastUpdated: data.lastUpdated,
             media,
+            total,
+            filteredTotal,
             pagination: {
                 page,
                 limit,
-                total,
-                pages: Math.ceil(total / limit)
+                total: filteredTotal,
+                pages: Math.ceil(filteredTotal / limit)
             }
         };
     }

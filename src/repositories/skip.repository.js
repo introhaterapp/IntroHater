@@ -1,8 +1,9 @@
-const BaseRepository = require('./base.repository');
+const { BaseRepository, SimpleLRUCache } = require('./base.repository');
 
 class SkipRepository extends BaseRepository {
     constructor() {
         super('skips');
+        this.cache = new SimpleLRUCache(200); // Cache 200 most recent series/videos
     }
 
     async ensureInit() {
@@ -16,7 +17,12 @@ class SkipRepository extends BaseRepository {
     }
 
     async findByFullId(fullId) {
-        return await this.findOne({ fullId });
+        const cached = this.cache.get(`full:${fullId}`);
+        if (cached) return cached;
+
+        const result = await this.findOne({ fullId });
+        if (result) this.cache.set(`full:${fullId}`, result);
+        return result;
     }
 
     async findByFullIdRegex(pattern, options = 'i') {
@@ -24,11 +30,19 @@ class SkipRepository extends BaseRepository {
     }
 
     async findBySeriesId(seriesId) {
-        return await this.find({ seriesId });
+        const cached = this.cache.get(`series:${seriesId}`);
+        if (cached) return cached;
+
+        const result = await this.find({ seriesId });
+        if (result) this.cache.set(`series:${seriesId}`, result);
+        return result;
     }
 
     async addSegment(fullId, segment, seriesId = null) {
         await this.ensureInit();
+
+        // Invalidate cache
+        this.cache.clear(); // Simple full clear for safety, could be more granular
         const update = {
             $push: { segments: segment }
         };
@@ -59,6 +73,7 @@ class SkipRepository extends BaseRepository {
     }
 
     async updateSegments(fullId, segments) {
+        this.cache.clear();
         return await this.updateOne({ fullId }, { $set: { segments } });
     }
 }
