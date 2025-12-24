@@ -525,49 +525,7 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
     return newSegment;
 }
 
-// --- Maintenance ---
-async function approveAllTrusted() {
-    await ensureInit();
-    console.log('[SkipService] Running trusted source auto-approval...');
-    const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot'];
-    let count = 0;
-
-    if (skipRepository.useMongo) {
-        const allDocs = await skipRepository.find({});
-        for (const doc of allDocs) {
-            let changed = false;
-            if (doc.segments && Array.isArray(doc.segments)) {
-                for (const seg of doc.segments) {
-                    if (!seg.verified && seg.contributors && seg.contributors.some(c => TRUSTED_SOURCES.includes(c))) {
-                        seg.verified = true;
-                        changed = true;
-                        count++;
-                    }
-                }
-            }
-            if (changed) {
-                await skipRepository.updateSegments(doc.fullId, doc.segments);
-            }
-        }
-    } else {
-        for (const fullId in skipsData) {
-            const segments = skipsData[fullId];
-            if (Array.isArray(segments)) {
-                for (const seg of segments) {
-                    if (!seg.verified && seg.contributors && seg.contributors.some(c => TRUSTED_SOURCES.includes(c))) {
-                        seg.verified = true;
-                        count++;
-                    }
-                }
-            }
-        }
-        if (count > 0) await saveSkips();
-    }
-    console.log(`[SkipService] Auto-approved ${count} existing trusted segments.`);
-}
-
-// Run approval on startup (fire and forget)
-setTimeout(approveAllTrusted, 5000);
+// Periodic auto-approval removed from startup for performance. Move to script if needed.
 
 async function forceSave() {
     if (!skipRepository.useMongo) {

@@ -100,7 +100,7 @@ async function isSeries(imdbId) {
     } catch (e) { return false; }
 }
 
-async function registerShow(videoId) {
+async function registerShow(videoId, segmentCount = null) {
     const parts = videoId.split(':');
     const imdbId = parts[0];
 
@@ -145,53 +145,12 @@ async function registerShow(videoId) {
                 season, episode, count: 0
             };
         }
-        media.episodes[epKey].count++;
-    }
 
-    media.totalSegments = Object.keys(media.episodes || {}).length;
-    media.lastUpdated = new Date().toISOString();
-
-    await writeCatalogEntry(imdbId, media);
-}
-
-async function registerShowV2(videoId, segmentCount = 1) {
-    const parts = videoId.split(':');
-    const imdbId = parts[0];
-    const season = parts[1] ? parseInt(parts[1]) : null;
-    const episode = parts[2] ? parseInt(parts[2]) : null;
-
-    if (!imdbId.match(/^tt\d+$/)) return;
-
-    await ensureInit();
-    let media = null;
-    if (catalogRepository.useMongo) {
-        media = await catalogRepository.findByImdbId(imdbId);
-    } else {
-        const catalog = await readCatalog();
-        media = catalog.media[imdbId];
-    }
-
-    if (!media) {
-        const meta = await fetchMetadata(imdbId);
-        if (!meta) return;
-        media = {
-            title: meta.Title,
-            year: meta.Year,
-            poster: meta.Poster,
-            type: season && episode ? 'show' : 'movie',
-            episodes: {},
-            addedAt: new Date().toISOString(),
-            lastUpdated: new Date().toISOString(),
-            totalSegments: 0
-        };
-    }
-
-    if (season && episode) {
-        const epKey = `${season}:${episode}`;
-        if (!media.episodes[epKey]) {
-            media.episodes[epKey] = { season, episode, count: 0 };
+        if (segmentCount !== null) {
+            media.episodes[epKey].count = segmentCount;
+        } else {
+            media.episodes[epKey].count++;
         }
-        media.episodes[epKey].count = segmentCount;
     }
 
     media.totalSegments = Object.keys(media.episodes || {}).length;
@@ -200,9 +159,7 @@ async function registerShowV2(videoId, segmentCount = 1) {
     await writeCatalogEntry(imdbId, media);
 }
 
-async function updateCatalog(segment) {
-    return await registerShow(segment.videoId);
-}
+// wrapper removed
 
 async function getCatalogData(page = 1, limit = 1000, search = '', sort = { title: 1 }) {
     await ensureInit();
@@ -343,7 +300,7 @@ async function repairCatalog(allSkips) {
     // We iterate the showMap (which came from Skips) to ensure all shows with segments exist.
     for (const [imdbId, episodes] of Object.entries(showMap)) {
         try {
-            await registerShowV2(imdbId + ":1:1", 0); // Ensure show exists (dummy ep update)
+            await registerShow(imdbId + ":1:1", 0); // Ensure show exists (dummy ep update)
 
             // Now fetch it and update all episodes
             const catalog = await readCatalog();
@@ -369,7 +326,6 @@ async function repairCatalog(allSkips) {
 }
 
 module.exports = {
-    updateCatalog,
     registerShow,
     getCatalogData,
     repairCatalog,
