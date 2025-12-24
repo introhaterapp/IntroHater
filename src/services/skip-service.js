@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const mongoService = require('./mongodb');
+const skipRepository = require('../repositories/skip.repository');
 const axios = require('axios');
 const catalogService = require('./catalog');
 
@@ -9,9 +9,6 @@ const DATA_FILE = path.join(__dirname, '../data/skips.json');
 // In-memory cache (Fallback)
 let skipsData = {}; // Format: { "imdb:s:e": [ { start, end, label, votes } ] }
 
-// Persistence State
-let useMongo = false;
-let skipsCollection = null;
 const MAL_CACHE_FILE = path.join(__dirname, '../../data/mal_cache.json');
 const SKIP_CACHE_FILE = path.join(__dirname, '../../data/third_party_skip_cache.json');
 
@@ -51,16 +48,9 @@ function ensureInit() {
     initPromise = (async () => {
         try {
             console.log('[SkipService] Initializing...');
-            skipsCollection = await mongoService.getCollection('skips');
+            await skipRepository.ensureInit();
 
-            if (skipsCollection) {
-                useMongo = true;
-                const count = await skipsCollection.countDocuments();
-                console.log(`[SkipService] Connected to MongoDB skips collection (${count} documents).`);
-                try {
-                    await skipsCollection.createIndex({ fullId: 1 }, { unique: true });
-                } catch (e) { /* Index might already exist */ }
-            } else {
+            if (!skipRepository.useMongo) {
                 console.log('[SkipService] MongoDB not available. Using local JSON.');
                 await loadSkips();
             }
@@ -115,60 +105,47 @@ async function getSegments(fullId) {
 
     const cleanId = String(fullId).trim();
     let segments = [];
-    const isSeriesRequest = !cleanId.includes(':'); // If no colons, assume it's a series ID asking for all eps
+    const isSeriesRequest = !cleanId.includes(':');
 
-    if (useMongo && skipsCollection) {
+    if (skipRepository.useMongo) {
         try {
             if (isSeriesRequest) {
-                // Fetch ALL episodes for this series
-                const cursor = skipsCollection.find({ fullId: { $regex: `^${escapeRegex(cleanId)}:` } });
-                const docs = await cursor.toArray();
+                // Optimization: Use seriesId instead of regex
+                const docs = await skipRepository.findBySeriesId(cleanId);
                 docs.forEach(doc => {
                     if (doc.segments) {
-                        // Attach videoId to each segment so UI knows which episode it is
                         const epSegments = doc.segments.map(s => ({ ...s, videoId: doc.fullId }));
                         segments.push(...epSegments);
                     }
                 });
             } else {
-                // 1. Try Exact Match (Episode Level)
-                let doc = await skipsCollection.findOne({ fullId: cleanId });
-
-                // 2. Try Case-Insensitive Match (Regex)
+                let doc = await skipRepository.findByFullId(cleanId);
                 if (!doc) {
-                    const escapedId = escapeRegex(cleanId);
-                    doc = await skipsCollection.findOne({
-                        fullId: { $regex: `^${escapedId}$`, $options: 'i' }
-                    });
+                    doc = await skipRepository.findByFullIdRegex(`^${escapeRegex(cleanId)}$`, 'i');
                 }
                 if (doc) segments = doc.segments || [];
             }
 
-            // 3. Check for Global Series Skips
-            // If ID is in format tt123:1:2, check tt123
             const parts = cleanId.split(':');
             if (parts.length >= 3) {
                 const seriesId = parts[0];
-                const seriesDoc = await skipsCollection.findOne({ fullId: seriesId });
+                const seriesDoc = await skipRepository.findByFullId(seriesId);
                 if (seriesDoc && seriesDoc.segments) {
-                    // Filter for series-wide skips only
                     const seriesSkips = seriesDoc.segments.filter(s => s.seriesSkip);
                     if (seriesSkips.length > 0) {
                         console.log(`[SkipService] Found ${seriesSkips.length} GLOBAL SERIES skips for [${cleanId}]`);
-                        // For global skips, we use the requested ID as the videoId
                         const formatted = seriesSkips.map(s => ({ ...s, videoId: cleanId }));
                         segments = [...segments, ...formatted];
                     }
                 }
             }
-
         } catch (e) {
-            console.error("[SkipService] Mongo Query Error:", e.message);
+            console.error("[SkipService] Repository Query Error:", e.message);
             return [];
         }
     } else {
+        // ... (local JSON logic remains similar or uses keys)
         if (isSeriesRequest) {
-            // Local JSON: Find all keys starting with "tt123:"
             for (const key in skipsData) {
                 if (key.startsWith(`${cleanId}:`)) {
                     const epSegments = skipsData[key].map(s => ({ ...s, videoId: key }));
@@ -177,13 +154,9 @@ async function getSegments(fullId) {
             }
         } else {
             segments = skipsData[cleanId] || [];
-
-            // Attach ID if missing (normalization)
             if (segments.length > 0 && !segments[0].videoId) {
                 segments = segments.map(s => ({ ...s, videoId: cleanId }));
             }
-
-            // Check local series skips
             const parts = cleanId.split(':');
             if (parts.length >= 3) {
                 const seriesId = parts[0];
@@ -249,30 +222,24 @@ function mergeSegments(segments) {
 // Get total count of segments across all episodes
 async function getSegmentCount() {
     await ensureInit();
-    if (useMongo && skipsCollection) {
+    if (skipRepository.useMongo) {
         try {
             const t = Date.now();
-            const result = await skipsCollection.aggregate([
-                { $project: { numSegments: { $size: { $ifNull: ["$segments", []] } } } },
-                { $group: { _id: null, total: { $sum: "$numSegments" } } }
-            ]).toArray();
-            console.log(`[SkipService] MongoDB segment count aggregation took ${Date.now() - t}ms`);
+            const result = await skipRepository.getGlobalStats();
+            console.log(`[SkipService] Repository segment count aggregation took ${Date.now() - t}ms`);
             return result[0]?.total || 0;
         } catch (e) {
             console.error("[SkipService] Aggregate Count Error:", e.message);
             return 0;
         }
     }
-    // Local JSON count
     return Object.values(skipsData).flat().length;
 }
 
-// Get all skips (Heavy operation - used for catalog)
 async function getAllSegments() {
     await ensureInit();
-    if (useMongo) {
-        // Return object map key->segments to match original API
-        const allDocs = await skipsCollection.find({}).toArray();
+    if (skipRepository.useMongo) {
+        const allDocs = await skipRepository.find({});
         const map = {};
         allDocs.forEach(d => map[d.fullId] = d.segments);
         return map;
@@ -492,25 +459,27 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
     const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot'];
     const isTrusted = TRUSTED_SOURCES.includes(userId);
 
-    // Input Validation
     if (typeof start !== 'number' || typeof end !== 'number' || start < 0 || end <= start) {
         throw new Error("Invalid start or end times");
     }
-    if (end > 36000) { // Max 10 hours
+    if (end > 36000) {
         throw new Error("Segment too long or beyond reasonable bounds");
     }
-    const cleanLabel = String(label).substring(0, 50); // Limit label length
+    const cleanLabel = String(label).substring(0, 50);
     let cleanFullId = String(fullId).substring(0, 255);
+    let seriesId = null;
 
-    // If applying to series, strip to base ID
+    const parts = cleanFullId.split(':');
+    if (parts.length >= 3) {
+        seriesId = parts[0];
+    }
+
     if (applyToSeries) {
-        const parts = cleanFullId.split(':');
-        if (parts.length >= 3) {
-            cleanFullId = parts[0]; // Use just the IMDb/Series ID
+        if (seriesId) {
+            cleanFullId = seriesId;
         }
     }
 
-    // Check for Duplicates (Fuzzy Match: 1s tolerance)
     const existingSegments = await getSegments(cleanFullId);
     if (existingSegments && existingSegments.length > 0) {
         const isDuplicate = existingSegments.some(s => {
@@ -519,8 +488,6 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
         });
 
         if (isDuplicate) {
-            // console.log(`[SkipService] Ignored duplicate segment for ${cleanFullId}: ${start}-${end}`);
-            // Return dummy or existing segment to satisfy caller
             return existingSegments.find(s => Math.abs(s.start - start) < 1.0);
         }
     }
@@ -528,20 +495,16 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
     const newSegment = {
         start, end, label: cleanLabel,
         votes: 1,
-        verified: isTrusted, // Auto-verify trusted sources
+        verified: isTrusted,
         source: userId === 'aniskip' ? 'aniskip' : 'user',
         reportCount: 0,
-        seriesSkip: applyToSeries === true, // Helper Flag
+        seriesSkip: applyToSeries === true,
         contributors: [userId],
         createdAt: new Date().toISOString()
     };
 
-    if (useMongo) {
-        await skipsCollection.updateOne(
-            { fullId: cleanFullId },
-            { $push: { segments: newSegment } },
-            { upsert: true }
-        );
+    if (skipRepository.useMongo) {
+        await skipRepository.addSegment(cleanFullId, newSegment, seriesId);
     } else {
         if (!skipsData[cleanFullId]) skipsData[cleanFullId] = [];
         skipsData[cleanFullId].push(newSegment);
@@ -551,8 +514,6 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
         }
     }
 
-    // Auto-register in catalog
-    // We update the catalog to reflect that this show/episode has segments
     catalogService.registerShow(cleanFullId).catch(() => { });
 
     return newSegment;
@@ -565,13 +526,11 @@ async function approveAllTrusted() {
     const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot'];
     let count = 0;
 
-    if (useMongo && skipsCollection) {
-        const cursor = skipsCollection.find({});
-        while (await cursor.hasNext()) {
-            const doc = await cursor.next();
+    if (skipRepository.useMongo) {
+        const allDocs = await skipRepository.find({});
+        for (const doc of allDocs) {
             let changed = false;
             if (doc.segments && Array.isArray(doc.segments)) {
-                // Refactored to for..of to avoid scope issues
                 for (const seg of doc.segments) {
                     if (!seg.verified && seg.contributors && seg.contributors.some(c => TRUSTED_SOURCES.includes(c))) {
                         seg.verified = true;
@@ -581,7 +540,7 @@ async function approveAllTrusted() {
                 }
             }
             if (changed) {
-                await skipsCollection.updateOne({ _id: doc._id }, { $set: { segments: doc.segments } });
+                await skipRepository.updateSegments(doc.fullId, doc.segments);
             }
         }
     } else {
@@ -605,7 +564,7 @@ async function approveAllTrusted() {
 setTimeout(approveAllTrusted, 5000);
 
 async function forceSave() {
-    if (!useMongo) {
+    if (!skipRepository.useMongo) {
         await saveSkips();
     }
 }
@@ -619,23 +578,13 @@ async function getPendingModeration() {
     const pending = [];
     const reported = [];
 
-    if (useMongo && skipsCollection) {
+    if (skipRepository.useMongo) {
         try {
-            // Optimization: Only fetch documents that actually have pending or reported segments
-            // This prevents loading the entire database (potentially GBs of data) into memory
-            const cursor = skipsCollection.find({
-                $or: [
-                    { "segments.verified": { $ne: true } },
-                    { "segments.reportCount": { $gt: 0 } }
-                ]
-            });
-
-            const docs = await cursor.toArray();
+            const docs = await skipRepository.getPendingModeration();
 
             docs.forEach(doc => {
                 if (doc.segments) {
                     doc.segments.forEach((seg, index) => {
-                        // Extract only the relevant segments from the matched documents
                         if (!seg.verified) {
                             pending.push({ fullId: doc.fullId, index, ...seg });
                         }
@@ -683,8 +632,8 @@ async function resolveModerationBulk(items, action) {
         const indices = grouped[fullId].sort((a, b) => a - b); // Ascending order
         const indicesSet = new Set(indices);
 
-        if (useMongo) {
-            const doc = await skipsCollection.findOne({ fullId });
+        if (skipRepository.useMongo) {
+            const doc = await skipRepository.findByFullId(fullId);
             if (!doc || !doc.segments) continue;
 
             let changed = false;
@@ -704,7 +653,7 @@ async function resolveModerationBulk(items, action) {
             }
 
             if (changed) {
-                await skipsCollection.updateOne({ fullId }, { $set: { segments: doc.segments } });
+                await skipRepository.updateSegments(fullId, doc.segments);
                 modifiedCount += indices.length;
             }
         } else {
@@ -740,8 +689,8 @@ async function resolveModerationBulk(items, action) {
 
 async function resolveModeration(fullId, index, action) {
     await ensureInit();
-    if (useMongo) {
-        const doc = await skipsCollection.findOne({ fullId });
+    if (skipRepository.useMongo) {
+        const doc = await skipRepository.findByFullId(fullId);
         if (!doc || !doc.segments[index]) return false;
 
         if (action === 'approve') {
@@ -751,7 +700,7 @@ async function resolveModeration(fullId, index, action) {
             doc.segments.splice(index, 1);
         }
 
-        await skipsCollection.updateOne({ fullId }, { $set: { segments: doc.segments } });
+        await skipRepository.updateSegments(fullId, doc.segments);
     } else {
         if (!skipsData[fullId] || !skipsData[fullId][index]) return false;
 
@@ -768,11 +717,11 @@ async function resolveModeration(fullId, index, action) {
 
 async function reportSegment(fullId, index) {
     await ensureInit();
-    if (useMongo) {
-        const doc = await skipsCollection.findOne({ fullId });
+    if (skipRepository.useMongo) {
+        const doc = await skipRepository.findByFullId(fullId);
         if (!doc || !doc.segments[index]) return false;
         doc.segments[index].reportCount = (doc.segments[index].reportCount || 0) + 1;
-        await skipsCollection.updateOne({ fullId }, { $set: { segments: doc.segments } });
+        await skipRepository.updateSegments(fullId, doc.segments);
     } else {
         if (!skipsData[fullId] || !skipsData[fullId][index]) return false;
         skipsData[fullId][index].reportCount = (skipsData[fullId][index].reportCount || 0) + 1;

@@ -1,39 +1,16 @@
 const axios = require('axios');
-const mongoService = require('./mongodb');
-
-// Persistence State
-let useMongo = false;
-let catalogCollection = null;
-let statsCache = null;
-let lastStatsTime = 0;
+const path = require('path');
+const fs = require('fs').promises;
+const catalogRepository = require('../repositories/catalog.repository');
 
 async function ensureInit() {
-    if (catalogCollection) return;
-    try {
-        catalogCollection = await mongoService.getCollection('catalog');
-        if (catalogCollection) {
-            useMongo = true;
-            try {
-                await catalogCollection.createIndex({ imdbId: 1 }, { unique: true });
-            } catch (e) { }
-        }
-    } catch (e) {
-        console.error("[Catalog] Mongo Init Error:", e);
-    }
-}
-
-async function ensureCatalogDir() {
-    try {
-        await fs.mkdir(CATALOG_DIR, { recursive: true });
-    } catch (error) {
-        console.error('Error creating catalog directory:', error);
-    }
+    await catalogRepository.ensureInit();
 }
 
 async function readCatalog() {
     await ensureInit();
-    if (useMongo) {
-        const items = await catalogCollection.find({}).toArray();
+    if (catalogRepository.useMongo) {
+        const items = await catalogRepository.find({});
         const media = {};
         items.forEach(item => {
             const { _id, ...rest } = item;
@@ -43,8 +20,6 @@ async function readCatalog() {
     }
     // Fallback to local file if Mongo not available (legacy)
     try {
-        const fs = require('fs').promises;
-        const path = require('path');
         const CATALOG_FILE = path.join(__dirname, '../../data/catalog.json');
         const data = await fs.readFile(CATALOG_FILE, 'utf8');
         return JSON.parse(data);
@@ -55,13 +30,10 @@ async function readCatalog() {
 
 async function writeCatalogEntry(imdbId, entry) {
     await ensureInit();
-    if (useMongo) {
-        await catalogCollection.replaceOne({ imdbId }, { imdbId, ...entry }, { upsert: true });
+    if (catalogRepository.useMongo) {
+        await catalogRepository.upsertCatalogEntry(imdbId, entry);
     } else {
-        // Limited file-based write for backward compatibility
         try {
-            const fs = require('fs').promises;
-            const path = require('path');
             const CATALOG_FILE = path.join(__dirname, '../../data/catalog.json');
             const catalog = await readCatalog();
             catalog.media[imdbId] = entry;
@@ -128,15 +100,10 @@ async function isSeries(imdbId) {
     } catch (e) { return false; }
 }
 
-/**
- * Universal Registration: Track availability across sources
- * @param {string} videoId Format: tt123456 or tt123456:S:E
- */
 async function registerShow(videoId) {
     const parts = videoId.split(':');
     const imdbId = parts[0];
 
-    // VALIDATE ID: Prevent catalog spam with fake IDs
     if (!imdbId.match(/^tt\d+$/)) {
         console.warn(`[Catalog] Rejected invalid ID: ${imdbId}`);
         return;
@@ -147,8 +114,8 @@ async function registerShow(videoId) {
 
     await ensureInit();
     let media = null;
-    if (useMongo) {
-        media = await catalogCollection.findOne({ imdbId });
+    if (catalogRepository.useMongo) {
+        media = await catalogRepository.findByImdbId(imdbId);
     } else {
         const catalog = await readCatalog();
         media = catalog.media[imdbId];
@@ -159,7 +126,7 @@ async function registerShow(videoId) {
         if (!meta) return;
 
         media = {
-            imdbId, // Ensure ID is stored
+            imdbId,
             title: meta.Title,
             year: meta.Year,
             poster: meta.Poster,
@@ -181,16 +148,12 @@ async function registerShow(videoId) {
         media.episodes[epKey].count++;
     }
 
-    // Fix: Count unique episodes with segments, not total hits
     media.totalSegments = Object.keys(media.episodes || {}).length;
     media.lastUpdated = new Date().toISOString();
 
     await writeCatalogEntry(imdbId, media);
 }
 
-/**
- * Enhanced registerShow to handle segment updates without metadata fetch if entry exists
- */
 async function registerShowV2(videoId, segmentCount = 1) {
     const parts = videoId.split(':');
     const imdbId = parts[0];
@@ -201,8 +164,8 @@ async function registerShowV2(videoId, segmentCount = 1) {
 
     await ensureInit();
     let media = null;
-    if (useMongo) {
-        media = await catalogCollection.findOne({ imdbId });
+    if (catalogRepository.useMongo) {
+        media = await catalogRepository.findByImdbId(imdbId);
     } else {
         const catalog = await readCatalog();
         media = catalog.media[imdbId];
@@ -245,21 +208,14 @@ async function getCatalogData(page = 1, limit = 1000) {
     await ensureInit();
     const skip = (page - 1) * limit;
 
-    if (useMongo) {
-        // Filter at DB level for performance
-        // Only show items that have segments to avoid empty catalog rows
+    if (catalogRepository.useMongo) {
         const query = {
             title: { $nin: [null, 'null', 'undefined', 'Unknown Title', ''] },
             year: { $nin: [null, '????', ''] },
             totalSegments: { $gt: 0 }
         };
 
-        const total = await catalogCollection.countDocuments(query);
-        const items = await catalogCollection.find(query)
-            .sort({ title: 1 })
-            .skip(skip)
-            .limit(limit)
-            .toArray();
+        const { items, total } = await catalogRepository.getCatalogData(query, skip, limit);
 
         const media = {};
         items.forEach(item => {
@@ -310,40 +266,20 @@ async function getCatalogData(page = 1, limit = 1000) {
 }
 
 async function getCatalogStats() {
-    const now = Date.now();
-    // Cache for 60 seconds
-    if (statsCache && (now - lastStatsTime < 60000)) {
-        return statsCache;
-    }
+    // We could keep the cache in the repository if we want, but let's keep it here for now if needed.
+    // However, the repository aggregate is fast enough.
 
     await ensureInit();
-    let showCount = 0;
-    let episodeCount = 0;
-
-    if (useMongo) {
+    if (catalogRepository.useMongo) {
         const query = {
             title: { $nin: [null, 'null', 'undefined', 'Unknown Title', ''] },
             year: { $nin: [null, '????', ''] }
         };
-        showCount = await catalogCollection.countDocuments(query);
-
-        // Simplified episode count for Mongo (total of all episode keys)
-        const result = await catalogCollection.aggregate([
-            { $match: query },
-            {
-                $project: {
-                    numEpisodes: {
-                        $size: {
-                            $objectToArray: { $ifNull: ["$episodes", {}] }
-                        }
-                    }
-                }
-            },
-            { $group: { _id: null, total: { $sum: "$numEpisodes" } } }
-        ]).toArray();
-        episodeCount = result[0]?.total || 0;
+        return await catalogRepository.getCatalogStats(query);
     } else {
         const data = await readCatalog();
+        let showCount = 0;
+        let episodeCount = 0;
         if (data.media) {
             const entries = Object.values(data.media).filter(item => {
                 return item.title && item.title !== 'null' && item.title !== 'undefined' && item.title !== 'Unknown Title' && item.year !== '????';
@@ -353,11 +289,8 @@ async function getCatalogStats() {
                 episodeCount += Object.keys(item.episodes || {}).length;
             });
         }
+        return { showCount, episodeCount };
     }
-
-    statsCache = { showCount, episodeCount };
-    lastStatsTime = now;
-    return statsCache;
 }
 
 async function repairCatalog(allSkips) {

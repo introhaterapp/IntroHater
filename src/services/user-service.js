@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const mongoService = require('./mongodb');
+const userRepository = require('../repositories/user.repository');
 
 const DATA_FILE = path.join(__dirname, '../data/users.json');
 
@@ -13,11 +13,6 @@ let usersData = {
     }
 };
 
-// Persistence State
-let useMongo = false;
-let usersCollection = null;
-let tokensCollection = null;
-
 // Initialize
 let initPromise = null;
 
@@ -27,18 +22,10 @@ function ensureInit() {
     initPromise = (async () => {
         try {
             console.log('[Users] Initializing...');
-            usersCollection = await mongoService.getCollection('users');
-            tokensCollection = await mongoService.getCollection('tokens');
+            await userRepository.ensureInit();
 
-            if (usersCollection) {
-                useMongo = true;
-                console.log('[Users] Using MongoDB for persistence.');
-                // Ensure Indexes
-                await usersCollection.createIndex({ userId: 1 }, { unique: true });
-                await usersCollection.createIndex({ votes: -1, segments: -1 });  // Leaderboard index
-                await tokensCollection.createIndex({ userId: 1 });
-            } else {
-                console.log('[Users] MongoDB not available. Using local JSON.');
+            if (!userRepository.useMongo) {
+                console.log('[Users] Using local JSON for persistence.');
                 await loadUsers();
             }
         } catch (e) {
@@ -83,8 +70,8 @@ async function saveUsers() {
 
 async function getUserStats(userId) {
     await ensureInit();
-    if (useMongo && usersCollection) {
-        return await usersCollection.findOne({ userId });
+    if (userRepository.useMongo) {
+        return await userRepository.findByUserId(userId);
     }
     return usersData.stats.find(s => s.userId === userId) || null;
 }
@@ -125,115 +112,102 @@ async function addWatchHistory(userId, item) {
 async function updateUserStats(userId, updates) {
     await ensureInit();
 
-    if (useMongo && usersCollection) {
-        try {
-            // Handle Atomic Vote Updates
-            if (updates.votes && updates.videoId) {
-                const res = await usersCollection.findOneAndUpdate(
-                    { userId, votedVideos: { $ne: updates.videoId } },
-                    {
-                        $inc: { votes: updates.votes },
-                        $addToSet: { votedVideos: updates.videoId },
-                        $set: { lastUpdated: new Date().toISOString() }
-                    },
-                    { returnDocument: 'after', upsert: false }
-                );
+    try {
+        // Handle Atomic Vote Updates
+        if (updates.votes && updates.videoId) {
+            const res = await userRepository.collection.findOneAndUpdate(
+                { userId, votedVideos: { $ne: updates.videoId } },
+                {
+                    $inc: { votes: updates.votes },
+                    $addToSet: { votedVideos: updates.videoId },
+                    $set: { lastUpdated: new Date().toISOString() }
+                },
+                { returnDocument: 'after', upsert: false }
+            );
 
-                if (res && (res.value || res.lastErrorObject?.updatedExisting)) {
-                    console.log(`[Users] Atomic vote added for ${userId.substr(0, 8)} on ${updates.videoId}`);
-                } else {
-                    const exists = await usersCollection.findOne({ userId });
-                    if (!exists) {
-                        await usersCollection.updateOne(
-                            { userId },
-                            {
-                                $setOnInsert: { userId, segments: 0, votes: updates.votes, votedVideos: [updates.videoId] },
-                                $set: { lastUpdated: new Date().toISOString() }
-                            },
-                            { upsert: true }
-                        );
-                        console.log(`[Users] New user created with vote: ${userId.substr(0, 8)}`);
-                    }
+            if (res && (res.value || res.lastErrorObject?.updatedExisting)) {
+                console.log(`[Users] Atomic vote added for ${userId.substr(0, 8)} on ${updates.videoId}`);
+            } else {
+                const exists = await userRepository.findByUserId(userId);
+                if (!exists) {
+                    await userRepository.updateOne(
+                        { userId },
+                        {
+                            $setOnInsert: { userId, segments: 0, votes: updates.votes, votedVideos: [updates.videoId] },
+                            $set: { lastUpdated: new Date().toISOString() }
+                        },
+                        { upsert: true }
+                    );
+                    console.log(`[Users] New user created with vote: ${userId.substr(0, 8)}`);
                 }
-                delete updates.votes;
-                delete updates.videoId;
             }
+            delete updates.votes;
+            delete updates.videoId;
+        }
 
-            // Handle Atomic Increments (savedTime)
-            if (updates.savedTime && updates.isIncrement) {
-                await usersCollection.updateOne(
-                    { userId },
-                    {
-                        $inc: { savedTime: updates.savedTime },
-                        $set: { lastUpdated: new Date().toISOString() }
-                    },
-                    { upsert: true }
-                );
-                delete updates.savedTime;
-                delete updates.isIncrement;
+        // Handle Atomic Increments (savedTime)
+        if (updates.savedTime && updates.isIncrement) {
+            await userRepository.updateOne(
+                { userId },
+                {
+                    $inc: { savedTime: updates.savedTime },
+                    $set: { lastUpdated: new Date().toISOString() }
+                },
+                { upsert: true }
+            );
+            delete updates.savedTime;
+            delete updates.isIncrement;
+        }
+
+        // Handle remaining updates
+        if (Object.keys(updates).length > 0) {
+            await userRepository.updateOne(
+                { userId },
+                { $set: { ...updates, lastUpdated: new Date().toISOString() } },
+                { upsert: true }
+            );
+        }
+        return await getUserStats(userId);
+    } catch (e) {
+        console.error("[Users] Repository update failed, falling back:", e.message);
+
+        // --- Local / Fallback logic ---
+        let stats = usersData.stats.find(s => s.userId === userId);
+        if (!stats) {
+            stats = { userId, segments: 0, votes: 0, votedVideos: [], lastUpdated: new Date().toISOString() };
+            if (!userRepository.useMongo) usersData.stats.push(stats);
+        }
+
+        if (updates.votes && typeof updates.votes === 'number') {
+            const videoId = updates.videoId;
+            if (!stats.votedVideos) stats.votedVideos = [];
+            if (videoId && !stats.votedVideos.includes(videoId)) {
+                stats.votes = (stats.votes || 0) + updates.votes;
+                stats.votedVideos.push(videoId);
+                console.log(`[Users] Vote added for ${userId.substr(0, 6)}... on ${videoId}`);
             }
-
-            // Handle remaining updates
-            if (Object.keys(updates).length > 0) {
-                await usersCollection.updateOne(
-                    { userId },
-                    { $set: { ...updates, lastUpdated: new Date().toISOString() } },
-                    { upsert: true }
-                );
-            }
-            return await getUserStats(userId);
-        } catch (e) {
-            console.error("[Users] Atomic update failed, falling back:", e.message);
+            delete updates.votes;
+            delete updates.videoId;
         }
-    }
 
-    // --- Local / Fallback logic ---
-    let stats = usersData.stats.find(s => s.userId === userId);
-    if (!stats) {
-        stats = { userId, segments: 0, votes: 0, votedVideos: [], lastUpdated: new Date().toISOString() };
-        if (!useMongo) usersData.stats.push(stats);
-    }
-
-    if (updates.votes && typeof updates.votes === 'number') {
-        const videoId = updates.videoId;
-        if (!stats.votedVideos) stats.votedVideos = [];
-        if (videoId && !stats.votedVideos.includes(videoId)) {
-            stats.votes = (stats.votes || 0) + updates.votes;
-            stats.votedVideos.push(videoId);
-            console.log(`[Users] Vote added for ${userId.substr(0, 6)}... on ${videoId}`);
+        if (updates.savedTime && updates.isIncrement) {
+            stats.savedTime = (stats.savedTime || 0) + updates.savedTime;
+            delete updates.savedTime;
+            delete updates.isIncrement;
         }
-        delete updates.votes;
-        delete updates.videoId;
-        if (videoId && !stats.votedVideos.includes(videoId)) {
-            stats.votes = (stats.votes || 0) + updates.votes;
-            stats.votedVideos.push(videoId);
-            console.log(`[Users] Vote added for ${userId.substr(0, 6)}... on ${videoId}`);
-        }
-        delete updates.votes;
-        delete updates.videoId;
+
+        Object.assign(stats, updates);
+        stats.lastUpdated = new Date().toISOString();
+
+        if (!userRepository.useMongo) await saveUsers();
+        return stats;
     }
-
-    if (updates.savedTime && updates.isIncrement) {
-        stats.savedTime = (stats.savedTime || 0) + updates.savedTime;
-        delete updates.savedTime;
-        delete updates.isIncrement;
-    }
-
-    Object.assign(stats, updates);
-    stats.lastUpdated = new Date().toISOString();
-
-    if (!useMongo) await saveUsers();
-    return stats;
 }
 
 async function getLeaderboard(limit = 10) {
     await ensureInit();
-    if (useMongo && usersCollection) {
-        // Return stats sorted by votes desc, then segments desc
-        return await usersCollection.find()
-            .sort({ votes: -1, segments: -1 })
-            .limit(limit)
-            .toArray();
+    if (userRepository.useMongo) {
+        return await userRepository.getLeaderboard(limit);
     }
 
     return usersData.stats
@@ -248,17 +222,12 @@ async function getLeaderboard(limit = 10) {
 
 async function getStats() {
     await ensureInit();
-    if (useMongo && usersCollection) {
-        const userCount = await usersCollection.countDocuments();
-        // Sum all votes
-        const agg = await usersCollection.aggregate([
-            { $group: { _id: null, totalVotes: { $sum: "$votes" } } }
-        ]).toArray();
+    if (userRepository.useMongo) {
+        const userCount = await userRepository.countDocuments();
+        const agg = await userRepository.getStatsAggregation();
         const voteCount = agg[0] ? agg[0].totalVotes : 0;
 
-
-        // Get global saved time
-        const globalStats = await usersCollection.findOne({ userId: "GLOBAL_STATS" });
+        const globalStats = await userRepository.findGlobalStats();
         const totalSavedTime = globalStats ? (globalStats.totalSavedTime || 0) : 0;
 
         return { userCount, voteCount, totalSavedTime };
@@ -276,15 +245,8 @@ async function incrementSavedTime(userId, duration) {
     await ensureInit();
 
     // 1. Update Global Stats
-    if (useMongo && usersCollection) {
-        // Use a separate stats collection or a special document in users for global stats
-        // faster to just keep a 'global' document in users collection with a reserved ID?
-        // Let's us a dedicated document in users collection for now: "GLOBAL_STATS"
-        await usersCollection.updateOne(
-            { userId: "GLOBAL_STATS" },
-            { $inc: { totalSavedTime: duration } },
-            { upsert: true }
-        );
+    if (userRepository.useMongo) {
+        await userRepository.incrementGlobalSavedTime(duration);
     } else {
         if (!usersData.globalStats) usersData.globalStats = { totalSavedTime: 0 };
         usersData.globalStats.totalSavedTime = (usersData.globalStats.totalSavedTime || 0) + duration;
@@ -303,8 +265,8 @@ async function incrementSavedTime(userId, duration) {
 
 async function getUserToken(userId) {
     await ensureInit();
-    if (useMongo) {
-        return await tokensCollection.findOne({ userId });
+    if (userRepository.useMongo) {
+        return await userRepository.findTokenByUserId(userId);
     }
     return usersData.tokens.find(t => t.userId === userId) || null;
 }
@@ -319,10 +281,10 @@ async function storeUserToken(userId, token, timestamp, nonce) {
         lastUsed: new Date().toISOString()
     };
 
-    if (useMongo) {
-        const existing = await tokensCollection.findOne({ userId });
+    if (userRepository.useMongo) {
+        const existing = await userRepository.findTokenByUserId(userId);
         entry.createdAt = existing ? existing.createdAt : new Date().toISOString();
-        await tokensCollection.updateOne({ userId }, { $set: entry }, { upsert: true });
+        await userRepository.upsertToken(userId, entry);
     } else {
         let tokenEntry = usersData.tokens.find(t => t.userId === userId);
         entry.createdAt = tokenEntry ? tokenEntry.createdAt : new Date().toISOString();
