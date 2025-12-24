@@ -94,6 +94,14 @@ class SimpleLRUCache {
         this.cache.set(key, value);
     }
 
+    delete(key) {
+        this.cache.delete(key);
+    }
+
+    has(key) {
+        return this.cache.has(key);
+    }
+
     clear() {
         this.cache.clear();
     }

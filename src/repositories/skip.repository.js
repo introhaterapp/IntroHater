@@ -41,13 +41,18 @@ class SkipRepository extends BaseRepository {
     async addSegment(fullId, segment, seriesId = null) {
         await this.ensureInit();
 
-        // Invalidate cache
-        this.cache.clear(); // Simple full clear for safety, could be more granular
+        // Granular cache invalidation
+        this.cache.delete(`full:${fullId}`);
+        const actualSeriesId = seriesId || (fullId.includes(':') ? fullId.split(':')[0] : null);
+        if (actualSeriesId) {
+            this.cache.delete(`series:${actualSeriesId}`);
+        }
+
         const update = {
             $push: { segments: segment }
         };
-        if (seriesId) {
-            update.$set = { seriesId };
+        if (actualSeriesId) {
+            update.$set = { seriesId: actualSeriesId };
         }
         return await this.updateOne(
             { fullId },
@@ -73,7 +78,11 @@ class SkipRepository extends BaseRepository {
     }
 
     async updateSegments(fullId, segments) {
-        this.cache.clear();
+        this.cache.delete(`full:${fullId}`);
+        const seriesId = fullId.includes(':') ? fullId.split(':')[0] : null;
+        if (seriesId) {
+            this.cache.delete(`series:${seriesId}`);
+        }
         return await this.updateOne({ fullId }, { $set: { segments } });
     }
 }
