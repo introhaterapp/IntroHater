@@ -2,6 +2,7 @@ const skipRepository = require('../repositories/skip.repository');
 const cacheRepository = require('../repositories/cache.repository');
 const axios = require('axios');
 const catalogService = require('./catalog');
+const { ANIME_SKIP } = require('../config/constants');
 
 // Initialize
 let initPromise = null;
@@ -231,7 +232,7 @@ async function fetchAniskip(malId, episode) {
     return null;
 }
 
-const ANIME_SKIP_CLIENT_ID = 'th2oogUKrgOf1J8wMSIUPV0IpBMsLOJi';
+// ANIME_SKIP_CLIENT_ID moved to config/constants.js
 
 async function fetchAnimeSkip(malId, episode, imdbId) {
     const cacheKey = `as:${malId || imdbId}:${episode}`;
@@ -249,10 +250,10 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
         }
 
         if (name) {
-            const searchRes = await axios.post('https://api.anime-skip.com/graphql', {
+            const searchRes = await axios.post(ANIME_SKIP.BASE_URL, {
                 query: `query ($search: String!) { searchShows(search: $search) { id name } }`,
                 variables: { search: name }
-            }, { headers: { 'X-Client-ID': ANIME_SKIP_CLIENT_ID } });
+            }, { headers: { 'X-Client-ID': ANIME_SKIP.CLIENT_ID } });
 
             const shows = searchRes.data?.data?.searchShows;
             if (shows && shows.length > 0) {
@@ -280,11 +281,11 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
             }
         `;
 
-        const res = await axios.post('https://api.anime-skip.com/graphql', {
+        const res = await axios.post(ANIME_SKIP.BASE_URL, {
             query,
             variables: { showId, episodeNumber: parseFloat(episode) }
         }, {
-            headers: { 'X-Client-ID': ANIME_SKIP_CLIENT_ID }
+            headers: { 'X-Client-ID': ANIME_SKIP.CLIENT_ID }
         });
 
         const episodes = res.data?.data?.findEpisodesByShowId || [];

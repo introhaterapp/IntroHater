@@ -259,5 +259,6 @@ module.exports = {
     repairCatalog,
     getCatalogStats,
     bakeShowSegments,
-    getShowByImdbId
+    getShowByImdbId,
+    fetchMetadata
 };

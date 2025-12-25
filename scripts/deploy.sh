@@ -33,12 +33,13 @@ npm install --production
 if [ ! -f "$APP_DIR/.env" ]; then
     echo "Creating .env file..."
     cat > $APP_DIR/.env << EOL
-TOKEN_SECRET=${TOKEN_SECRET:-"REDACTED"}
+TOKEN_SECRET=${TOKEN_SECRET:-"$(openssl rand -hex 32)"}
 ORACLE_REGION=${ORACLE_REGION:-"us-phoenix-1"}
-ORACLE_COMPARTMENT_ID=${ORACLE_COMPARTMENT_ID:-"REDACTED"}
+ORACLE_COMPARTMENT_ID=${ORACLE_COMPARTMENT_ID:-""}
 
 # MongoDB Configuration
-MONGODB_URI=mongodb://introhater_admin:REDACTED@localhost:27017/introHater?authSource=admin
+# IMPORTANT: Change these credentials in production!
+MONGODB_URI=${MONGODB_URI:-"mongodb://introhater_admin:your_secure_password@localhost:27017/introHater?authSource=admin"}
 
 # Auth0 Configuration
 AUTH0_DOMAIN=${AUTH0_DOMAIN:-"your-tenant.auth0.com"}
@@ -50,17 +51,17 @@ AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:-"your-client-secret"}
 API_KEY_LENGTH=32
 API_RATE_LIMIT=100
 API_RATE_WINDOW_MS=900000
-ADMIN_EMAILS${ADMIN_EMAILS:-"your-email@gmail.com"}
+ADMIN_EMAILS=${ADMIN_EMAILS:-"your-email@gmail.com"}
 
 EOL
-    echo ".env file created."
+    echo ".env file created. PLEASE EDIT IT TO PROVIDE ACTUAL SECRETS."
 else
     echo ".env file already exists."
     
     # Ensure MongoDB connection string exists in .env
     if ! grep -q "MONGODB_URI" "$APP_DIR/.env"; then
-        echo "Adding MongoDB connection to .env..."
-        echo "MONGODB_URI=mongodb://introhater_admin:REDACTED@localhost:27017/introHater?authSource=admin" >> $APP_DIR/.env
+        echo "Adding MongoDB connection placeholder to .env..."
+        echo "# MONGODB_URI=mongodb://introhater_admin:your_secure_password@localhost:27017/introHater?authSource=admin" >> $APP_DIR/.env
     fi
 fi
 

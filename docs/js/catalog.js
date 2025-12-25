@@ -137,8 +137,8 @@ async function openSegmentModal(event) {
     const modalTitle = document.getElementById('modalTitle');
     const grid = document.getElementById('episodeGrid');
 
-    modalTitle.textContent = `Loading segments for ${title}...`;
-    grid.innerHTML = '<div style="text-align:center; padding: 20px;">Fetching latest data...</div>';
+    modalTitle.textContent = `Segments: ${title}`;
+    grid.innerHTML = `<div style="padding: 20px;">${window.createSkeleton('text', 5)}</div>`;
 
     // Ensure modal is visible and responsive
     const modal = document.getElementById('episodeModal');

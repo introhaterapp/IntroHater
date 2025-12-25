@@ -17,7 +17,11 @@
     <!-- Styles -->
     <link rel="stylesheet" href="css/style.css?v=2">
 
+    <!-- Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
 </head>
 
 <body>
@@ -105,6 +109,14 @@
                                         Saved</div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Personal Activity Chart -->
+                    <div class="glass-panel" style="padding: 24px; margin-bottom: 30px;">
+                        <h4 style="margin-bottom: 16px; font-family: 'Space Grotesk', sans-serif;">Weekly Impact</h4>
+                        <div style="height: 200px; width: 100%;">
+                            <canvas id="activityChart"></canvas>
                         </div>
                     </div>
 
@@ -241,6 +253,52 @@
     <script>
         let rdKey = localStorage.getItem('introhater_rdkey') || "";
         let currentItem = null;
+        let activityChart = null;
+
+        function initActivityChart(data) {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            if (activityChart) activityChart.destroy();
+
+            // Mock historical data (since we only have total savedTime currently)
+            // In a real app, the API would return daily increments
+            const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const mockData = [12, 19, 3, 5, 2, 3, 9]; // Replace with dynamic data if avail
+
+            activityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Skips',
+                        data: mockData,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#71717a', font: { size: 10 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#71717a', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
 
         // --- Auth Flow ---
         if (rdKey) {
@@ -337,6 +395,8 @@
 
                 document.getElementById('userSaved').textContent = savedText;
 
+                initActivityChart(data);
+
                 const historyList = document.getElementById('history-list');
                 historyList.innerHTML = '';
 
@@ -393,10 +453,13 @@
         });
 
         // --- Search/Submit Logic ---
+        let searchTimeout = null;
+        document.getElementById('searchInput').addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(performSearch, 500);
+        });
+
         document.getElementById('searchBtn').onclick = performSearch;
-        document.getElementById('searchInput').onkeydown = (e) => {
-            if (e.key === 'Enter') performSearch();
-        };
 
         async function performSearch() {
             const q = document.getElementById('searchInput').value.trim();

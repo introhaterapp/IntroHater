@@ -1172,3 +1172,43 @@ table.dataTable tbody td {
         font-size: 0.85rem;
     }
 }
+
+/* Skeleton Loading Effect */
+.skeleton {
+    background: linear-gradient(90deg,
+            rgba(255, 255, 255, 0.03) 25%,
+            rgba(255, 255, 255, 0.08) 50%,
+            rgba(255, 255, 255, 0.03) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite ease-in-out;
+    border-radius: 4px;
+    display: inline-block;
+    min-height: 1.25em;
+    width: 100%;
+}
+
+.skeleton-text {
+    width: 80%;
+}
+
+.skeleton-title {
+    width: 40%;
+    height: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.skeleton-chip {
+    width: 60px;
+    height: 24px;
+    border-radius: 6px;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}

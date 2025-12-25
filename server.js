@@ -235,6 +235,20 @@ app.get('/api/leaderboard', async (req, res) => {
     });
 });
 
+// 2.1 API: Recent Activity (Ticker)
+app.get('/api/activity', async (req, res) => {
+    try {
+        const recent = await skipService.getAllSegments(20);
+        res.json(recent.map(r => ({
+            videoId: r.videoId,
+            label: r.label || 'Intro',
+            timestamp: r.createdAt || new Date()
+        })));
+    } catch (e) {
+        res.status(500).json([]);
+    }
+});
+
 // 2.5 API: Stats (with Background Refresh)
 const ANISKIP_ESTIMATE = 145000;
 let globalStats = {
@@ -329,7 +343,6 @@ app.post('/api/stats/personal', async (req, res) => {
             const rank = leaderboard.findIndex(u => u.userId === userId) + 1;
 
             // Resolve history metadata (Titles instead of pure IDs)
-            const omdbKey = process.env.OMDB_API_KEY;
             const enrichedHistory = await Promise.all((stats.watchHistory || []).slice(0, 15).map(async (item) => {
                 const parts = item.videoId.split(':');
                 const imdbId = parts[0];
@@ -344,13 +357,13 @@ app.post('/api/stats/personal', async (req, res) => {
                 if (global.metadataCache[imdbId]) {
                     title = global.metadataCache[imdbId].Title;
                     poster = global.metadataCache[imdbId].Poster !== "N/A" ? global.metadataCache[imdbId].Poster : null;
-                } else if (omdbKey) {
-                    // Quick fetch (fire and forget for next time if we want, but let's try await for now)
+                } else {
                     try {
-                        const data = await fetchOMDbData(imdbId, omdbKey);
+                        const data = await catalogService.fetchMetadata(imdbId);
                         if (data) {
-                            if (data.Title) title = data.Title;
-                            if (data.Poster && data.Poster !== "N/A") poster = data.Poster;
+                            title = data.Title;
+                            poster = data.Poster;
+                            global.metadataCache[imdbId] = data; // Cache for next time
                         }
                     } catch (e) { }
                 }

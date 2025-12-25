@@ -162,3 +162,53 @@ async function fetchStats() {
         console.error("Stats error:", e);
     }
 }
+
+/**
+ * Creates a skeleton placeholder element
+ * @param {string} type - 'text', 'title', 'chip', 'circle'
+ * @returns {string} HTML string
+ */
+function createSkeleton(type = 'text', count = 1) {
+    let skeletons = '';
+    for (let i = 0; i < count; i++) {
+        skeletons += `<div class="skeleton skeleton-${type}"></div>`;
+    }
+    return skeletons;
+}
+
+window.createSkeleton = createSkeleton;
+
+// Init Ticker if on Home
+if (document.getElementById('ticker-content')) {
+    initTicker();
+}
+
+async function initTicker() {
+    const el = document.getElementById('ticker-content');
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/activity`);
+        const data = await res.json();
+        if (!data || data.length === 0) return;
+
+        let currentIndex = 0;
+        const rotate = () => {
+            const item = data[currentIndex];
+            const timeAgo = Math.floor((new Date() - new Date(item.timestamp)) / 60000);
+            const timeStr = timeAgo < 1 ? 'just now' : `${timeAgo}m ago`;
+
+            el.style.opacity = 0;
+            setTimeout(() => {
+                el.innerText = `New skip for ${item.videoId.split(':')[0]} (${item.label}) submitted ${timeStr}`;
+                el.style.opacity = 1;
+            }, 500);
+
+            currentIndex = (currentIndex + 1) % data.length;
+        };
+
+        el.style.transition = 'opacity 0.5s ease';
+        rotate();
+        setInterval(rotate, 5000);
+    } catch (e) {
+        console.warn("Ticker failed:", e);
+    }
+}

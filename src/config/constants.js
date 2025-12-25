@@ -72,6 +72,11 @@ const OMDB = {
     BASE_URL: 'https://www.omdbapi.com'
 };
 
+const ANIME_SKIP = {
+    CLIENT_ID: process.env.ANIME_SKIP_CLIENT_ID || 'th2oogUKrgOf1J8wMSIUPV0IpBMsLOJi',
+    BASE_URL: 'https://api.anime-skip.com/graphql'
+};
+
 module.exports = {
     SECURITY,
     SEGMENTS,
@@ -80,5 +85,6 @@ module.exports = {
     SUBMISSION,
     MAINTENANCE,
     REQUIRED_ENV_VARS,
-    OMDB
+    OMDB,
+    ANIME_SKIP
 };

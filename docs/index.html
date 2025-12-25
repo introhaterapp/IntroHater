@@ -18,6 +18,8 @@
 
     <!-- Icons -->
     <link rel="icon" type="image/png" sizes="32x32" href="icon32.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
 </head>
 
 <body>
@@ -87,6 +89,15 @@
                         <div id="stat-saved" class="stat-value-sm">...</div>
                         <div class="stat-label-sm">Time Saved</div>
                     </div>
+                </div>
+
+                <!-- Ticker -->
+                <div id="activity-ticker" class="ticker-container reveal-on-scroll"
+                    style="margin-top: 40px; opacity: 0.7; font-size: 0.85rem;">
+                    <span class="ticker-label"
+                        style="color: var(--primary); font-weight: 600; margin-right: 8px;">LIVE:</span>
+                    <span id="ticker-content" style="color: var(--text-muted);">Fetching recent community
+                        skips...</span>
                 </div>
             </div>
         </section>

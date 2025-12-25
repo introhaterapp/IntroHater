@@ -6,12 +6,12 @@ const usedNonces = new Map();
 
 // Clean up expired nonces periodically (every hour)
 setInterval(() => {
-    const now = Date.now();
-    for (const [nonce, timestamp] of usedNonces.entries()) {
-        if (now - timestamp > SECURITY.TOKEN.MAX_AGE_DAYS * 24 * 60 * 60 * 1000) {
-            usedNonces.delete(nonce);
-        }
+  const now = Date.now();
+  for (const [nonce, timestamp] of usedNonces.entries()) {
+    if (now - timestamp > SECURITY.TOKEN.MAX_AGE_DAYS * 24 * 60 * 60 * 1000) {
+      usedNonces.delete(nonce);
     }
+  }
 }, 60 * 60 * 1000);
 
 function generateUserToken(userId) {
@@ -30,34 +30,38 @@ function generateUserToken(userId) {
 
 function verifyUserToken(userId, token, timestamp, nonce) {
   if (!userId || !token || !timestamp || !nonce) return false;
-  
+
   // Check if nonce has been used
   if (usedNonces.has(nonce)) {
     return false;
   }
-  
+
   const secret = process.env.TOKEN_SECRET || randomBytes(SECURITY.TOKEN.MIN_LENGTH).toString('hex');
   const data = `${userId}-${timestamp}-${nonce}`;
   const expectedToken = createHash('sha256')
     .update(data + secret)
     .digest('hex');
-  
+
   const tokenAge = Date.now() - timestamp;
   const maxAge = SECURITY.TOKEN.MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
-  
+
   const isValid = token === expectedToken && tokenAge <= maxAge;
-  
+
   // If valid, store the nonce to prevent reuse
   if (isValid) {
     usedNonces.set(nonce, Date.now());
   }
-  
+
   return isValid;
 }
 
 function hashIP(ip) {
+  const salt = process.env.FIREBASE_PRIVATE_KEY || 'default_fallback_salt_for_ip_hashing_change_me';
+  if (!process.env.FIREBASE_PRIVATE_KEY) {
+    console.warn('[Security] FIREBASE_PRIVATE_KEY not set. Using default salt for IP hashing.');
+  }
   return createHash('sha256')
-    .update(ip + process.env.FIREBASE_PRIVATE_KEY)
+    .update(ip + salt)
     .digest('hex')
     .slice(0, 16);
 }
