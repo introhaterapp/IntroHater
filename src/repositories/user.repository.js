@@ -8,7 +8,7 @@ class UserRepository extends BaseRepository {
 
     async ensureInit() {
         await super.ensureInit();
-        if (this.useMongo && !this.tokensCollection) {
+        if (this.collection && !this.tokensCollection) {
             try {
                 const mongoService = require('../services/mongodb');
                 this.tokensCollection = await mongoService.getCollection('tokens');
@@ -27,7 +27,7 @@ class UserRepository extends BaseRepository {
 
     async getLeaderboard(limit) {
         await this.ensureInit();
-        if (this.useMongo) {
+        if (this.collection) {
             return await this.collection.find()
                 .sort({ votes: -1, segments: -1 })
                 .limit(limit)

@@ -72,12 +72,14 @@
         <section class="section">
             <div class="container" style="padding-top: 100px; max-width: 800px;">
 
-                <div class="tabs-premium">
-                    <div id="tab-indicator" class="tab-indicator"></div>
-                    <button class="tab-btn-premium active" data-tab="dashboard">My Activity</button>
-                    <button class="tab-btn-premium" data-tab="search">Search & Contribute</button>
-                    <button id="logoutBtn" class="tab-btn-premium"
-                        style="margin-left: auto; color: #ef4444;">Logout</button>
+                <div style="display: flex; justify-content: center; width: 100%;">
+                    <div class="tabs-premium" style="flex-wrap: wrap;">
+                        <div id="tab-indicator" class="tab-indicator"></div>
+                        <button class="tab-btn-premium active" data-tab="dashboard">My Activity</button>
+                        <button class="tab-btn-premium" data-tab="search">Search & Contribute</button>
+                        <button id="logoutBtn" class="tab-btn-premium"
+                            style="margin-left: auto; color: #ef4444;">Logout</button>
+                    </div>
                 </div>
 
                 <!-- Dashboard Tab -->
@@ -114,7 +116,9 @@
 
                     <!-- Personal Activity Chart -->
                     <div class="glass-panel" style="padding: 24px; margin-bottom: 30px;">
-                        <h4 style="margin-bottom: 16px; font-family: 'Space Grotesk', sans-serif;">Weekly Impact</h4>
+                        <h4 style="margin-bottom: 8px; font-family: 'Space Grotesk', sans-serif;">Weekly Impact</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Number of skips
+                            you've used this week. Powered by your watch activity.</p>
                         <div style="height: 200px; width: 100%;">
                             <canvas id="activityChart"></canvas>
                         </div>
@@ -259,24 +263,35 @@
             const ctx = document.getElementById('activityChart').getContext('2d');
             if (activityChart) activityChart.destroy();
 
-            // Mock historical data (since we only have total savedTime currently)
-            // In a real app, the API would return daily increments
+            // Build chart data from actual watch history
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+
+            // Count watch history entries by day of week
+            if (data.history && data.history.length > 0) {
+                data.history.forEach(item => {
+                    if (item.timestamp) {
+                        const dayIndex = new Date(item.timestamp).getDay();
+                        dayCounts[dayIndex]++;
+                    }
+                });
+            }
+
+            // Reorder to start from Monday (Mon, Tue, ..., Sun)
             const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            const mockData = [12, 19, 3, 5, 2, 3, 9]; // Replace with dynamic data if avail
+            const chartData = [...dayCounts.slice(1), dayCounts[0]];
 
             activityChart = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Skips',
-                        data: mockData,
+                        label: 'Skips Used',
+                        data: chartData,
+                        backgroundColor: 'rgba(99, 102, 241, 0.6)',
                         borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 2,
-                        pointRadius: 0
+                        borderWidth: 1,
+                        borderRadius: 6
                     }]
                 },
                 options: {
@@ -289,7 +304,7 @@
                         y: {
                             beginAtZero: true,
                             grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            ticks: { color: '#71717a', font: { size: 10 } }
+                            ticks: { color: '#71717a', font: { size: 10 }, stepSize: 1 }
                         },
                         x: {
                             grid: { display: false },

@@ -9,6 +9,7 @@ const {
     getSkipSegment,
     getSegments,
     getAllSegments,
+    getRecentSegments,
     getSegmentCount,
     addSkipSegment
 } = skipService;
@@ -238,13 +239,14 @@ app.get('/api/leaderboard', async (req, res) => {
 // 2.1 API: Recent Activity (Ticker)
 app.get('/api/activity', async (req, res) => {
     try {
-        const recent = await skipService.getAllSegments(20);
+        const recent = await getRecentSegments(20);
         res.json(recent.map(r => ({
             videoId: r.videoId,
             label: r.label || 'Intro',
             timestamp: r.createdAt || new Date()
         })));
     } catch (e) {
+        console.error('[API] Activity error:', e.message);
         res.status(500).json([]);
     }
 });

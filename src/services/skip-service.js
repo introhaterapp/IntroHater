@@ -179,6 +179,44 @@ async function getAllSegments() {
     return map;
 }
 
+/**
+ * Get recent segments for the activity ticker.
+ * Returns an array of recent segment submissions sorted by createdAt desc.
+ */
+async function getRecentSegments(limit = 20) {
+    await ensureInit();
+    try {
+        // Query all documents and flatten their segments with fullId
+        const allDocs = await skipRepository.find({}, {
+            projection: { fullId: 1, segments: 1 },
+            limit: 100 // Limit docs to avoid loading everything
+        });
+
+        const allSegments = [];
+        allDocs.forEach(doc => {
+            if (doc.segments) {
+                doc.segments.forEach(seg => {
+                    if (seg.createdAt) {
+                        allSegments.push({
+                            videoId: doc.fullId,
+                            label: seg.label || 'Intro',
+                            createdAt: seg.createdAt,
+                            source: seg.source || 'community'
+                        });
+                    }
+                });
+            }
+        });
+
+        // Sort by createdAt descending and take top N
+        allSegments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        return allSegments.slice(0, limit);
+    } catch (e) {
+        console.error('[SkipService] getRecentSegments error:', e.message);
+        return [];
+    }
+}
+
 // --- External API Integrations ---
 
 async function getMalId(imdbId) {
@@ -506,6 +544,7 @@ module.exports = {
     getSkipSegment,
     getSegments,
     getAllSegments,
+    getRecentSegments,
     getSegmentCount,
     addSkipSegment,
     cleanupDuplicates,
