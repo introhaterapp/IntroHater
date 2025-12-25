@@ -425,13 +425,15 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
         cleanFullId = seriesId;
     }
 
-    // Duplicate check
-    const existingSegments = await getSegments(cleanFullId);
-    if (existingSegments && existingSegments.length > 0) {
-        const isDuplicate = existingSegments.some(s => {
+    // Duplicate check - query DB directly to avoid stale cache
+    const existingDoc = await skipRepository.findOne({ fullId: cleanFullId });
+    if (existingDoc && existingDoc.segments && existingDoc.segments.length > 0) {
+        const isDuplicate = existingDoc.segments.some(s => {
             return Math.abs(s.start - start) < 1.0 && Math.abs(s.end - end) < 1.0;
         });
-        if (isDuplicate) return null;
+        if (isDuplicate) {
+            return null; // Already exists, skip
+        }
     }
 
     const newSegment = {
