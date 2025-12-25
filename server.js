@@ -88,28 +88,34 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
 
     console.log(`[Server] Request for ${type} ${id}`);
     let originalStreams = [];
+    let skipSeg = null;
 
     try {
         const torrentioUrl = `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex,rutor,rutracker,torrent9,mejortorrent,wolfmax4k%7Csort=qualitysize%7Clanguage=korean%7Cqualityfilter=scr,cam%7Cdebridoptions=nodownloadlinks,nocatalog%7Crealdebrid=${rdKey}/stream/${type}/${id}.json`;
 
-        const response = await axios.get(torrentioUrl);
-        if (response.status === 200) {
-            const data = response.data;
-            if (data.streams) {
-                originalStreams = data.streams;
-                console.log(`[Server] Fetched ${originalStreams.length} streams from upstream`);
-            }
+        // Parallelize external fetch and skip lookup
+        const [torrentioResponse, skipResult] = await Promise.all([
+            axios.get(torrentioUrl).catch(e => {
+                console.error("Error fetching upstream:", e.message);
+                return { status: 500, data: { streams: [] } };
+            }),
+            getSkipSegment(id).catch(e => {
+                console.error("Error getting skip:", e.message);
+                return null;
+            })
+        ]);
+
+        if (torrentioResponse.status === 200 && torrentioResponse.data.streams) {
+            originalStreams = torrentioResponse.data.streams;
+            console.log(`[Server] Fetched ${originalStreams.length} streams from upstream`);
+        }
+
+        skipSeg = skipResult;
+        if (skipSeg) {
+            console.log(`[Server] Found skip for ${id}: ${skipSeg.start}-${skipSeg.end}s`);
         }
     } catch (e) {
-        console.error("Error fetching upstream:", e.message);
-    }
-
-    if (originalStreams.length === 0) return { streams: [] };
-
-    // FETCH SKIP (Async now because of Aniskip)
-    const skipSeg = await getSkipSegment(id);
-    if (skipSeg) {
-        console.log(`[Server] Found skip for ${id}: ${skipSeg.start}-${skipSeg.end}s`);
+        console.error("[Server] Stream Request Lifecycle Error:", e.message);
     }
 
     const modifiedStreams = [];

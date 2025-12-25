@@ -77,6 +77,16 @@ async function registerShow(videoId, segmentCount = null, segments = null) {
     await ensureInit();
     let media = await catalogRepository.findByImdbId(imdbId);
 
+    // If show exists and we are just "checking" without new segments, return early
+    if (media && !segments) {
+        const lastUpdated = new Date(media.lastUpdated).getTime();
+        const now = Date.now();
+        const age = now - lastUpdated;
+
+        // If updated in last 24 hours, don't even think about re-registering
+        if (age < 24 * 60 * 60 * 1000) return;
+    }
+
     if (!media) {
         const meta = await fetchMetadata(imdbId);
         if (!meta) return;

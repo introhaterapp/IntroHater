@@ -63,11 +63,21 @@ class CatalogRepository extends BaseRepository {
         return { showCount, episodeCount };
     }
 
-    async findByImdbId(imdbId) {
-        return await this.findOne({ imdbId });
+    async findByImdbId(imdbId, projection = null) {
+        await this.ensureInit();
+        if (!projection && this.cache.has(imdbId)) {
+            return this.cache.get(imdbId);
+        }
+
+        const result = await this.collection.findOne({ imdbId }, { projection });
+        if (result && !projection) {
+            this.cache.set(imdbId, result);
+        }
+        return result;
     }
 
     async upsertCatalogEntry(imdbId, entry) {
+        this.cache.delete(imdbId); // Invalidate cache
         return await this.replaceOne({ imdbId }, { imdbId, ...entry }, { upsert: true });
     }
 }
