@@ -239,7 +239,7 @@ app.get('/api/leaderboard', async (req, res) => {
 // 2.1 API: Recent Activity (Ticker)
 app.get('/api/activity', async (req, res) => {
     try {
-        const recent = await getRecentSegments(20);
+        const recent = await getRecentSegments(50); // Fetch more, then dedupe
 
         // Enrich with show names from catalog
         const enriched = await Promise.all(recent.map(async (r) => {
@@ -280,7 +280,15 @@ app.get('/api/activity', async (req, res) => {
             };
         }));
 
-        res.json(enriched);
+        // Deduplicate by videoId - keep only the most recent entry for each episode
+        const seen = new Set();
+        const deduplicated = enriched.filter(item => {
+            if (seen.has(item.videoId)) return false;
+            seen.add(item.videoId);
+            return true;
+        }).slice(0, 20); // Limit to 20 unique entries
+
+        res.json(deduplicated);
     } catch (e) {
         console.error('[API] Activity error:', e.message);
         res.status(500).json([]);
