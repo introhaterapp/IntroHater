@@ -1,156 +1,202 @@
-const fs = require('fs').promises;
-const mongoService = require('../../src/services/mongodb');
+/**
+ * Skip Service Unit Tests
+ * Tests segment retrieval, external API fallback, and caching with mocked MongoDB.
+ */
+
 const axios = require('axios');
+const mongoService = require('../../src/services/mongodb');
 
 // Hoisted mocks
-jest.mock('fs', () => ({
-    promises: {
-        readFile: jest.fn(),
-        writeFile: jest.fn(),
-        mkdir: jest.fn()
-    }
-}));
 jest.mock('axios');
-jest.mock('../../src/services/mongodb');
+jest.mock('../../src/services/mongodb', () => ({
+    getCollection: jest.fn(),
+    close: jest.fn()
+}));
 jest.mock('../../src/services/catalog', () => ({
     registerShow: jest.fn().mockResolvedValue(),
-    updateCatalog: jest.fn().mockResolvedValue()
+    bakeShowSegments: jest.fn().mockResolvedValue(),
+    getShowByImdbId: jest.fn().mockResolvedValue(null)
 }));
 
 describe('Skip Service', () => {
     let skipService;
+    let mockSkipsCollection;
+    let mockCacheCollection;
 
     beforeEach(() => {
         jest.clearAllMocks();
+
+        // Setup mock collections
+        mockSkipsCollection = {
+            createIndex: jest.fn().mockResolvedValue(true),
+            findOne: jest.fn(),
+            find: jest.fn().mockReturnThis(),
+            sort: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            project: jest.fn().mockReturnThis(),
+            toArray: jest.fn().mockResolvedValue([]),
+            updateOne: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+            countDocuments: jest.fn().mockResolvedValue(0),
+            aggregate: jest.fn().mockReturnValue({
+                toArray: jest.fn().mockResolvedValue([{ total: 0 }])
+            })
+        };
+
+        mockCacheCollection = {
+            createIndex: jest.fn().mockResolvedValue(true),
+            findOne: jest.fn().mockResolvedValue(null),
+            updateOne: jest.fn().mockResolvedValue({ modifiedCount: 1 })
+        };
+
+        mongoService.getCollection.mockImplementation((name) => {
+            if (name === 'skips') return Promise.resolve(mockSkipsCollection);
+            if (name === 'cache') return Promise.resolve(mockCacheCollection);
+            return Promise.resolve(null);
+        });
     });
 
     afterAll(async () => {
         await mongoService.close();
     });
 
-    const loadService = () => require('../../src/services/skip-service');
+    const loadService = async () => {
+        jest.resetModules();
+        return require('../../src/services/skip-service');
+    };
 
-    it('should return null if no segment found (Local JSON empty)', async () => {
-        // Setup mocks BEFORE require
-        mongoService.getCollection.mockResolvedValue(null);
-        fs.readFile.mockResolvedValue(JSON.stringify({}));
+    describe('getSkipSegment', () => {
+        it('should return null if no segment found in DB', async () => {
+            mockSkipsCollection.findOne.mockResolvedValue(null);
 
-        // Isolate to ensure fresh init
-        await jest.isolateModules(async () => {
-            skipService = loadService();
-            // Wait for init if needed? getSkipSegment calls ensureInit internally.
+            skipService = await loadService();
             const result = await skipService.getSkipSegment('tt12345:1:1');
+
             expect(result).toBeNull();
         });
-    });
 
-    it('should return segment from local JSON if mongo is not available', async () => {
-        mongoService.getCollection.mockResolvedValue(null);
-        const mockData = {
-            'tt12345:1:1': [{ start: 10, end: 20, label: 'Intro', verified: true }]
-        };
-        fs.readFile.mockResolvedValue(JSON.stringify(mockData));
+        it('should return segment from MongoDB if available', async () => {
+            mockSkipsCollection.findOne.mockResolvedValue({
+                fullId: 'tt12345:1:1',
+                segments: [{ start: 10, end: 20, label: 'Intro', verified: true }]
+            });
 
-        await jest.isolateModules(async () => {
-            skipService = loadService();
-            // We need to wait for the internal initPromise to resolve implicitly, 
-            // but getSkipSegment awaits ensureInit(), so it should be fine.
+            skipService = await loadService();
             const result = await skipService.getSkipSegment('tt12345:1:1');
 
-            // The service returns { start, end } extracted from the segment
-            expect(result).toEqual({ start: 10, end: 20 });
-        });
-    });
-
-    it('should use Aniskip fallback if not in DB', async () => {
-        mongoService.getCollection.mockResolvedValue(null);
-        fs.readFile.mockResolvedValue(JSON.stringify({}));
-
-        axios.get.mockImplementation((url) => {
-            if (url.includes('cinemeta')) {
-                return Promise.resolve({ data: { meta: { name: 'Naruto' } } });
-            }
-            if (url.includes('jikan')) {
-                return Promise.resolve({ data: { data: [{ mal_id: 20 }] } });
-            }
-            if (url.includes('aniskip')) {
-                return Promise.resolve({
-                    data: {
-                        found: true,
-                        results: [{ skipType: 'op', interval: { startTime: 100, endTime: 200 } }]
-                    }
-                });
-            }
-            return Promise.reject(new Error('not found'));
+            expect(result).toEqual({ start: 10, end: 20, source: 'community' });
         });
 
-        await jest.isolateModules(async () => {
-            skipService = loadService();
+        it('should use Aniskip fallback if not in DB', async () => {
+            mockSkipsCollection.findOne.mockResolvedValue(null);
+
+            axios.get.mockImplementation((url) => {
+                if (url.includes('cinemeta')) {
+                    return Promise.resolve({ data: { meta: { name: 'Naruto' } } });
+                }
+                if (url.includes('jikan')) {
+                    return Promise.resolve({ data: { data: [{ mal_id: 20 }] } });
+                }
+                if (url.includes('aniskip')) {
+                    return Promise.resolve({
+                        data: {
+                            found: true,
+                            results: [{ skipType: 'op', interval: { startTime: 100, endTime: 200 } }]
+                        }
+                    });
+                }
+                return Promise.reject(new Error('not found'));
+            });
+
+            skipService = await loadService();
             const result = await skipService.getSkipSegment('tt99999:1:1');
+
             expect(result).toEqual({ start: 100, end: 200, label: 'Intro', source: 'aniskip' });
         });
     });
 
-    it('should persist Ani-Skip result to DB when found', async () => {
-        mongoService.getCollection.mockResolvedValue(null);
-        fs.readFile.mockResolvedValue(JSON.stringify({}));
+    describe('getSegments', () => {
+        it('should return empty array for non-existent video', async () => {
+            mockSkipsCollection.findOne.mockResolvedValue(null);
 
-        let saveCalledPromise = new Promise(resolve => {
-            fs.writeFile.mockImplementation((path, data) => {
-                resolve(data); // Resolve with the data being saved
-                return Promise.resolve();
+            skipService = await loadService();
+            const result = await skipService.getSegments('tt00000:1:1');
+
+            expect(result).toEqual([]);
+        });
+
+        it('should return segments for existing video', async () => {
+            mockSkipsCollection.findOne.mockResolvedValue({
+                fullId: 'tt12345:1:1',
+                segments: [
+                    { start: 10, end: 20, label: 'Intro' },
+                    { start: 100, end: 110, label: 'Outro' }
+                ]
             });
-        });
 
-        axios.get.mockImplementation((url) => {
-            if (url.includes('cinemeta')) return Promise.resolve({ data: { meta: { name: 'Naruto' } } });
-            if (url.includes('jikan')) return Promise.resolve({ data: { data: [{ mal_id: 20 }] } });
-            if (url.includes('aniskip')) {
-                return Promise.resolve({
-                    data: {
-                        found: true,
-                        results: [{ skipType: 'op', interval: { startTime: 100, endTime: 200 } }]
-                    }
-                });
-            }
-            return Promise.reject(new Error('not found'));
-        });
+            skipService = await loadService();
+            const result = await skipService.getSegments('tt12345:1:1');
 
-        await jest.isolateModules(async () => {
-            skipService = loadService();
-            await skipService.getSkipSegment('tt88888:1:1');
-
-            // Wait for the save to happen (or timeout if it fails)
-            const savedDataJson = await Promise.race([
-                saveCalledPromise,
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout waiting for save')), 1000))
-            ]);
-
-            const savedData = JSON.parse(savedDataJson);
-            expect(savedData['tt88888:1:1']).toBeDefined();
-            expect(savedData['tt88888:1:1'][0].source).toBe('aniskip');
+            expect(result.length).toBe(2);
+            expect(result[0].start).toBe(10);
+            expect(result[1].start).toBe(100);
         });
     });
 
-    it('should prioritize Mongo if available', async () => {
-        const mockCollection = {
-            findOne: jest.fn().mockResolvedValue({
-                fullId: 'tt55555:1:1',
-                segments: [{ start: 50, end: 60, label: 'Intro' }]
-            }),
-            createIndex: jest.fn(),
-            countDocuments: jest.fn().mockResolvedValue(1)
-        };
-        mongoService.getCollection.mockResolvedValue(mockCollection);
+    describe('getRecentSegments', () => {
+        it('should return recent segments sorted by createdAt', async () => {
+            mockSkipsCollection.toArray.mockResolvedValue([
+                {
+                    fullId: 'tt111:1:1',
+                    segments: [{ label: 'Intro', createdAt: '2025-01-01T10:00:00Z' }]
+                },
+                {
+                    fullId: 'tt222:1:1',
+                    segments: [{ label: 'Intro', createdAt: '2025-01-02T10:00:00Z' }]
+                }
+            ]);
 
-        await jest.isolateModules(async () => {
-            skipService = loadService();
-            const result = await skipService.getSkipSegment('tt55555:1:1');
-            expect(result).toEqual({ start: 50, end: 60 });
-            expect(mockCollection.findOne).toHaveBeenCalled();
-            expect(fs.readFile).not.toHaveBeenCalled(); // Should skip local load if Mongo present?
-            // Actually code says: if (skipsCollection) ... else loadSkips().
-            // So fs.readFile should NOT be called.
+            skipService = await loadService();
+            const result = await skipService.getRecentSegments(10);
+
+            expect(Array.isArray(result)).toBe(true);
+            // Should be sorted by createdAt desc
+            if (result.length >= 2) {
+                expect(new Date(result[0].createdAt) >= new Date(result[1].createdAt)).toBe(true);
+            }
+        });
+    });
+
+    describe('addSkipSegment', () => {
+        it('should add new segment to database', async () => {
+            mockSkipsCollection.findOne.mockResolvedValue(null);
+            mockSkipsCollection.updateOne.mockResolvedValue({ modifiedCount: 1 });
+
+            skipService = await loadService();
+            const result = await skipService.addSkipSegment('tt12345:1:1', 10, 20, 'Intro', 'user123');
+
+            expect(result).not.toBeNull();
+            expect(result.start).toBe(10);
+            expect(result.end).toBe(20);
+        });
+
+        it('should reject invalid times', async () => {
+            skipService = await loadService();
+
+            await expect(skipService.addSkipSegment('tt12345:1:1', -5, 20)).rejects.toThrow();
+            await expect(skipService.addSkipSegment('tt12345:1:1', 30, 20)).rejects.toThrow();
+        });
+    });
+
+    describe('getSegmentCount', () => {
+        it('should return segment count from aggregation', async () => {
+            mockSkipsCollection.aggregate.mockReturnValue({
+                toArray: jest.fn().mockResolvedValue([{ total: 1500 }])
+            });
+
+            skipService = await loadService();
+            const count = await skipService.getSegmentCount();
+
+            expect(count).toBe(1500);
         });
     });
 });

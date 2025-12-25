@@ -200,7 +200,8 @@ async function initTicker() {
 
             el.style.opacity = 0;
             setTimeout(() => {
-                el.innerText = `New skip for ${item.videoId.split(':')[0]} (${item.label}) submitted ${timeStr}`;
+                const displayName = item.title || item.videoId.split(':')[0];
+                el.innerText = `New skip for "${displayName}" (${item.label}) submitted ${timeStr}`;
                 el.style.opacity = 1;
             }, 500);
 

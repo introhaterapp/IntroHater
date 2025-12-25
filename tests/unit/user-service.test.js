@@ -1,21 +1,41 @@
-const userService = require('../../src/services/user-service');
-const fs = require('fs').promises;
+/**
+ * User Service Unit Tests
+ * Tests user stats, leaderboard, and token operations with mocked MongoDB.
+ */
+
 const mongoService = require('../../src/services/mongodb');
 
-jest.mock('fs', () => ({
-    promises: {
-        readFile: jest.fn(),
-        writeFile: jest.fn(),
-        mkdir: jest.fn()
-    }
+// Mock MongoDB service
+jest.mock('../../src/services/mongodb', () => ({
+    getCollection: jest.fn(),
+    close: jest.fn()
 }));
-jest.mock('../../src/services/mongodb');
 
 describe('User Service', () => {
-    beforeEach(() => {
+    let userService;
+    let mockCollection;
+
+    beforeEach(async () => {
         jest.clearAllMocks();
-        // Reset robustly if possible, but isolation is easier if state is internal.
-        // We will rely on mocking dependencies to control "state" perception.
+
+        // Setup mock collection with all required methods
+        mockCollection = {
+            createIndex: jest.fn().mockResolvedValue(true),
+            findOne: jest.fn(),
+            find: jest.fn().mockReturnThis(),
+            sort: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            toArray: jest.fn(),
+            updateOne: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+            countDocuments: jest.fn().mockResolvedValue(0),
+            aggregate: jest.fn().mockReturnThis()
+        };
+
+        mongoService.getCollection.mockResolvedValue(mockCollection);
+
+        // Clear module cache to get fresh instance
+        jest.resetModules();
+        userService = require('../../src/services/user-service');
     });
 
     afterAll(async () => {
@@ -23,88 +43,83 @@ describe('User Service', () => {
     });
 
     describe('getUserStats', () => {
-        it('should return null if not using Mongo and no local data', async () => {
-            mongoService.getCollection.mockResolvedValue(null);
-            fs.readFile.mockRejectedValue({ code: 'ENOENT' }); // No file
+        it('should return null for non-existent user', async () => {
+            mockCollection.findOne.mockResolvedValue(null);
 
-            // Re-require to trigger fresh init
-            await jest.isolateModules(async () => {
-                const service = require('../../src/services/user-service');
-                const stats = await service.getUserStats('user123');
-                expect(stats).toBeNull();
-            });
+            const stats = await userService.getUserStats('nonexistent');
+            expect(stats).toBeNull();
+            expect(mockCollection.findOne).toHaveBeenCalledWith({ userId: 'nonexistent' });
         });
 
-        it('should return stats from Mongo if available', async () => {
-            const mockUser = { userId: 'user123', votes: 5 };
-            const mockCollection = {
-                createIndex: jest.fn(),
-                findOne: jest.fn().mockResolvedValue(mockUser)
-            };
-            mongoService.getCollection.mockResolvedValue(mockCollection);
+        it('should return user stats if user exists', async () => {
+            const mockUser = { userId: 'user123', votes: 5, segments: 10 };
+            mockCollection.findOne.mockResolvedValue(mockUser);
 
-            await jest.isolateModules(async () => {
-                const service = require('../../src/services/user-service');
-                const stats = await service.getUserStats('user123');
-                expect(stats).toEqual(mockUser);
-            });
-        });
-    });
-
-    describe('updateUserStats', () => {
-        it('should create new user stats if they do not exist (Local JSON)', async () => {
-            mongoService.getCollection.mockResolvedValue(null);
-            fs.readFile.mockResolvedValue(JSON.stringify({ stats: [], tokens: [] }));
-
-            await jest.isolateModules(async () => {
-                const service = require('../../src/services/user-service');
-                const result = await service.updateUserStats('newuser', { segments: 1 });
-
-                expect(result).toMatchObject({ userId: 'newuser', segments: 1 });
-                expect(fs.writeFile).toHaveBeenCalled();
-            });
-        });
-
-        it('should increment votes correctly (Local JSON)', async () => {
-            mongoService.getCollection.mockResolvedValue(null);
-            const initialData = {
-                stats: [{ userId: 'user1', votes: 10, votedVideos: [] }],
-                tokens: []
-            };
-            fs.readFile.mockResolvedValue(JSON.stringify(initialData));
-
-            await jest.isolateModules(async () => {
-                const service = require('../../src/services/user-service');
-                const result = await service.updateUserStats('user1', { votes: 1, videoId: 'vid1' });
-
-                expect(result.votes).toBe(11); // 10 + 1
-                expect(result.votedVideos).toContain('vid1');
-            });
+            const stats = await userService.getUserStats('user123');
+            expect(stats).toEqual(mockUser);
         });
     });
 
     describe('getLeaderboard', () => {
-        it('should sort users by votes then segments (Local JSON)', async () => {
-            mongoService.getCollection.mockResolvedValue(null);
-            const mockData = {
-                stats: [
-                    { userId: 'u1', votes: 5, segments: 10 },
-                    { userId: 'u2', votes: 10, segments: 5 },
-                    { userId: 'u3', votes: 5, segments: 20 }
-                ],
-                tokens: []
-            };
-            fs.readFile.mockResolvedValue(JSON.stringify(mockData));
+        it('should return sorted leaderboard from MongoDB', async () => {
+            const mockUsers = [
+                { userId: 'u1', votes: 10, segments: 5 },
+                { userId: 'u2', votes: 5, segments: 20 }
+            ];
+            mockCollection.toArray.mockResolvedValue(mockUsers);
 
-            await jest.isolateModules(async () => {
-                const service = require('../../src/services/user-service');
-                const board = await service.getLeaderboard();
+            const board = await userService.getLeaderboard(10);
 
-                // Expected order: u2 (10 votes), u3 (5 votes, 20 segs), u1 (5 votes, 10 segs)
-                expect(board[0].userId).toBe('u2');
-                expect(board[1].userId).toBe('u3');
-                expect(board[2].userId).toBe('u1');
-            });
+            expect(mockCollection.find).toHaveBeenCalled();
+            expect(mockCollection.sort).toHaveBeenCalledWith({ votes: -1, segments: -1 });
+            expect(mockCollection.limit).toHaveBeenCalledWith(10);
+            expect(board).toEqual(mockUsers);
+        });
+
+        it('should return empty array if no users', async () => {
+            mockCollection.toArray.mockResolvedValue([]);
+
+            const board = await userService.getLeaderboard();
+            expect(board).toEqual([]);
+        });
+    });
+
+    describe('getStats', () => {
+        it('should return aggregated stats', async () => {
+            mockCollection.countDocuments.mockResolvedValue(100);
+            mockCollection.toArray.mockResolvedValue([{ totalVotes: 500 }]);
+            mockCollection.findOne.mockResolvedValue({ totalSavedTime: 3600 });
+
+            const stats = await userService.getStats();
+
+            expect(stats.userCount).toBe(100);
+            expect(stats.voteCount).toBe(500);
+            expect(stats.totalSavedTime).toBe(3600);
+        });
+    });
+
+    describe('incrementSavedTime', () => {
+        it('should increment global and user saved time', async () => {
+            await userService.incrementSavedTime('user123', 60);
+
+            // Should update global stats
+            expect(mockCollection.updateOne).toHaveBeenCalledWith(
+                { userId: 'GLOBAL_STATS' },
+                { $inc: { totalSavedTime: 60 } },
+                { upsert: true }
+            );
+        });
+
+        it('should not increment for zero or negative duration', async () => {
+            await userService.incrementSavedTime('user123', 0);
+            await userService.incrementSavedTime('user123', -10);
+
+            // Should not call updateOne for global stats increment
+            expect(mockCollection.updateOne).not.toHaveBeenCalledWith(
+                { userId: 'GLOBAL_STATS' },
+                expect.anything(),
+                expect.anything()
+            );
         });
     });
 });

@@ -240,11 +240,38 @@ app.get('/api/leaderboard', async (req, res) => {
 app.get('/api/activity', async (req, res) => {
     try {
         const recent = await getRecentSegments(20);
-        res.json(recent.map(r => ({
-            videoId: r.videoId,
-            label: r.label || 'Intro',
-            timestamp: r.createdAt || new Date()
-        })));
+
+        // Enrich with show names from catalog
+        const enriched = await Promise.all(recent.map(async (r) => {
+            const parts = r.videoId.split(':');
+            const imdbId = parts[0];
+            let title = imdbId;
+
+            // Try to get title from catalog cache
+            if (global.metadataCache && global.metadataCache[imdbId]) {
+                title = global.metadataCache[imdbId].Title;
+            } else {
+                // Try catalog service
+                try {
+                    const show = await catalogService.getShowByImdbId(imdbId);
+                    if (show && show.title) {
+                        title = show.title;
+                        // Cache it
+                        if (!global.metadataCache) global.metadataCache = {};
+                        global.metadataCache[imdbId] = { Title: show.title };
+                    }
+                } catch (e) { }
+            }
+
+            return {
+                videoId: r.videoId,
+                title: title,
+                label: r.label || 'Intro',
+                timestamp: r.createdAt || new Date()
+            };
+        }));
+
+        res.json(enriched);
     } catch (e) {
         console.error('[API] Activity error:', e.message);
         res.status(500).json([]);

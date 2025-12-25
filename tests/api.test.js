@@ -72,13 +72,14 @@ async function runTests() {
     });
 
     // --- Activity API (Live Ticker) ---
-    await test('GET /api/activity returns array of recent segments', async () => {
+    await test('GET /api/activity returns array of recent segments with titles', async () => {
         const res = await fetch(`${BASE_URL}/api/activity`);
         assert(res.ok, `Expected 200, got ${res.status}`);
         const data = await res.json();
         assert(Array.isArray(data), 'response should be an array');
         if (data.length > 0) {
             assert(data[0].videoId !== undefined, 'item should have videoId');
+            assert(data[0].title !== undefined, 'item should have title');
             assert(data[0].label !== undefined, 'item should have label');
             assert(data[0].timestamp !== undefined, 'item should have timestamp');
         }
