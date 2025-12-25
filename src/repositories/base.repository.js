@@ -1,77 +1,7 @@
 const mongoService = require('../services/mongodb');
 
-class BaseRepository {
-    constructor(collectionName) {
-        this.collectionName = collectionName;
-        this.collection = null;
-        this.useMongo = false;
-    }
-
-    async ensureInit() {
-        if (this.collection) return;
-        try {
-            this.collection = await mongoService.getCollection(this.collectionName);
-            if (this.collection) {
-                this.useMongo = true;
-            }
-        } catch (e) {
-            console.error(`[Repository][${this.collectionName}] Init Error:`, e);
-        }
-    }
-
-    async find(query = {}, options = {}) {
-        await this.ensureInit();
-        if (this.useMongo) {
-            let cursor = this.collection.find(query);
-            if (options.sort) cursor = cursor.sort(options.sort);
-            if (options.skip) cursor = cursor.skip(options.skip);
-            if (options.limit) cursor = cursor.limit(options.limit);
-            return await cursor.toArray();
-        }
-        return [];
-    }
-
-    async findOne(query) {
-        await this.ensureInit();
-        if (this.useMongo) {
-            return await this.collection.findOne(query);
-        }
-        return null;
-    }
-
-    async updateOne(query, update, options = {}) {
-        await this.ensureInit();
-        if (this.useMongo) {
-            return await this.collection.updateOne(query, update, options);
-        }
-    }
-
-    async replaceOne(query, replacement, options = {}) {
-        await this.ensureInit();
-        if (this.useMongo) {
-            return await this.collection.replaceOne(query, replacement, options);
-        }
-    }
-
-    async countDocuments(query = {}) {
-        await this.ensureInit();
-        if (this.useMongo) {
-            return await this.collection.countDocuments(query);
-        }
-        return 0;
-    }
-
-    async aggregate(pipeline) {
-        await this.ensureInit();
-        if (this.useMongo) {
-            return await this.collection.aggregate(pipeline).toArray();
-        }
-        return [];
-    }
-}
-
 class SimpleLRUCache {
-    constructor(maxSize = 100) {
+    constructor(maxSize = 200) {
         this.maxSize = maxSize;
         this.cache = new Map();
     }
@@ -104,6 +34,68 @@ class SimpleLRUCache {
 
     clear() {
         this.cache.clear();
+    }
+}
+
+class BaseRepository {
+    constructor(collectionName) {
+        this.collectionName = collectionName;
+        this.collection = null;
+        this.cache = new SimpleLRUCache(500); // Unified repository-level cache
+    }
+
+    async ensureInit() {
+        if (this.collection) return;
+        this.collection = await mongoService.getCollection(this.collectionName);
+        if (!this.collection) {
+            throw new Error(`[Repository][${this.collectionName}] MongoDB is required but not connected.`);
+        }
+    }
+
+    async find(query = {}, options = {}) {
+        await this.ensureInit();
+        let cursor = this.collection.find(query);
+        if (options.projection) cursor = cursor.project(options.projection);
+        if (options.batchSize) cursor = cursor.batchSize(options.batchSize);
+        if (options.sort) cursor = cursor.sort(options.sort);
+        if (options.skip) cursor = cursor.skip(options.skip);
+        if (options.limit) cursor = cursor.limit(options.limit);
+        return await cursor.toArray();
+    }
+
+    async findOne(query) {
+        await this.ensureInit();
+        return await this.collection.findOne(query);
+    }
+
+    async insertOne(doc) {
+        await this.ensureInit();
+        return await this.collection.insertOne(doc);
+    }
+
+    async updateOne(query, update, options = {}) {
+        await this.ensureInit();
+        return await this.collection.updateOne(query, update, options);
+    }
+
+    async replaceOne(query, replacement, options = {}) {
+        await this.ensureInit();
+        return await this.collection.replaceOne(query, replacement, options);
+    }
+
+    async deleteOne(query) {
+        await this.ensureInit();
+        return await this.collection.deleteOne(query);
+    }
+
+    async countDocuments(query = {}) {
+        await this.ensureInit();
+        return await this.collection.countDocuments(query);
+    }
+
+    async aggregate(pipeline) {
+        await this.ensureInit();
+        return await this.collection.aggregate(pipeline).toArray();
     }
 }
 

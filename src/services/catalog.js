@@ -1,46 +1,8 @@
 const axios = require('axios');
-const path = require('path');
-const fs = require('fs').promises;
 const catalogRepository = require('../repositories/catalog.repository');
 
 async function ensureInit() {
     await catalogRepository.ensureInit();
-}
-
-async function readCatalog() {
-    await ensureInit();
-    if (catalogRepository.useMongo) {
-        const items = await catalogRepository.find({});
-        const media = {};
-        items.forEach(item => {
-            const { _id, ...rest } = item;
-            media[item.imdbId] = rest;
-        });
-        return { lastUpdated: new Date().toISOString(), media };
-    }
-    // Fallback to local file if Mongo not available (legacy)
-    try {
-        const CATALOG_FILE = path.join(__dirname, '../../data/catalog.json');
-        const data = await fs.readFile(CATALOG_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (e) {
-        return { lastUpdated: null, media: {} };
-    }
-}
-
-async function writeCatalogEntry(imdbId, entry) {
-    await ensureInit();
-    if (catalogRepository.useMongo) {
-        await catalogRepository.upsertCatalogEntry(imdbId, entry);
-    } else {
-        try {
-            const CATALOG_FILE = path.join(__dirname, '../../data/catalog.json');
-            const catalog = await readCatalog();
-            catalog.media[imdbId] = entry;
-            catalog.lastUpdated = new Date().toISOString();
-            await fs.writeFile(CATALOG_FILE, JSON.stringify(catalog, null, 2));
-        } catch (e) { }
-    }
 }
 
 async function fetchMetadata(imdbId) {
@@ -100,8 +62,8 @@ async function isSeries(imdbId) {
     } catch (e) { return false; }
 }
 
-async function registerShow(videoId, segmentCount = null) {
-    const parts = videoId.split(':');
+async function registerShow(videoId, segmentCount = null, segments = null) {
+    const parts = String(videoId).split(':');
     const imdbId = parts[0];
 
     if (!imdbId.match(/^tt\d+$/)) {
@@ -113,13 +75,7 @@ async function registerShow(videoId, segmentCount = null) {
     const episode = parts[2] ? parseInt(parts[2]) : null;
 
     await ensureInit();
-    let media = null;
-    if (catalogRepository.useMongo) {
-        media = await catalogRepository.findByImdbId(imdbId);
-    } else {
-        const catalog = await readCatalog();
-        media = catalog.media[imdbId];
-    }
+    let media = await catalogRepository.findByImdbId(imdbId);
 
     if (!media) {
         const meta = await fetchMetadata(imdbId);
@@ -140,10 +96,9 @@ async function registerShow(videoId, segmentCount = null) {
 
     if (season && episode) {
         const epKey = `${season}:${episode}`;
+        if (!media.episodes) media.episodes = {};
         if (!media.episodes[epKey]) {
-            media.episodes[epKey] = {
-                season, episode, count: 0
-            };
+            media.episodes[epKey] = { season, episode, count: 0 };
         }
 
         if (segmentCount !== null) {
@@ -151,139 +106,117 @@ async function registerShow(videoId, segmentCount = null) {
         } else {
             media.episodes[epKey].count++;
         }
+
+        if (segments) {
+            media.episodes[epKey].segments = segments;
+        }
     }
 
     media.totalSegments = Object.keys(media.episodes || {}).length;
     media.lastUpdated = new Date().toISOString();
 
-    await writeCatalogEntry(imdbId, media);
+    await catalogRepository.upsertCatalogEntry(imdbId, media);
 }
 
-// wrapper removed
+/**
+ * Bakes all segments for a show into its catalog entry for high-speed retrieval.
+ */
+async function bakeShowSegments(imdbId, segmentsByEpisode) {
+    await ensureInit();
+    let media = await catalogRepository.findByImdbId(imdbId);
+    if (!media) {
+        // Register manually if it doesn't exist
+        await registerShow(imdbId + ":1:1", 0);
+        media = await catalogRepository.findByImdbId(imdbId);
+    }
+
+    if (!media) return;
+    if (!media.episodes) media.episodes = {};
+
+    for (const [epKey, segments] of Object.entries(segmentsByEpisode)) {
+        const [s, e] = epKey.split(':').map(Number);
+        if (!media.episodes[epKey]) {
+            media.episodes[epKey] = { season: s, episode: e, count: 0 };
+        }
+
+        // Handle both full segment arrays and just counts
+        if (Array.isArray(segments)) {
+            media.episodes[epKey].segments = segments;
+            media.episodes[epKey].count = segments.length;
+        } else if (typeof segments === 'number') {
+            media.episodes[epKey].count = segments;
+        } else if (typeof segments === 'object') {
+            // Handle case where we might just be updating counts
+            media.episodes[epKey].count = segments.count || 0;
+        }
+    }
+
+    media.totalSegments = Object.keys(media.episodes).length;
+    media.lastUpdated = new Date().toISOString();
+    await catalogRepository.upsertCatalogEntry(imdbId, media);
+}
+
+async function getShowByImdbId(imdbId) {
+    await ensureInit();
+    return await catalogRepository.findByImdbId(imdbId);
+}
 
 async function getCatalogData(page = 1, limit = 1000, search = '', sort = { title: 1 }) {
     await ensureInit();
     const skip = (page - 1) * limit;
 
-    if (catalogRepository.useMongo) {
-        const query = {
-            title: { $nin: [null, 'null', 'undefined', 'Unknown Title', ''] },
-            year: { $nin: [null, '????', ''] },
-            totalSegments: { $gt: 0 }
-        };
+    const query = {
+        title: { $nin: [null, 'null', 'undefined', 'Unknown Title', ''] },
+        year: { $nin: [null, '????', ''] },
+        totalSegments: { $gt: 0 }
+    };
 
-        const { items, total, filteredTotal } = await catalogRepository.getCatalogData(query, skip, limit, search, sort);
+    const { items, total, filteredTotal } = await catalogRepository.getCatalogData(query, skip, limit, search, sort);
 
-        const media = {};
-        items.forEach(item => {
-            const { _id, ...rest } = item;
-            media[item.imdbId] = rest;
-        });
+    const media = {};
+    items.forEach(item => {
+        const { _id, ...rest } = item;
+        media[item.imdbId] = rest;
+    });
 
-        return {
-            lastUpdated: new Date().toISOString(),
-            media,
-            total,
-            filteredTotal,
-            pagination: {
-                page,
-                limit,
-                total: filteredTotal,
-                pages: Math.ceil(filteredTotal / limit)
-            }
-        };
-    }
-
-    // Fallback for local JSON
-    const data = await readCatalog();
-    if (data.media) {
-        let entries = Object.entries(data.media).filter(([id, item]) => {
-            const hasTitle = item.title && item.title !== 'null' && item.title !== 'undefined' && item.title !== 'Unknown Title';
-            const hasYear = item.year && item.year !== '????';
-            const matchesSearch = !search ||
-                (item.title && item.title.toLowerCase().includes(search.toLowerCase())) ||
-                id.toLowerCase().includes(search.toLowerCase());
-            return hasTitle && hasYear && matchesSearch;
-        });
-
-        const total = Object.keys(data.media).length;
-        const filteredTotal = entries.length;
-
-        const pagedEntries = entries
-            .sort((a, b) => {
-                // Basic sort for fallback
-                const field = Object.keys(sort)[0] || 'title';
-                const dir = sort[field] || 1;
-                const valA = a[1][field] || '';
-                const valB = b[1][field] || '';
-                return dir === 1 ? valA.localeCompare(valB) : valB.localeCompare(valA);
-            })
-            .slice(skip, skip + limit);
-
-        const media = Object.fromEntries(pagedEntries);
-
-        return {
-            lastUpdated: data.lastUpdated,
-            media,
-            total,
-            filteredTotal,
-            pagination: {
-                page,
-                limit,
-                total: filteredTotal,
-                pages: Math.ceil(filteredTotal / limit)
-            }
-        };
-    }
-    return data;
+    return {
+        lastUpdated: new Date().toISOString(),
+        media,
+        total,
+        filteredTotal,
+        pagination: {
+            page,
+            limit,
+            total: filteredTotal,
+            pages: Math.ceil(filteredTotal / limit)
+        }
+    };
 }
 
 async function getCatalogStats() {
-    // We could keep the cache in the repository if we want, but let's keep it here for now if needed.
-    // However, the repository aggregate is fast enough.
-
     await ensureInit();
-    if (catalogRepository.useMongo) {
-        const query = {
-            title: { $nin: [null, 'null', 'undefined', 'Unknown Title', ''] },
-            year: { $nin: [null, '????', ''] }
-        };
-        return await catalogRepository.getCatalogStats(query);
-    } else {
-        const data = await readCatalog();
-        let showCount = 0;
-        let episodeCount = 0;
-        if (data.media) {
-            const entries = Object.values(data.media).filter(item => {
-                return item.title && item.title !== 'null' && item.title !== 'undefined' && item.title !== 'Unknown Title' && item.year !== '????';
-            });
-            showCount = entries.length;
-            entries.forEach(item => {
-                episodeCount += Object.keys(item.episodes || {}).length;
-            });
-        }
-        return { showCount, episodeCount };
-    }
+    const query = {
+        title: { $nin: [null, 'null', 'undefined', 'Unknown Title', ''] },
+        year: { $nin: [null, '????', ''] }
+    };
+    return await catalogRepository.getCatalogStats(query);
 }
 
 async function repairCatalog(allSkips) {
     if (!allSkips) return;
 
     const skipKeys = Object.keys(allSkips);
-    console.log(`[Catalog] Running catalog repair/sync from ${skipKeys.length} items...`);
+    console.log(`[Catalog] Running database-only catalog sync from ${skipKeys.length} items...`);
 
-    // SAFETY CHECK: If the source of truth is tiny but we suspect it should be large, abort.
-    // This prevents wiping the catalog if skipService fails to load but somehow returns an empty map.
-    if (skipKeys.length < 50) {
-        console.warn('[Catalog] Aborting repair: Source of truth looks too small. Is DB connected?');
+    if (skipKeys.length < 5) { // Lower threshold for DB-only
+        console.warn('[Catalog] Aborting repair: Source of truth looks suspicious.');
         return;
     }
 
     let changes = 0;
-    const showMap = {}; // imdbId -> { epKey -> count }
+    const showMap = {}; // imdbId -> { epKey -> segments }
 
-    // 1. Rebuild Episode Maps from Skips
-    for (const fullId of skipKeys) {
+    for (const [fullId, segments] of Object.entries(allSkips)) {
         const parts = fullId.split(':');
         if (parts.length < 3) continue;
 
@@ -293,41 +226,28 @@ async function repairCatalog(allSkips) {
         const epKey = `${season}:${episode}`;
 
         if (!showMap[imdbId]) showMap[imdbId] = {};
-        showMap[imdbId][epKey] = (showMap[imdbId][epKey] || 0) + 1;
+        showMap[imdbId][epKey] = segments;
     }
 
-    // 2. Sync Rebuilt Data to Catalog
-    // We iterate the showMap (which came from Skips) to ensure all shows with segments exist.
+    // Sync in batches to not blow up memory
     for (const [imdbId, episodes] of Object.entries(showMap)) {
         try {
-            await registerShow(imdbId + ":1:1", 0); // Ensure show exists (dummy ep update)
-
-            // Now fetch it and update all episodes
-            const catalog = await readCatalog();
-            const media = catalog.media[imdbId];
-            if (media) {
-                media.episodes = {}; // Reset before rebuild
-                for (const [epKey, count] of Object.entries(episodes)) {
-                    const [s, e] = epKey.split(':').map(Number);
-                    media.episodes[epKey] = { season: s, episode: e, count };
-                }
-                media.totalSegments = Object.keys(media.episodes).length;
-                media.lastUpdated = new Date().toISOString();
-
-                await writeCatalogEntry(imdbId, media);
-                changes++;
-            }
+            await bakeShowSegments(imdbId, episodes);
+            changes++;
+            if (changes % 50 === 0) console.log(`[Catalog] Synced ${changes} shows...`);
         } catch (e) {
             console.error(`[Catalog] Failed to sync ${imdbId}:`, e.message);
         }
     }
 
-    console.log(`[Catalog] Rebuilt/Synced ${changes} shows.`);
+    console.log(`[Catalog] Database Rebuild/Sync Complete. Processed ${changes} shows.`);
 }
 
 module.exports = {
     registerShow,
     getCatalogData,
     repairCatalog,
-    getCatalogStats
+    getCatalogStats,
+    bakeShowSegments,
+    getShowByImdbId
 };

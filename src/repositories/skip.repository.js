@@ -3,16 +3,19 @@ const { BaseRepository, SimpleLRUCache } = require('./base.repository');
 class SkipRepository extends BaseRepository {
     constructor() {
         super('skips');
-        this.cache = new SimpleLRUCache(200); // Cache 200 most recent series/videos
+        this.cache = new SimpleLRUCache(500); // Unified skip cache
+        this.indicesCreated = false;
     }
 
     async ensureInit() {
+        if (this.indicesCreated) return;
         await super.ensureInit();
-        if (this.useMongo) {
-            try {
-                await this.collection.createIndex({ fullId: 1 }, { unique: true });
-                await this.collection.createIndex({ seriesId: 1 });
-            } catch (e) { }
+        try {
+            await this.collection.createIndex({ fullId: 1 }, { unique: true });
+            await this.collection.createIndex({ seriesId: 1 });
+            this.indicesCreated = true;
+        } catch (e) {
+            console.warn("[SkipRepository] Index creation warning:", e.message);
         }
     }
 
@@ -26,6 +29,7 @@ class SkipRepository extends BaseRepository {
     }
 
     async findByFullIdRegex(pattern, options = 'i') {
+        // High performance regex search
         return await this.find({ fullId: { $regex: pattern, $options: options } });
     }
 
@@ -33,15 +37,21 @@ class SkipRepository extends BaseRepository {
         const cached = this.cache.get(`series:${seriesId}`);
         if (cached) return cached;
 
-        const result = await this.find({ seriesId });
-        if (result) this.cache.set(`series:${seriesId}`, result);
+        const result = await this.find({ seriesId }, {
+            projection: { segments: 1, fullId: 1 },
+            batchSize: 1000
+        });
+
+        if (result && result.length > 0) {
+            this.cache.set(`series:${seriesId}`, result);
+        }
         return result;
     }
 
     async addSegment(fullId, segment, seriesId = null) {
         await this.ensureInit();
 
-        // Granular cache invalidation
+        // Atomic update and granular invalidation
         this.cache.delete(`full:${fullId}`);
         const actualSeriesId = seriesId || (fullId.includes(':') ? fullId.split(':')[0] : null);
         if (actualSeriesId) {
@@ -51,9 +61,11 @@ class SkipRepository extends BaseRepository {
         const update = {
             $push: { segments: segment }
         };
+
         if (actualSeriesId) {
             update.$set = { seriesId: actualSeriesId };
         }
+
         return await this.updateOne(
             { fullId },
             update,

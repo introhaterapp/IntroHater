@@ -1,0 +1,42 @@
+const { BaseRepository, SimpleLRUCache } = require('./base.repository');
+
+class CacheRepository extends BaseRepository {
+    constructor() {
+        super('caches');
+        this.cache = new SimpleLRUCache(1000); // Large cache for MAL mappings
+        this.indicesCreated = false;
+    }
+
+    async ensureInit() {
+        if (this.indicesCreated) return;
+        await super.ensureInit();
+        try {
+            await this.collection.createIndex({ key: 1 }, { unique: true });
+            this.indicesCreated = true;
+        } catch (e) { }
+    }
+
+    async getCache(key) {
+        const cached = this.cache.get(key);
+        if (cached) return cached.value;
+
+        const doc = await this.findOne({ key });
+        if (doc) {
+            this.cache.set(key, doc);
+            return doc.value;
+        }
+        return null;
+    }
+
+    async setCache(key, value) {
+        await this.ensureInit();
+        this.cache.delete(key);
+        return await this.updateOne(
+            { key },
+            { $set: { value, updatedAt: new Date().toISOString() } },
+            { upsert: true }
+        );
+    }
+}
+
+module.exports = new CacheRepository();

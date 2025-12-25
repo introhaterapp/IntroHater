@@ -1,69 +1,29 @@
-const fs = require('fs').promises;
-const path = require('path');
 const skipRepository = require('../repositories/skip.repository');
+const cacheRepository = require('../repositories/cache.repository');
 const axios = require('axios');
 const catalogService = require('./catalog');
-
-const DATA_FILE = path.join(__dirname, '../data/skips.json');
-
-// In-memory cache (Fallback)
-let skipsData = {}; // Format: { "imdb:s:e": [ { start, end, label, votes } ] }
-
-const MAL_CACHE_FILE = path.join(__dirname, '../../data/mal_cache.json');
-const SKIP_CACHE_FILE = path.join(__dirname, '../../data/third_party_skip_cache.json');
-
-let MAL_CACHE = {}; // Cache for Aniskip Mapping
-let SKIP_CACHE = {}; // Cache for Aniskip Results
-
-async function loadCache() {
-    try {
-        const malData = await fs.readFile(MAL_CACHE_FILE, 'utf8');
-        MAL_CACHE = JSON.parse(malData);
-        console.log(`[SkipService] Loaded ${Object.keys(MAL_CACHE).length} MAL mappings.`);
-    } catch (e) { }
-
-    try {
-        const skipData = await fs.readFile(SKIP_CACHE_FILE, 'utf8');
-        SKIP_CACHE = JSON.parse(skipData);
-        console.log(`[SkipService] Loaded ${Object.keys(SKIP_CACHE).length} third-party skip segments from cache.`);
-    } catch (e) { }
-}
-
-async function saveCache() {
-    try {
-        await fs.mkdir(path.dirname(MAL_CACHE_FILE), { recursive: true });
-        await fs.writeFile(MAL_CACHE_FILE, JSON.stringify(MAL_CACHE, null, 2));
-        await fs.writeFile(SKIP_CACHE_FILE, JSON.stringify(SKIP_CACHE, null, 2));
-    } catch (e) {
-        console.error("[SkipService] Cache Save Error:", e.message);
-    }
-}
 
 // Initialize
 let initPromise = null;
 
-function ensureInit() {
+async function ensureInit() {
     if (initPromise) return initPromise;
 
     initPromise = (async () => {
         try {
-            console.log('[SkipService] Initializing...');
+            console.log('[SkipService] Initializing Database-Only Storage...');
             await skipRepository.ensureInit();
-
-            if (!skipRepository.useMongo) {
-                console.log('[SkipService] MongoDB not available. Using local JSON.');
-                await loadSkips();
-            }
-            await loadCache();
+            await cacheRepository.ensureInit();
         } catch (e) {
             console.error("[SkipService] Init Error:", e);
-            await loadSkips();
-            await loadCache();
         }
     })();
 
     return initPromise;
 }
+
+// Trigger early
+ensureInit();
 
 // Trigger early - REMOVED for lazy init
 // ensureInit();
@@ -98,8 +58,7 @@ function escapeRegex(string) {
     return string.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
 }
 
-// Get all segments for a specific video ID
-// Get all segments for a specific video ID
+// Get all segments for a specific video ID (Strictly Database/Catalog Hybrid)
 async function getSegments(fullId) {
     await ensureInit();
 
@@ -107,72 +66,70 @@ async function getSegments(fullId) {
     let segments = [];
     const isSeriesRequest = !cleanId.includes(':');
 
-    if (skipRepository.useMongo) {
-        try {
-            if (isSeriesRequest) {
-                // Optimization: Use seriesId instead of regex
-                const docs = await skipRepository.findBySeriesId(cleanId);
-                docs.forEach(doc => {
-                    if (doc.segments) {
-                        const epSegments = doc.segments.map(s => ({ ...s, videoId: doc.fullId }));
+    try {
+        if (isSeriesRequest) {
+            // 1. Try to fetch from Catalog first (Denormalized/Fast)
+            const media = await catalogService.getShowByImdbId(cleanId);
+
+            if (media && media.episodes) {
+                let hasSegments = false;
+                for (const epKey in media.episodes) {
+                    if (media.episodes[epKey].segments) {
+                        const epSegments = media.episodes[epKey].segments.map(s => ({ ...s, videoId: `${cleanId}:${epKey}` }));
                         segments.push(...epSegments);
+                        hasSegments = true;
                     }
-                });
-            } else {
-                let doc = await skipRepository.findByFullId(cleanId);
-                if (!doc) {
-                    doc = await skipRepository.findByFullIdRegex(`^${escapeRegex(cleanId)}$`, 'i');
                 }
-                if (doc) segments = doc.segments || [];
+
+                if (hasSegments) {
+                    console.log(`[SkipService] Found ${segments.length} segments in CATALOG for [${cleanId}]`);
+                    return mergeSegments(segments);
+                }
             }
 
-            const parts = cleanId.split(':');
-            if (parts.length >= 3) {
-                const seriesId = parts[0];
-                const seriesDoc = await skipRepository.findByFullId(seriesId);
-                if (seriesDoc && seriesDoc.segments) {
-                    const seriesSkips = seriesDoc.segments.filter(s => s.seriesSkip);
-                    if (seriesSkips.length > 0) {
-                        console.log(`[SkipService] Found ${seriesSkips.length} GLOBAL SERIES skips for [${cleanId}]`);
-                        const formatted = seriesSkips.map(s => ({ ...s, videoId: cleanId }));
-                        segments = [...segments, ...formatted];
+            // 2. Fallback to SkipRepository (Cold)
+            const docs = await skipRepository.findBySeriesId(cleanId);
+            const segmentsByEp = {};
+            docs.forEach(doc => {
+                if (doc.segments) {
+                    const epSegments = doc.segments.map(s => ({ ...s, videoId: doc.fullId }));
+                    segments.push(...epSegments);
+
+                    const parts = doc.fullId.split(':');
+                    if (parts.length >= 3) {
+                        const epKey = `${parts[1]}:${parts[2]}`;
+                        segmentsByEp[epKey] = doc.segments;
                     }
                 }
-            }
-        } catch (e) {
-            console.error("[SkipService] Repository Query Error:", e.message);
-            return [];
-        }
-    } else {
-        // ... (local JSON logic remains similar or uses keys)
-        if (isSeriesRequest) {
-            for (const key in skipsData) {
-                if (key.startsWith(`${cleanId}:`)) {
-                    const epSegments = skipsData[key].map(s => ({ ...s, videoId: key }));
-                    segments.push(...epSegments);
-                }
+            });
+
+            // 3. Trigger background bake for next time
+            if (Object.keys(segmentsByEp).length > 0) {
+                catalogService.bakeShowSegments(cleanId, segmentsByEp).catch(() => { });
             }
         } else {
-            segments = skipsData[cleanId] || [];
-            if (segments.length > 0 && !segments[0].videoId) {
-                segments = segments.map(s => ({ ...s, videoId: cleanId }));
+            let doc = await skipRepository.findByFullId(cleanId);
+            if (!doc) {
+                doc = await skipRepository.findByFullIdRegex(`^${escapeRegex(cleanId)}$`, 'i');
             }
-            const parts = cleanId.split(':');
-            if (parts.length >= 3) {
-                const seriesId = parts[0];
-                if (skipsData[seriesId]) {
-                    const seriesSkips = skipsData[seriesId].filter(s => s.seriesSkip);
-                    if (seriesSkips.length > 0) {
-                        const formatted = seriesSkips.map(s => ({ ...s, videoId: cleanId }));
-                        segments = [...segments, ...formatted];
-                    }
+            if (doc) segments = doc.segments || [];
+        }
+
+        const parts = cleanId.split(':');
+        if (parts.length >= 3) {
+            const seriesId = parts[0];
+            const seriesDoc = await skipRepository.findByFullId(seriesId);
+            if (seriesDoc && seriesDoc.segments) {
+                const seriesSkips = seriesDoc.segments.filter(s => s.seriesSkip);
+                if (seriesSkips.length > 0) {
+                    const formatted = seriesSkips.map(s => ({ ...s, videoId: cleanId }));
+                    segments = [...segments, ...formatted];
                 }
             }
         }
-    }
-
-    if (segments.length > 0 && !isSeriesRequest) {
-        console.log(`[SkipService] Found ${segments.length} segments total for [${cleanId}] before merge`);
+    } catch (e) {
+        console.error("[SkipService] Retrieval Error:", e.message);
+        return [];
     }
 
     return mergeSegments(segments);
@@ -182,14 +139,12 @@ async function getSegments(fullId) {
 function mergeSegments(segments) {
     if (!segments || segments.length === 0) return [];
 
-    // Round values for consistency before merging
     const processed = segments.map(seg => ({
         ...seg,
         start: Math.round(seg.start),
         end: Math.round(seg.end)
     }));
 
-    // Sort by videoId THEN start time
     const sorted = [...processed].sort((a, b) => {
         if (a.videoId < b.videoId) return -1;
         if (a.videoId > b.videoId) return 1;
@@ -201,17 +156,13 @@ function mergeSegments(segments) {
 
     for (let i = 1; i < sorted.length; i++) {
         const next = sorted[i];
-
         if (current.videoId !== next.videoId) {
             merged.push(current);
             current = next;
             continue;
         }
-
-        // Check for overlap or adjacency (within 1 second)
         if (next.start <= (current.end + 1)) {
             current.end = Math.max(current.end, next.end);
-            // Label prioritization: Prefer 'Intro' over 'Common'
             if (next.label === 'Intro' && current.label !== 'Intro') {
                 current.label = 'Intro';
             }
@@ -221,42 +172,32 @@ function mergeSegments(segments) {
         }
     }
     merged.push(current);
-
     return merged;
 }
 
-// Get total count of segments across all episodes
 async function getSegmentCount() {
     await ensureInit();
-    if (skipRepository.useMongo) {
-        try {
-            const t = Date.now();
-            const result = await skipRepository.getGlobalStats();
-            console.log(`[SkipService] Repository segment count aggregation took ${Date.now() - t}ms`);
-            return result[0]?.total || 0;
-        } catch (e) {
-            console.error("[SkipService] Aggregate Count Error:", e.message);
-            return 0;
-        }
+    try {
+        const result = await skipRepository.getGlobalStats();
+        return result[0]?.total || 0;
+    } catch (e) {
+        return 0;
     }
-    return Object.values(skipsData).flat().length;
 }
 
 async function getAllSegments() {
     await ensureInit();
-    if (skipRepository.useMongo) {
-        const allDocs = await skipRepository.find({});
-        const map = {};
-        allDocs.forEach(d => map[d.fullId] = d.segments);
-        return map;
-    }
-    return skipsData;
+    const allDocs = await skipRepository.find({});
+    const map = {};
+    allDocs.forEach(d => map[d.fullId] = d.segments);
+    return map;
 }
 
 // --- Aniskip Integration ---
 
 async function getMalId(imdbId) {
-    if (MAL_CACHE[imdbId]) return MAL_CACHE[imdbId];
+    const cached = await cacheRepository.getCache(`mal:${imdbId}`);
+    if (cached) return cached;
 
     try {
         const metaRes = await axios.get(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`);
@@ -269,8 +210,7 @@ async function getMalId(imdbId) {
         if (jikanRes.data?.data?.[0]?.mal_id) {
             const malId = jikanRes.data.data[0].mal_id;
             console.log(`[SkipService] Mapped ${imdbId} (${name}) -> MAL ${malId}`);
-            MAL_CACHE[imdbId] = malId;
-            saveCache().catch(() => { }); // Persist
+            await cacheRepository.setCache(`mal:${imdbId}`, malId);
             return malId;
         }
     } catch (e) {
@@ -280,8 +220,9 @@ async function getMalId(imdbId) {
 }
 
 async function fetchAniskip(malId, episode) {
-    const cacheKey = `${malId}:${episode}`;
-    if (SKIP_CACHE[cacheKey]) return SKIP_CACHE[cacheKey];
+    const cacheKey = `aniskip:${malId}:${episode}`;
+    const cached = await cacheRepository.getCache(cacheKey);
+    if (cached !== null && cached !== undefined) return cached;
 
     try {
         const url = `https://api.aniskip.com/v2/skip-times/${malId}/${episode}?types[]=op&types[]=ed&episodeLength=0`;
@@ -295,15 +236,14 @@ async function fetchAniskip(malId, episode) {
                     label: 'Intro',
                     source: 'aniskip'
                 };
-                SKIP_CACHE[cacheKey] = result;
+                await cacheRepository.setCache(cacheKey, result);
                 return result;
             }
         }
     } catch (e) { }
 
     // Cache null to stop hammering for 404s
-    SKIP_CACHE[cacheKey] = null;
-    saveCache().catch(() => { });
+    await cacheRepository.setCache(cacheKey, null);
     return null;
 }
 
@@ -311,14 +251,11 @@ const ANIME_SKIP_CLIENT_ID = 'th2oogUKrgOf1J8wMSIUPV0IpBMsLOJi';
 
 async function fetchAnimeSkip(malId, episode, imdbId) {
     const cacheKey = `as:${malId || imdbId}:${episode}`;
-    if (SKIP_CACHE[cacheKey]) return SKIP_CACHE[cacheKey];
+    const cached = await cacheRepository.getCache(cacheKey);
+    if (cached !== null && cached !== undefined) return cached;
 
     try {
         let showId = null;
-
-        // 1. If we have a malId, we could try findShowsByExternalId, 
-        // but searchShows by name is often more reliable for matching Anime-Skip's DB
-        // Let's try to get the name from Cinemeta first if we only have imdbId
         let name = null;
         if (imdbId) {
             try {
@@ -328,7 +265,6 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
         }
 
         if (name) {
-            console.log(`[SkipService] Anime-Skip: Searching for "${name}"`);
             const searchRes = await axios.post('https://api.anime-skip.com/graphql', {
                 query: `query ($search: String!) { searchShows(search: $search) { id name } }`,
                 variables: { search: name }
@@ -336,19 +272,16 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
 
             const shows = searchRes.data?.data?.searchShows;
             if (shows && shows.length > 0) {
-                // Try to find exact match or just take the first
                 const match = shows.find(s => s.name.toLowerCase() === name.toLowerCase()) || shows[0];
                 showId = match.id;
-                console.log(`[SkipService] Anime-Skip: Found show "${match.name}" (${showId})`);
             }
         }
 
         if (!showId) {
-            SKIP_CACHE[cacheKey] = null;
+            await cacheRepository.setCache(cacheKey, null);
             return null;
         }
 
-        // 2. Fetch timestamps for the show
         const query = `
             query ($showId: ID!, $episodeNumber: Float!) {
                 findEpisodesByShowId(showId: $showId) {
@@ -388,7 +321,7 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
                     source: 'anime-skip'
                 };
 
-                SKIP_CACHE[cacheKey] = result;
+                await cacheRepository.setCache(cacheKey, result);
                 return result;
             }
         }
@@ -396,8 +329,7 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
         console.error(`[SkipService] Anime-Skip fetch failed: ${e.message}`);
     }
 
-    SKIP_CACHE[cacheKey] = null;
-    saveCache().catch(() => { });
+    await cacheRepository.setCache(cacheKey, null);
     return null;
 }
 
@@ -480,17 +412,14 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
         seriesId = parts[0];
     }
 
-    if (applyToSeries) {
-        if (seriesId) {
-            cleanFullId = seriesId;
-        }
+    if (applyToSeries && seriesId) {
+        cleanFullId = seriesId;
     }
 
     const existingSegments = await getSegments(cleanFullId);
     if (existingSegments && existingSegments.length > 0) {
         const isDuplicate = existingSegments.some(s => {
-            return Math.abs(s.start - start) < 1.0 &&
-                Math.abs(s.end - end) < 1.0;
+            return Math.abs(s.start - start) < 1.0 && Math.abs(s.end - end) < 1.0;
         });
 
         if (isDuplicate) {
@@ -509,28 +438,16 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
         createdAt: new Date().toISOString()
     };
 
-    if (skipRepository.useMongo) {
-        await skipRepository.addSegment(cleanFullId, newSegment, seriesId);
-    } else {
-        if (!skipsData[cleanFullId]) skipsData[cleanFullId] = [];
-        skipsData[cleanFullId].push(newSegment);
+    await skipRepository.addSegment(cleanFullId, newSegment, seriesId);
 
-        if (!skipSave) {
-            await saveSkips();
-        }
-    }
-
-    catalogService.registerShow(cleanFullId).catch(() => { });
+    const finalSegments = await getSegments(cleanFullId);
+    catalogService.registerShow(cleanFullId, finalSegments.length, finalSegments).catch(() => { });
 
     return newSegment;
 }
 
-// Periodic auto-approval removed from startup for performance. Move to script if needed.
-
 async function forceSave() {
-    if (!skipRepository.useMongo) {
-        await saveSkips();
-    }
+    // No-op for DB
 }
 
 // --- Admin Operations ---

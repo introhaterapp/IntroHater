@@ -55,50 +55,8 @@ function generateUserId(rdKey) {
     return crypto.createHash('sha256').update(rdKey).digest('hex').substring(0, 32);
 }
 
-// Helper: Persistent Metadata Cache
-const METADATA_CACHE_FILE = path.join(__dirname, 'data', 'metadata_cache.json');
-global.metadataCache = {};
-
-async function loadMetadataCache() {
-    try {
-        const data = await fs.readFile(METADATA_CACHE_FILE, 'utf8');
-        global.metadataCache = JSON.parse(data);
-        console.log(`[Cache] Loaded ${Object.keys(global.metadataCache).length} items from persistent cache.`);
-    } catch (e) {
-        console.log("[Cache] Starting with empty metadata cache.");
-    }
-}
-
-// Persistent Metadata Cache handled in Catalog Service
-
-async function saveMetadataCache() {
-    try {
-        const dir = path.dirname(METADATA_CACHE_FILE);
-        await fs.mkdir(dir, { recursive: true });
-        await fs.writeFile(METADATA_CACHE_FILE, JSON.stringify(global.metadataCache, null, 2));
-    } catch (e) {
-        console.error("[Cache] Failed to save metadata cache:", e.message);
-    }
-}
-
-// Helper: Fetch OMDb Data with Caching
-async function fetchOMDbData(imdbId, apiKey) {
-    if (global.metadataCache[imdbId]) return global.metadataCache[imdbId];
-
-    try {
-        const url = `https://www.omdbapi.com/?i=${imdbId}&apikey=${apiKey}`;
-        const res = await axios.get(url);
-        if (res.data && res.data.Response === 'True') {
-            global.metadataCache[imdbId] = res.data;
-            console.log(`[OMDB] Fetched metadata for ${imdbId}: ${res.data.Title}`);
-            saveMetadataCache(); // Persistent save
-            return res.data;
-        }
-    } catch (e) {
-        return null;
-    }
-    return null;
-}
+// Helper: Persistent Metadata Cache handled in Catalog Service
+// Logic removed from server.js to centralize in catalogService
 
 // Configuration
 const PORT = process.env.PORT || 7005;
