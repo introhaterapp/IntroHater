@@ -178,10 +178,12 @@ function createSkeleton(type = 'text', count = 1) {
 
 window.createSkeleton = createSkeleton;
 
-// Init Ticker if on Home
-if (document.getElementById('ticker-content')) {
-    initTicker();
-}
+// Init Ticker if on Home (called from DOMContentLoaded above via fetchStats flow, but fallback here)
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('ticker-content')) {
+        initTicker();
+    }
+});
 
 async function initTicker() {
     const el = document.getElementById('ticker-content');
