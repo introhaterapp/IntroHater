@@ -1,15 +1,13 @@
 const catalogService = require('./catalog');
 const skipService = require('./skip-service');
+const cacheRepository = require('../repositories/cache.repository');
 const axios = require('axios');
-const fs = require('fs').promises;
-const path = require('path');
-
-const STATE_FILE = path.join(__dirname, '../../data/indexer_state.json');
 
 class IndexerService {
     constructor() {
         this.isRunning = false;
         this.interval = 12 * 60 * 60 * 1000; // 12 Hours
+        this.STATE_KEY = 'indexer:state';
     }
 
     start() {
@@ -21,18 +19,13 @@ class IndexerService {
     }
 
     async loadState() {
-        try {
-            const data = await fs.readFile(STATE_FILE, 'utf8');
-            return JSON.parse(data);
-        } catch (e) {
-            return { page: 0, offset: 0, lastRun: null };
-        }
+        const state = await cacheRepository.getCache(this.STATE_KEY);
+        return state || { page: 0, offset: 0, lastRun: null };
     }
 
     async saveState(state) {
         try {
-            await fs.mkdir(path.dirname(STATE_FILE), { recursive: true });
-            await fs.writeFile(STATE_FILE, JSON.stringify(state, null, 2));
+            await cacheRepository.setCache(this.STATE_KEY, state);
         } catch (e) {
             console.error('[Indexer] Failed to save state:', e.message);
         }
@@ -120,14 +113,12 @@ class IndexerService {
                             const searchRes = await axios.get(searchUrl);
                             if (searchRes.data?.metas?.length > 0) {
                                 imdbId = searchRes.data.metas[0].id;
-                                // console.log(`[Indexer] Mapped "${show.name}" -> ${imdbId}`);
                             }
                         } catch (e) { }
                     }
 
                     // If registered, add to catalog AND fetch segments
                     if (imdbId) {
-                        // console.log(`[Indexer] Found IMDb ID: ${imdbId} (${show.name}). Fetching segments...`);
                         await catalogService.registerShow(imdbId);
 
                         // --- FETCH SEGMENTS ---
@@ -170,7 +161,7 @@ class IndexerService {
                                     const fullId = `${imdbId}:${season}:${ep.number}`;
 
                                     // Use new duplicate-safe add method
-                                    await skipService.addSkipSegment(fullId, start, end, 'Intro', 'auto-import', false, true); // skipSave = true
+                                    await skipService.addSkipSegment(fullId, start, end, 'Intro', 'auto-import', false);
 
                                     importedCount++;
                                 }
@@ -184,16 +175,11 @@ class IndexerService {
                             console.error(`[Indexer] Failed to fetch segments for ${show.name}: ${err.message}`);
                         }
 
-                    } else {
-                        // console.log(`[Indexer] No IMDb ID for show: ${show.name}`);
                     }
 
                     // Throttle inner loop slightly to avoid hammer
                     await new Promise(r => setTimeout(r, 200));
                 }
-
-                // Save after batch
-                await skipService.forceSave();
 
                 offset += BATCH_SIZE;
                 page++;

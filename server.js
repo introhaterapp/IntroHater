@@ -920,15 +920,13 @@ app.use((req, res) => {
 });
 
 if (require.main === module) {
-    loadMetadataCache().then(() => {
-        // Start Indexer
-        try {
-            indexerService.start();
-        } catch (e) { console.error("Failed to start indexer:", e); }
+    // Start Indexer
+    try {
+        indexerService.start();
+    } catch (e) { console.error("Failed to start indexer:", e); }
 
-        app.listen(PORT, () => {
-            console.log(`IntroHater Lite running on ${PORT} (${PUBLIC_URL})`);
-        });
+    app.listen(PORT, () => {
+        console.log(`IntroHater Lite running on ${PORT} (${PUBLIC_URL})`);
     });
 }
 
