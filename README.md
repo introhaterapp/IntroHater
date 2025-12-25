@@ -2,9 +2,9 @@
 
 <!-- Premium Animated Header -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/icon32.png">
-  <source media="(prefers-color-scheme: light)" srcset="docs/icon32.png">
-  <img alt="IntroHater Logo" src="docs/icon32.png" width="100" height="100">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/icon.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/icon.svg">
+  <img alt="IntroHater Logo" src="docs/icon128.png" width="120" height="120">
 </picture>
 
 # ✨ IntroHater
