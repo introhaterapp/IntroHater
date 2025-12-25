@@ -67,17 +67,6 @@
                     </a>
                 </div>
 
-                <!-- Live Activity Ticker -->
-                <div id="activity-ticker" class="reveal-on-scroll" style="margin-top: 32px; text-align: center;">
-                    <div
-                        style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 20px;">
-                        <span
-                            style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite;"></span>
-                        <span id="ticker-content" style="color: var(--text-muted); font-size: 0.85rem;">Loading
-                            activity...</span>
-                    </div>
-                </div>
-
                 <!-- Social Proof / Stats in a single sleek bar -->
                 <div class="stats-bar reveal-on-scroll">
                     <div class="stat-item">
@@ -168,15 +157,27 @@
                     </ul>
                 </div>
             </div>
+
+            <!-- Live Activity Ticker -->
+            <div id="activity-ticker"
+                style="margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05); text-align: center;">
+                <div style="display: inline-flex; align-items: center; gap: 8px;">
+                    <span
+                        style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite;"></span>
+                    <span style="color: var(--text-dim); font-size: 0.8rem; font-weight: 500;">LIVE</span>
+                    <span id="ticker-content" style="color: var(--text-muted); font-size: 0.8rem;">Loading...</span>
+                </div>
+            </div>
+
             <div class="footer-bottom"
-                style="margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); text-align: center; color: var(--text-muted); font-size: 0.85rem;">
                 <p>&copy; 2025 IntroHater. Open source and community powered.</p>
             </div>
         </div>
     </footer>
 
 
-    <script src="js/main.js?v=5"></script>
+    <script src="js/main.js?v=6"></script>
 </body>
 
 </html>

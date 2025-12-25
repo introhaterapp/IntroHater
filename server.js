@@ -245,6 +245,8 @@ app.get('/api/activity', async (req, res) => {
         const enriched = await Promise.all(recent.map(async (r) => {
             const parts = r.videoId.split(':');
             const imdbId = parts[0];
+            const season = parts[1];
+            const episode = parts[2];
             let title = imdbId;
 
             // Try to get title from catalog cache
@@ -263,9 +265,16 @@ app.get('/api/activity', async (req, res) => {
                 } catch (e) { }
             }
 
+            // Format episode info
+            let episodeInfo = null;
+            if (season && episode) {
+                episodeInfo = `S${season}E${episode}`;
+            }
+
             return {
                 videoId: r.videoId,
                 title: title,
+                episode: episodeInfo,
                 label: r.label || 'Intro',
                 timestamp: r.createdAt || new Date()
             };

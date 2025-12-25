@@ -201,7 +201,8 @@ async function initTicker() {
             el.style.opacity = 0;
             setTimeout(() => {
                 const displayName = item.title || item.videoId.split(':')[0];
-                el.innerText = `New skip for "${displayName}" (${item.label}) submitted ${timeStr}`;
+                const episodePart = item.episode ? ` ${item.episode}` : '';
+                el.innerText = `${displayName}${episodePart} - ${item.label} skip added ${timeStr}`;
                 el.style.opacity = 1;
             }, 500);
 
