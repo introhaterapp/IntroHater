@@ -796,8 +796,10 @@ table.dataTable tbody td {
     text-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
 }
 
-/* Amber 500 */
+
+/* Rank 2 (Silver) */
 .rank-2 {
+
     color: #94a3b8;
     text-shadow: 0 0 10px rgba(148, 163, 184, 0.3);
 }
@@ -1225,4 +1227,51 @@ table.dataTable tbody td {
     100% {
         background-position: -200% 0;
     }
+}
+
+/* Live Activity Ticker (Hero) */
+#activity-ticker {
+    margin-top: 32px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+}
+
+.ticker-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
+    transition: all 0.3s ease;
+}
+
+.ticker-pill:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
+
+.ticker-dot {
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #22c55e;
+    animation: pulse 2s infinite;
+}
+
+.ticker-label {
+    color: var(--text-main);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+#ticker-content {
+    color: var(--text-muted);
+    font-size: 0.85rem;
 }
