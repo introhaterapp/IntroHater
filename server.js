@@ -53,30 +53,10 @@ app.set('trust proxy', 1);
 // Request logging (Critical Priority Rank 1)
 app.use(morgan(':remote-addr :method :url :status :response-time ms - :res[content-length]'));
 
-// CSP Nonce middleware (Critical Priority Rank 2)
-app.use((req, res, next) => {
-    res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
-    next();
-});
-
-// Security middleware with nonce-based CSP
-app.use((req, res, next) => {
-    const nonce = res.locals.cspNonce;
-    helmet({
-        contentSecurityPolicy: {
-            directives: {
-                defaultSrc: ["'self'"],
-                // Nonce for inline scripts, plus trusted CDNs
-                scriptSrc: ["'self'", `'nonce-${nonce}'`, "https://code.jquery.com", "https://cdn.datatables.net", "https://static.cloudflareinsights.com", "https://cdn.jsdelivr.net"],
-                // Note: 'unsafe-inline' kept for styleSrc - inline styles are lower risk and nonce injection is complex for static HTML
-                styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.datatables.net", "https://fonts.googleapis.com"],
-                fontSrc: ["'self'", "https://fonts.gstatic.com"],
-                imgSrc: ["'self'", "data:", "https://cdn.datatables.net", "https://m.media-amazon.com", "https://v3-cinemeta.strem.io"],
-                connectSrc: ["'self'"],
-            },
-        },
-    })(req, res, next);
-});
+// CSP Disabled as per user request
+app.use(helmet({
+    contentSecurityPolicy: false,
+}));
 app.use(hpp());
 app.use(cors());
 app.use(express.json());
