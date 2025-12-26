@@ -9,6 +9,10 @@ node_modules/
 build/
 dist/
 
+# Test coverage
+coverage/
+.nyc_output/
+
 # IDE specific files
 .idea/
 .vscode/

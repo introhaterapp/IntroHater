@@ -5,11 +5,14 @@
 		"start": "node server.js",
 		"test": "node tests/api.test.js",
 		"test:api": "node tests/api.test.js",
-		"test:unit": "jest --testPathPattern=tests/unit",
-		"test:integration": "jest --testPathPattern=tests/integration",
+		"test:unit": "jest tests/unit",
+		"test:integration": "jest tests/integration",
 		"test:all": "npm run test:api && npm run test:unit",
 		"test:watch": "jest --watch",
-		"build": "npm run test:api"
+		"build": "npm run test:api",
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
+		"security:audit": "npm audit --production"
 	},
 	"dependencies": {
 		"auth0": "^4.18.0",
