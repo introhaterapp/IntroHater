@@ -216,6 +216,7 @@ ul {
 .hero-container {
     padding-top: 60px;
     padding-bottom: 40px;
+    position: relative;
 }
 
 .hero-title {
@@ -1231,17 +1232,25 @@ table.dataTable tbody td {
 
 /* Live Activity Ticker (Hero) */
 #activity-ticker {
-    margin-top: 32px;
-    text-align: center;
+    position: absolute;
+    top: 40px;
+    /* Below nav which is approx 72px, but hero padding handles that. This is relative to hero-container */
+    right: 24px;
+    margin-top: 0;
+    text-align: right;
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
+    /* Ensure it doesn't overlap on small screens */
+    z-index: 10;
 }
 
 .ticker-pill {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
+    gap: 8px;
+    /* Reduced gap */
+    padding: 6px 12px;
+    /* Reduced padding */
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
@@ -1256,22 +1265,26 @@ table.dataTable tbody td {
 }
 
 .ticker-dot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    /* Smaller dot */
+    height: 6px;
+    /* Smaller dot */
     background: #22c55e;
     border-radius: 50%;
-    box-shadow: 0 0 8px #22c55e;
+    box-shadow: 0 0 6px #22c55e;
     animation: pulse 2s infinite;
 }
 
 .ticker-label {
     color: var(--text-main);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
+    /* Smaller font */
     font-weight: 600;
     letter-spacing: 0.05em;
 }
 
 #ticker-content {
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
+    /* Smaller font */
 }

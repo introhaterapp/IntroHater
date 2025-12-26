@@ -96,7 +96,7 @@ router.get('/leaderboard', async (req, res) => {
     res.json({
         users: board.map((u, i) => ({
             rank: i + 1,
-            userId: u.userId,
+            userId: u.userId ? u.userId.substring(0, 8) + '...' : 'anonymous',
             segments: u.segments,
             votes: u.votes,
             savedTime: u.savedTime || 0

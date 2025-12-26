@@ -26,112 +26,19 @@
 
 <body>
 
-    <!-- Auth Overlay -->
-    <div id="login-overlay">
-        <div class="glass-panel" style="max-width: 450px; width: 100%; padding: 40px;">
-            <div class="text-center" style="margin-bottom: 30px;">
-                <h2 class="text-gradient" style="font-size: 2rem;">Community Portal</h2>
-                <p style="color: var(--text-muted); margin-top: 10px;">Paste your Real-Debrid API key to access history
-                    and contribute.</p>
-            </div>
-            <div class="form-group">
-                <input type="text" id="authKey" class="form-input" placeholder="Real-Debrid Private Token (F4...)">
-            </div>
-            <button id="enterBtn" class="btn btn-primary"
-                style="width: 100%; justify-content: center; margin-top: 10px;">Enter Portal</button>
-            <p style="text-align: center; margin-top: 20px; font-size: 0.85rem;">
-                <a href="https://real-debrid.com/apitoken" target="_blank" style="color: var(--primary);">Get your key
-                    here ↗</a>
-            </p>
-        </div>
-    </div>
-
-    <header>
-        <div class="container">
-            <a href="index.html" class="logo text-gradient">
-                <img src="icon32.png" alt="Logo">
-                IntroHater
-            </a>
-            <nav>
-                <ul class="nav-links">
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="catalog.html">Catalog</a></li>
-                    <li><a href="leaderboard.html">Leaderboard</a></li>
-                    <li><a href="community.html" class="active">Community</a></li>
-                    <li><a href="https://github.com/introhaterapp/IntroHater" target="_blank">GitHub</a></li>
-                </ul>
-            </nav>
-            <div class="header-actions">
-                <a href="configure.html" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Install
-                    Addon</a>
-            </div>
-        </div>
-    </header>
-
     <main>
         <section class="section">
             <div class="container" style="padding-top: 100px; max-width: 800px;">
 
-                <div style="display: flex; justify-content: center; width: 100%;">
-                    <div class="tabs-premium" style="flex-wrap: wrap;">
-                        <div id="tab-indicator" class="tab-indicator"></div>
-                        <button class="tab-btn-premium active" data-tab="dashboard">My Activity</button>
-                        <button class="tab-btn-premium" data-tab="search">Search & Contribute</button>
-                        <button id="logoutBtn" class="tab-btn-premium"
-                            style="margin-left: auto; color: #ef4444;">Logout</button>
-                    </div>
+                <div class="header-content text-center" style="margin-bottom: 40px;">
+                    <h1 class="text-gradient" style="font-size: 2.5rem; margin-bottom: 16px;">Community Portal</h1>
+                    <p class="hero-subtitle">
+                        Search for shows to contribute skip segments or report issues.
+                    </p>
                 </div>
 
-                <!-- Dashboard Tab -->
-                <div id="dashboard" class="tab-content active">
-                    <div class="glass-panel" style="padding: 30px; margin-bottom: 30px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <h3 style="margin-bottom: 5px;">User Profile</h3>
-                                <p style="font-size: 0.9rem; color: var(--text-muted);">Short ID: <span
-                                        id="userShortId">-</span></p>
-                            </div>
-                            <div style="display: flex; gap: 40px;">
-                                <div class="text-center">
-                                    <div id="userRank" style="font-size: 1.25rem; font-weight: 700;">-</div>
-                                    <div
-                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">
-                                        Rank</div>
-                                </div>
-                                <div class="text-center">
-                                    <div id="userVotes" style="font-size: 1.25rem; font-weight: 700;">0</div>
-                                    <div
-                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">
-                                        Votes</div>
-                                </div>
-                                <div class="text-center">
-                                    <div id="userSaved" style="font-size: 1.25rem; font-weight: 700;">0h</div>
-                                    <div
-                                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">
-                                        Saved</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Personal Activity Chart -->
-                    <div class="glass-panel" style="padding: 24px; margin-bottom: 30px;">
-                        <h4 style="margin-bottom: 8px; font-family: 'Space Grotesk', sans-serif;">Weekly Impact</h4>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Number of skips
-                            you've used this week. Powered by your watch activity.</p>
-                        <div style="height: 200px; width: 100%;">
-                            <canvas id="activityChart"></canvas>
-                        </div>
-                    </div>
-
-                    <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 20px;">Watch History</h3>
-                    <div id="history-list" style="display: flex; flex-direction: column; gap: 15px;">
-                        <!-- History items -->
-                    </div>
-                </div>
-
-                <!-- Search/Contribute Tab -->
-                <div id="search" class="tab-content">
+                <!-- Search/Contribute Section -->
+                <div id="search-section">
                     <div class="glass-panel" style="padding: 30px;">
                         <h3 style="margin-bottom: 15px; font-family: 'Space Grotesk', sans-serif;">Search for Shows</h3>
                         <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
@@ -145,6 +52,7 @@
                         <div id="search-results"
                             style="display: flex; flex-direction: column; gap: 12px; max-height: 500px; overflow-y: auto;">
                             <!-- Results -->
+                            <p style="text-align: center; color: var(--text-muted);">enter a search term to begin.</p>
                         </div>
                     </div>
                 </div>
@@ -257,215 +165,12 @@
     <script>
         let rdKey = localStorage.getItem('introhater_rdkey') || "";
         let currentItem = null;
-        let activityChart = null;
-
-        function initActivityChart(data) {
-            const ctx = document.getElementById('activityChart').getContext('2d');
-            if (activityChart) activityChart.destroy();
-
-            // Build chart data from actual watch history
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const dayCounts = [0, 0, 0, 0, 0, 0, 0];
-
-            // Count watch history entries by day of week
-            if (data.history && data.history.length > 0) {
-                data.history.forEach(item => {
-                    if (item.timestamp) {
-                        const dayIndex = new Date(item.timestamp).getDay();
-                        dayCounts[dayIndex]++;
-                    }
-                });
-            }
-
-            // Reorder to start from Monday (Mon, Tue, ..., Sun)
-            const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            const chartData = [...dayCounts.slice(1), dayCounts[0]];
-
-            activityChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Skips Used',
-                        data: chartData,
-                        backgroundColor: 'rgba(99, 102, 241, 0.6)',
-                        borderColor: '#6366f1',
-                        borderWidth: 1,
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            ticks: { color: '#71717a', font: { size: 10 }, stepSize: 1 }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#71717a', font: { size: 10 } }
-                        }
-                    }
-                }
-            });
-        }
-
-        // --- Auth Flow ---
-        if (rdKey) {
-            document.getElementById('login-overlay').style.display = 'none';
-            loadDashboard();
-        }
 
         // --- Event Listeners (Fix for CSP) ---
         document.getElementById('closeSubmitX')?.addEventListener('click', closeSubmit);
         document.getElementById('closeSubmitBtn')?.addEventListener('click', closeSubmit);
         document.getElementById('closeReportX')?.addEventListener('click', closeReport);
         document.getElementById('closeReportBtn')?.addEventListener('click', closeReport);
-
-        document.getElementById('enterBtn').onclick = async () => {
-            const key = document.getElementById('authKey').value.trim();
-            if (!key) return;
-
-            const btn = document.getElementById('enterBtn');
-            btn.textContent = 'Verifying...';
-
-            try {
-                // Verify with our API
-                const res = await fetch('/api/stats/personal', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rdKey: key })
-                });
-
-                if (res.ok) {
-                    rdKey = key;
-                    localStorage.setItem('introhater_rdkey', key);
-                    document.getElementById('login-overlay').style.display = 'none';
-                    loadDashboard();
-                } else {
-                    alert("Verification failed. Please check your Real-Debrid API Key.");
-                }
-            } catch (e) {
-                alert("Server error.");
-            } finally {
-                btn.textContent = 'Enter Portal';
-            }
-        };
-
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            localStorage.removeItem('introhater_rdkey');
-            location.reload();
-        });
-
-        // --- Tab Logic ---
-        function updateTabIndicator() {
-            const activeBtn = document.querySelector('.tab-btn-premium.active');
-            const indicator = document.getElementById('tab-indicator');
-            if (activeBtn && indicator) {
-                indicator.style.width = `${activeBtn.offsetWidth}px`;
-                indicator.style.left = `${activeBtn.offsetLeft}px`;
-            }
-        }
-
-        document.querySelectorAll('.tab-btn-premium').forEach(btn => {
-            if (!btn.dataset.tab) return;
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.tab-btn-premium').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                btn.classList.add('active');
-                document.getElementById(btn.dataset.tab).classList.add('active');
-                updateTabIndicator();
-            });
-        });
-
-        window.addEventListener('resize', updateTabIndicator);
-        setTimeout(updateTabIndicator, 100);
-
-        // --- Dashboard Logic ---
-        async function loadDashboard() {
-            try {
-                const res = await fetch('/api/stats/personal', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rdKey })
-                });
-                const data = await res.json();
-
-                document.getElementById('userShortId').textContent = data.userId ? data.userId.substr(0, 8) : '-';
-                document.getElementById('userRank').textContent = data.rank || '-';
-                document.getElementById('userVotes').textContent = data.votes || 0;
-
-                // Format saved time
-                const seconds = data.savedTime || 0;
-                let savedText = "0s";
-                if (seconds > 86400) savedText = (seconds / 86400).toFixed(1) + "d";
-                else if (seconds > 3600) savedText = (seconds / 3600).toFixed(1) + "h";
-                else if (seconds > 60) savedText = (seconds / 60).toFixed(0) + "m";
-                else savedText = seconds.toFixed(0) + "s";
-
-                document.getElementById('userSaved').textContent = savedText;
-
-                initActivityChart(data);
-
-                const historyList = document.getElementById('history-list');
-                historyList.innerHTML = '';
-
-                if (data.history && data.history.length > 0) {
-                    data.history.forEach(item => {
-                        const row = document.createElement('div');
-                        row.className = 'glass-panel';
-                        row.style.padding = '15px';
-                        row.style.display = 'flex';
-                        row.style.justifyContent = 'space-between';
-                        row.style.alignItems = 'center';
-
-                        // Sanitized ID for attributes
-                        const vId = item.videoId || "";
-                        const title = item.title || vId;
-                        const poster = item.poster || "";
-
-                        row.innerHTML = `
-                            <div style="display: flex; gap: 15px; align-items: center;">
-                                ${poster ? `<img src="${poster}" style="width: 40px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">` : `<div style="width: 40px; height: 60px; background: rgba(255,255,255,0.05); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--text-muted);">No Img</div>`}
-                                <div>
-                                    <div style="font-weight: 600;">${title}</div>
-                                    <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</div>
-                                </div>
-                            </div>
-                            <div style="display: flex; gap: 10px;">
-                                <button class="btn btn-secondary action-btn" data-action="improve" data-id="${vId}" data-title="${title}" data-poster="${poster}" style="font-size: 0.75rem;">Improve 🛠️</button>
-                                <button class="btn btn-danger-outline action-btn" data-action="report" data-id="${vId}" style="font-size: 0.75rem;">Report ⚠️</button>
-                            </div>
-                        `;
-                        historyList.appendChild(row);
-                    });
-                } else {
-                    historyList.innerHTML = '<p style="text-align: center; color: var(--text-muted); margin-top: 20px;">No recent activity found. Watch something on Stremio first!</p>';
-                }
-            } catch (e) { console.error(e); }
-        }
-
-        // Event Delegation for History List
-        document.getElementById('history-list').addEventListener('click', (e) => {
-            const btn = e.target.closest('.action-btn');
-            if (!btn) return;
-
-            const action = btn.dataset.action;
-            const id = btn.dataset.id;
-
-            if (action === 'improve') {
-                const title = btn.dataset.title;
-                const poster = btn.dataset.poster;
-                openSubmitFromHistory(id, title, poster);
-            } else if (action === 'report') {
-                openReportModal(id);
-            }
-        });
 
         // --- Search/Submit Logic ---
         let searchTimeout = null;
@@ -514,7 +219,10 @@
                 } else {
                     cont.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No results found.</p>';
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+                cont.innerHTML = '<p style="text-align: center; color: #ef4444;">Search failed. Try again.</p>';
+            }
             finally { btn.textContent = 'Search'; }
         }
 
