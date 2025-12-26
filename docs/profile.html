@@ -218,7 +218,9 @@
 
     <!-- Auth Overlay -->
     <div id="login-overlay">
-        <div class="glass-panel" style="max-width: 450px; width: 100%; padding: 40px;">
+        <div class="glass-panel" style="max-width: 450px; width: 100%; padding: 40px; position: relative;">
+            <button id="closeOverlayBtn" class="modal-close"
+                style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
             <div class="text-center" style="margin-bottom: 30px;">
                 <h2 class="text-gradient" style="font-size: 2rem;">My Profile</h2>
                 <p style="color: var(--text-muted); margin-top: 10px;">Paste your Real-Debrid API key to view your
@@ -437,6 +439,19 @@
             localStorage.removeItem('introhater_rdkey');
             location.reload();
         });
+
+        // Close Overlay Logic
+        function closeOverlay() {
+            document.getElementById('login-overlay').style.display = 'none';
+        }
+
+        document.getElementById('closeOverlayBtn').onclick = closeOverlay;
+
+        document.getElementById('login-overlay').onclick = (e) => {
+            if (e.target.id === 'login-overlay') {
+                closeOverlay();
+            }
+        };
 
         async function loadProfile() {
             try {
