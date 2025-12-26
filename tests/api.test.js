@@ -166,8 +166,8 @@ async function runTests() {
         assert(text && text.includes('IntroHater'), 'should contain IntroHater');
     });
 
-    await test('GET /community.html serves community page', async () => {
-        const res = await getResponse('GET', '/community.html');
+    await test('GET /contribute.html serves contribute page', async () => {
+        const res = await getResponse('GET', '/contribute.html');
         assert(res.ok, `Expected 200, got ${res.status}`);
     });
 
