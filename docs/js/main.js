@@ -262,10 +262,10 @@ async function initTicker() {
                 }
             };
 
-            ws.onerror = (err) => {
+            ws.onerror = () => {
                 console.warn('[Ticker] WebSocket error, falling back to polling');
             };
-        } catch (e) {
+        } catch {
             console.warn('[Ticker] WebSocket not available, using polling only');
         }
     };

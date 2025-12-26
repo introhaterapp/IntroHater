@@ -1,4 +1,3 @@
-const { auth } = require('express-openid-connect');
 const rateLimit = require('express-rate-limit');
 const apiKeyService = require('../services/apiKey');
 
@@ -16,7 +15,7 @@ const apiKeyAuth = async (req, res, next) => {
     try {
         // Check for API key in headers
         const apiKey = req.headers['x-api-key'];
-        
+
         if (!apiKey) {
             return res.status(401).json({ error: 'API key is required' });
         }
@@ -36,17 +35,17 @@ const apiKeyAuth = async (req, res, next) => {
         // For all other keys, validate against the database
         const startTime = Date.now();
         const keyDetails = await apiKeyService.validateApiKey(apiKey);
-        
+
         if (!keyDetails) {
             return res.status(401).json({ error: 'Invalid or expired API key' });
         }
 
         // Check permissions if endpoint requires specific permissions
         if (req.requiredPermissions && req.requiredPermissions.length > 0) {
-            const hasPermission = req.requiredPermissions.every(permission => 
+            const hasPermission = req.requiredPermissions.every(permission =>
                 keyDetails.permissions.includes(permission)
             );
-            
+
             if (!hasPermission) {
                 return res.status(403).json({ error: 'Insufficient permissions for this API' });
             }
@@ -54,12 +53,12 @@ const apiKeyAuth = async (req, res, next) => {
 
         // Store API key info for usage tracking and rate limiting bypass
         req.apiKey = keyDetails;
-        
+
         // Setup response listener to track metrics
         const oldSend = res.send;
-        res.send = function(data) {
+        res.send = function () {
             const responseTime = Date.now() - startTime;
-            
+
             // Track API usage asynchronously
             apiKeyService.trackUsage(
                 keyDetails._id,
@@ -67,10 +66,10 @@ const apiKeyAuth = async (req, res, next) => {
                 responseTime,
                 res.statusCode
             ).catch(err => console.error('Error tracking API usage:', err));
-            
+
             return oldSend.apply(this, arguments);
         };
-        
+
         next();
     } catch (error) {
         console.error('API key authentication error:', error);
@@ -107,7 +106,7 @@ const requirePermission = (permissions) => {
     if (!Array.isArray(permissions)) {
         permissions = [permissions];
     }
-    
+
     return (req, res, next) => {
         req.requiredPermissions = permissions;
         next();

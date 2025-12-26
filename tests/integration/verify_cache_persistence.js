@@ -16,7 +16,7 @@ async function testCachePersistence() {
             imdbID: testShow,
             start: 10,
             end: 20
-        }).catch(err => console.log("(Success) Submitted segment (ignoring auth failure for trigger check)"));
+        }).catch(() => console.log("(Success) Submitted segment (ignoring auth failure for trigger check)"));
 
         console.log("\nFetching One Piece again...");
         const start2 = Date.now();

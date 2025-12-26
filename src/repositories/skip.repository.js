@@ -97,6 +97,30 @@ class SkipRepository extends BaseRepository {
         }
         return await this.updateOne({ fullId }, { $set: { segments } });
     }
+
+    /**
+     * Get recent segments using MongoDB aggregation for efficiency.
+     * Uses $unwind + $sort to avoid loading all docs into memory.
+     * @param {number} limit - Number of recent segments to return
+     * @returns {Promise<Array>} Array of recent segment objects
+     */
+    async getRecentSegments(limit = 20) {
+        return await this.aggregate([
+            { $unwind: "$segments" },
+            { $match: { "segments.createdAt": { $exists: true } } },
+            { $sort: { "segments.createdAt": -1 } },
+            { $limit: limit },
+            {
+                $project: {
+                    _id: 0,
+                    videoId: "$fullId",
+                    label: { $ifNull: ["$segments.label", "Intro"] },
+                    createdAt: "$segments.createdAt",
+                    source: { $ifNull: ["$segments.source", "community"] }
+                }
+            }
+        ]);
+    }
 }
 
 module.exports = new SkipRepository();

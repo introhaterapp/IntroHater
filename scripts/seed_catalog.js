@@ -1,6 +1,5 @@
 require('dotenv').config();
 const catalogService = require('../src/services/catalog');
-const axios = require('axios');
 
 // Popular Anime IMDB IDs to seed the catalog
 const SEED_IDS = [

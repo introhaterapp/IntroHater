@@ -2,6 +2,7 @@
  * CacheService - Centralized cache management
  * Replaces global.metadataCache and global.loggedHistory
  */
+const log = require('../utils/logger').cache;
 
 // Simple LRU Cache with TTL support
 class LRUCache {
@@ -77,6 +78,9 @@ const loggedHistory = new LRUCache(5000, 3600000); // 5000 items, 1 hour TTL
 // HLS manifest cache (no TTL, just LRU)
 const manifestCache = new LRUCache(1000, null);
 
+// Probe cache for HLS (30 min TTL)
+const probeCache = new LRUCache(1000, 30 * 60 * 1000);
+
 /**
  * Get cached metadata for an IMDB ID
  * @param {string} imdbId
@@ -143,12 +147,30 @@ function hasManifest(cacheKey) {
     return manifestCache.has(cacheKey);
 }
 
+/**
+ * Get cached probe result
+ * @param {string} key
+ * @returns {any|null}
+ */
+function getCachedProbe(key) {
+    return probeCache.get(key);
+}
+
+/**
+ * Store probe result in cache
+ * @param {string} key
+ * @param {any} value
+ */
+function setCachedProbe(key, value) {
+    probeCache.set(key, value);
+}
+
 // Run garbage collection periodically
 setInterval(() => {
     const metaRemoved = metadataCache.gc();
     const historyRemoved = loggedHistory.gc();
     if (metaRemoved > 0 || historyRemoved > 0) {
-        console.log(`[CacheService] GC: Removed ${metaRemoved} metadata, ${historyRemoved} history entries`);
+        log.info({ metaRemoved, historyRemoved }, 'GC cleanup');
     }
 }, 300000); // Every 5 minutes
 
@@ -161,8 +183,11 @@ module.exports = {
     getManifest,
     setManifest,
     hasManifest,
+    getCachedProbe,
+    setCachedProbe,
     // Expose for testing
     _metadataCache: metadataCache,
     _loggedHistory: loggedHistory,
-    _manifestCache: manifestCache
+    _manifestCache: manifestCache,
+    _probeCache: probeCache
 };

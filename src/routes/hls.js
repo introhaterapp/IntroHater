@@ -11,7 +11,7 @@ const { getByteOffset, generateSmartManifest, getStreamDetails, getRefinedOffset
 const skipService = require('../services/skip-service');
 const userService = require('../services/user-service');
 const cacheService = require('../services/cache-service');
-const { generateUserId } = require('../middleware/rdAuth');
+const log = require('../utils/logger').hls;
 
 // ==================== Helpers ====================
 
@@ -37,7 +37,7 @@ function isSafeUrl(urlStr) {
         if (host === '169.254.169.254') return false;
 
         return ['http:', 'https:'].includes(url.protocol);
-    } catch (e) {
+    } catch {
         return false;
     }
 }
@@ -85,7 +85,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
                 });
 
                 cacheService.logWatch(userId, videoId);
-                console.log(`[Telemetry] Play logged for ${userId.substr(0, 6)} on ${videoId}`);
+                log.info({ userId: userId.substr(0, 6), videoId }, 'Play logged');
 
                 userService.addWatchHistory(userId, {
                     videoId: videoId,
@@ -114,17 +114,17 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
             return res.send(cacheService.getManifest(cacheKey));
         }
 
-        console.log(`[HLS] Generating manifest for Intro: ${introStart}s - ${introEnd}s`);
+        log.info({ introStart, introEnd }, 'Generating manifest');
 
         // Resolve Redirects & Get Length
-        console.log(`[HLS] Probing URL: ${streamUrl}`);
+        log.info({ streamUrl }, 'Probing URL');
         const details = await getStreamDetails(streamUrl);
         if (details.finalUrl !== streamUrl) {
-            console.log(`[HLS] Resolved Redirect: ${details.finalUrl}`);
+            log.info({ finalUrl: details.finalUrl }, 'Resolved Redirect');
             streamUrl = details.finalUrl;
         }
         const totalLength = details.contentLength;
-        console.log(`[HLS] Content-Length: ${totalLength || 'Unknown'}`);
+        log.info({ contentLength: totalLength || 'Unknown' }, 'Content-Length');
 
         // Check for Invalid/Error Streams
         const URL_LOWER = streamUrl.toLowerCase();
@@ -138,7 +138,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
 
         // Try Chapter Discovery if no skip segments provided
         if ((!introStart || introStart === 0) && (!introEnd || introEnd === 0)) {
-            console.log(`[HLS] No skip segments for ${videoId}. Checking chapters...`);
+            log.info({ videoId }, 'No skip segments. Checking chapters.');
             const chapters = await getChapters(streamUrl);
             const skipChapter = chapters.find(c => {
                 const t = c.title.toLowerCase();
@@ -146,13 +146,13 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
             });
 
             if (skipChapter) {
-                console.log(`[HLS] Found intro chapter: ${skipChapter.title} (${skipChapter.startTime}-${skipChapter.endTime}s)`);
+                log.info({ title: skipChapter.title, start: skipChapter.startTime, end: skipChapter.endTime }, 'Found intro chapter');
 
                 const cStart = skipChapter.startTime;
                 const cEnd = skipChapter.endTime;
 
                 if (videoId && userId) {
-                    console.log(`[HLS] Backfilling chapter data for ${videoId} as 'chapter-bot'`);
+                    log.info({ videoId }, "Backfilling chapter data as 'chapter-bot'");
                     skipService.addSkipSegment(videoId, cStart, cEnd, "Intro", "chapter-bot")
                         .catch(e => console.error(`[HLS] Backfill failed: ${e.message}`));
                 }
@@ -169,7 +169,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
         if (!isSuccess && introStart > 0 && introEnd > introStart) {
             const points = await getRefinedOffsets(streamUrl, introStart, introEnd);
             if (points) {
-                console.log(`[HLS] Splicing at bytes: ${points.startOffset} -> ${points.endOffset}`);
+                log.info({ startOffset: points.startOffset, endOffset: points.endOffset }, 'Splicing at bytes');
                 manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
                 isSuccess = true;
             } else {
@@ -194,7 +194,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
 
         // Pass-through if all failed
         if (!manifest || !isSuccess) {
-            console.log(`[HLS] No valid skip points found. Generating pass-through manifest for: ...${streamUrl.slice(-30)}`);
+            log.info({ streamUrlShort: streamUrl.slice(-30) }, 'No valid skip points found. Generating pass-through manifest.');
             manifest = generateSmartManifest(streamUrl, 7200, 0, totalLength, 0);
             isSuccess = true;
         }
@@ -207,7 +207,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
 
     } catch (e) {
         console.error("Proxy Error:", e.message);
-        console.log("Fallback: Redirecting to original stream (Error-based redirect)");
+        log.info("Fallback: Redirecting to original stream (Error-based redirect)");
         res.redirect(req.query.stream);
     }
 });
@@ -221,7 +221,7 @@ router.get('/vote/:action/:videoId', (req, res) => {
     const baseUrl = `${protocol}://${host}`;
 
     const userId = user || 'anonymous';
-    console.log(`[Vote] User ${userId.substr(0, 6)}... voted ${action.toUpperCase()} on ${videoId}`);
+    log.info({ userId: userId.substr(0, 6), action: action.toUpperCase(), videoId }, 'User voted');
 
     userService.updateUserStats(userId, {
         votes: 1,
@@ -230,11 +230,11 @@ router.get('/vote/:action/:videoId', (req, res) => {
 
     if (action === 'down') {
         const originalUrl = decodeURIComponent(stream);
-        console.log(`[Vote] Redirecting to original: ${originalUrl}`);
+        log.info({ originalUrl }, 'Redirecting to original');
         res.redirect(originalUrl);
     } else {
         const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${stream}&start=${start}&end=${end}`;
-        console.log(`[Vote] Redirecting to skip: ${proxyUrl}`);
+        log.info({ proxyUrl }, 'Redirecting to skip');
         res.redirect(proxyUrl);
     }
 });

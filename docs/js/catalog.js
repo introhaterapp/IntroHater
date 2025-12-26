@@ -1,19 +1,7 @@
 // Use current origin if served via http/s, fallback to production only if opening as a local file
 // API_BASE_URL is defined in main.js
 
-async function fetchCatalog() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/catalog`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch catalog');
-        }
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error('Error fetching catalog:', error);
-        return { media: {} };
-    }
-}
+// async function fetchCatalog() { ... } (Removed as unused)
 
 async function fetchSegments(videoId) {
     try {
@@ -31,7 +19,7 @@ async function initializeCatalog() {
     if (!table) return;
 
     // Initialize DataTable with server-side processing
-    const dt = window.jQuery('#catalogTable').DataTable({
+    window.jQuery('#catalogTable').DataTable({
         serverSide: true,
         ajax: {
             url: `${API_BASE_URL}/api/catalog`,
@@ -66,7 +54,7 @@ async function initializeCatalog() {
             {
                 title: 'Title',
                 data: 0,
-                render: function (data, type, row) {
+                render: function (data, type, _row) {
                     if (type === 'display') {
                         return `<span class="user-cell" style="font-size: 1rem;">${data}</span>`;
                     }

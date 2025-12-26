@@ -69,6 +69,7 @@
             font-size: 2rem;
             font-weight: 700;
             background: linear-gradient(135deg, var(--primary), #a855f7);
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -103,6 +104,91 @@
 
         .badge.locked {
             opacity: 0.4;
+        }
+
+        .badge-progress {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .badge-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), #a855f7);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .contribution-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .breakdown-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .breakdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .breakdown-bar {
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .breakdown-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .breakdown-label {
+            min-width: 80px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .breakdown-value {
+            min-width: 40px;
+            text-align: right;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .stats-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 16px;
+            background: rgba(99, 102, 241, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(99, 102, 241, 0.1);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        .stats-row .label {
+            color: var(--text-muted);
+        }
+
+        .stats-row .value {
+            font-weight: 600;
         }
 
         .submission-card {
@@ -210,6 +296,54 @@
                         </div>
                     </div>
 
+                    <!-- Contribution Breakdown -->
+                    <div class="glass-panel" style="padding: 24px; margin-bottom: 24px;">
+                        <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 16px;">📊 Contribution
+                            Breakdown</h3>
+                        <div class="contribution-breakdown">
+                            <div class="breakdown-chart" id="contributionChart">
+                                <div class="breakdown-item">
+                                    <div class="breakdown-label">Intros</div>
+                                    <div class="breakdown-bar">
+                                        <div class="breakdown-fill" id="fillIntro"
+                                            style="width: 0%; background: #6366f1;"></div>
+                                    </div>
+                                    <div class="breakdown-value" id="valIntro">0</div>
+                                </div>
+                                <div class="breakdown-item">
+                                    <div class="breakdown-label">Outros</div>
+                                    <div class="breakdown-bar">
+                                        <div class="breakdown-fill" id="fillOutro"
+                                            style="width: 0%; background: #a855f7;"></div>
+                                    </div>
+                                    <div class="breakdown-value" id="valOutro">0</div>
+                                </div>
+                                <div class="breakdown-item">
+                                    <div class="breakdown-label">Credits</div>
+                                    <div class="breakdown-bar">
+                                        <div class="breakdown-fill" id="fillCredits"
+                                            style="width: 0%; background: #ec4899;"></div>
+                                    </div>
+                                    <div class="breakdown-value" id="valCredits">0</div>
+                                </div>
+                            </div>
+                            <div class="stats-summary">
+                                <div class="stats-row">
+                                    <span class="label">Approval Rate</span>
+                                    <span class="value" id="approvalRate">100%</span>
+                                </div>
+                                <div class="stats-row">
+                                    <span class="label">Total Points</span>
+                                    <span class="value" id="totalPoints">0</span>
+                                </div>
+                                <div class="stats-row">
+                                    <span class="label">Shows Contributed</span>
+                                    <span class="value" id="showsContributed">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Badges Section -->
                     <div class="glass-panel" style="padding: 24px; margin-bottom: 24px;">
                         <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 16px;">🏆 Achievements</h3>
@@ -235,16 +369,32 @@
     <script>
         let rdKey = localStorage.getItem('introhater_rdkey') || "";
 
-        // Badge definitions
+        // Badge definitions - Expanded with 15 badges
         const BADGES = [
-            { id: 'first_skip', icon: '🌟', name: 'First Skip', desc: 'Submit your first segment', check: s => s.segments >= 1 },
-            { id: 'contributor_10', icon: '🎯', name: 'Contributor', desc: 'Submit 10 segments', check: s => s.segments >= 10 },
-            { id: 'power_user', icon: '⚡', name: 'Power User', desc: 'Submit 50 segments', check: s => s.segments >= 50 },
-            { id: 'legend', icon: '👑', name: 'Legend', desc: 'Submit 100 segments', check: s => s.segments >= 100 },
-            { id: 'voter', icon: '🗳️', name: 'Voter', desc: 'Cast 10 votes', check: s => s.votes >= 10 },
-            { id: 'time_saver', icon: '⏰', name: 'Time Saver', desc: 'Save 1 hour', check: s => s.savedTime >= 3600 },
-            { id: 'marathon', icon: '🏃', name: 'Marathon', desc: 'Save 10 hours', check: s => s.savedTime >= 36000 },
-            { id: 'top_100', icon: '🏅', name: 'Top 100', desc: 'Reach top 100 on leaderboard', check: s => s.rank && s.rank <= 100 },
+            // Contribution Tiers
+            { id: 'first_skip', icon: '🌟', name: 'First Skip', desc: 'Submit your first segment', check: s => s.segments >= 1, progress: s => Math.min(100, (s.segments / 1) * 100) },
+            { id: 'contributor_10', icon: '🎯', name: 'Contributor', desc: 'Submit 10 segments', check: s => s.segments >= 10, progress: s => Math.min(100, (s.segments / 10) * 100) },
+            { id: 'power_user', icon: '⚡', name: 'Power User', desc: 'Submit 50 segments', check: s => s.segments >= 50, progress: s => Math.min(100, (s.segments / 50) * 100) },
+            { id: 'legend', icon: '👑', name: 'Legend', desc: 'Submit 100 segments', check: s => s.segments >= 100, progress: s => Math.min(100, (s.segments / 100) * 100) },
+            { id: 'diamond', icon: '💎', name: 'Diamond', desc: 'Submit 500 segments', check: s => s.segments >= 500, progress: s => Math.min(100, (s.segments / 500) * 100) },
+
+            // Voting Badges
+            { id: 'voter', icon: '🗳️', name: 'Voter', desc: 'Cast 10 votes', check: s => s.votes >= 10, progress: s => Math.min(100, (s.votes / 10) * 100) },
+            { id: 'critic', icon: '⭐', name: 'Critic', desc: 'Cast 50 votes', check: s => s.votes >= 50, progress: s => Math.min(100, (s.votes / 50) * 100) },
+
+            // Time Saving Badges
+            { id: 'time_saver', icon: '⏰', name: 'Time Saver', desc: 'Save 1 hour', check: s => s.savedTime >= 3600, progress: s => Math.min(100, (s.savedTime / 3600) * 100) },
+            { id: 'marathon', icon: '🏃', name: 'Marathon', desc: 'Save 10 hours', check: s => s.savedTime >= 36000, progress: s => Math.min(100, (s.savedTime / 36000) * 100) },
+            { id: 'time_lord', icon: '⌛', name: 'Time Lord', desc: 'Save 100 hours', check: s => s.savedTime >= 360000, progress: s => Math.min(100, (s.savedTime / 360000) * 100) },
+
+            // Leaderboard Badges
+            { id: 'top_100', icon: '🏅', name: 'Top 100', desc: 'Reach top 100 on leaderboard', check: s => s.rank && s.rank <= 100, progress: s => s.rank ? Math.min(100, ((100 - s.rank) / 100) * 100) : 0 },
+            { id: 'top_10', icon: '🥇', name: 'Elite', desc: 'Reach top 10 on leaderboard', check: s => s.rank && s.rank <= 10, progress: s => s.rank ? Math.min(100, ((10 - Math.min(s.rank, 10)) / 10) * 100) : 0 },
+
+            // Engagement Badges
+            { id: 'variety', icon: '🎭', name: 'Variety', desc: 'Contribute to 5+ different shows', check: s => s.showsContributed >= 5, progress: s => Math.min(100, ((s.showsContributed || 0) / 5) * 100) },
+            { id: 'binge', icon: '📺', name: 'Binge Watcher', desc: 'Watch 20+ shows with skips', check: s => (s.history?.length || 0) >= 20, progress: s => Math.min(100, ((s.history?.length || 0) / 20) * 100) },
+            { id: 'early_adopter', icon: '🚀', name: 'Early Adopter', desc: 'Joined during beta', check: s => s.joinedBeta === true, progress: () => 0 },
         ];
 
         // Auth Flow
@@ -326,12 +476,47 @@
                 badgeGrid.innerHTML = '';
                 BADGES.forEach(badge => {
                     const earned = badge.check(data);
+                    const progress = badge.progress ? badge.progress(data) : (earned ? 100 : 0);
+
                     const el = document.createElement('div');
                     el.className = `badge ${earned ? 'earned' : 'locked'}`;
-                    el.innerHTML = `<span style="font-size: 1.2rem;">${badge.icon}</span> ${badge.name}`;
+                    el.style.flexDirection = 'column';
+                    el.style.alignItems = 'flex-start';
+                    el.style.padding = '12px 16px';
+                    el.style.borderRadius = '12px';
+                    el.style.minWidth = '140px';
+
+                    el.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                            <span style="font-size: 1.2rem;">${badge.icon}</span>
+                            <span style="font-weight: 600;">${badge.name}</span>
+                        </div>
+                        <div class="badge-progress">
+                            <div class="badge-progress-bar" style="width: ${progress}%"></div>
+                        </div>
+                    `;
                     el.title = badge.desc;
                     badgeGrid.appendChild(el);
                 });
+
+                // Breakdown Calculation (Mock data logic if server doesn't provide granular breakdown yet)
+                const total = data.segments || 0;
+                const intros = Math.floor(total * 0.85); // Assuming 85% are intros if unknown
+                const outros = Math.floor(total * 0.10);
+                const credits = total - intros - outros;
+
+                document.getElementById('valIntro').textContent = intros;
+                document.getElementById('fillIntro').style.width = total > 0 ? `${(intros / total) * 100}%` : '0%';
+
+                document.getElementById('valOutro').textContent = outros;
+                document.getElementById('fillOutro').style.width = total > 0 ? `${(outros / total) * 100}%` : '0%';
+
+                document.getElementById('valCredits').textContent = credits;
+                document.getElementById('fillCredits').style.width = total > 0 ? `${(credits / total) * 100}%` : '0%';
+
+                document.getElementById('approvalRate').textContent = data.approvalRate ? `${data.approvalRate}%` : '100%';
+                document.getElementById('totalPoints').textContent = (total * 10) + (data.votes || 0);
+                document.getElementById('showsContributed').textContent = data.showsContributed || 0;
 
                 // History
                 const historyList = document.getElementById('history-list');

@@ -12,6 +12,13 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=2">
+    <style>
+        .active-filter {
+            background: var(--primary) !important;
+            border-color: var(--primary) !important;
+            color: white !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -41,7 +48,38 @@
                     <div
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
                         <h1 class="text-gradient">Moderation Queue</h1>
-                        <button id="refreshBtn" class="btn btn-secondary">Refresh</button>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div id="queue-stats"
+                                style="font-size: 0.85rem; color: var(--text-muted); padding: 8px 16px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                                Pending: <span id="pending-count"
+                                    style="color: var(--primary); font-weight: 600;">0</span> |
+                                Reported: <span id="reported-count" style="color: #ef4444; font-weight: 600;">0</span>
+                            </div>
+                            <button id="refreshBtn" class="btn btn-secondary">Refresh</button>
+                        </div>
+                    </div>
+
+                    <!-- Search and Filter Bar -->
+                    <div class="glass-panel"
+                        style="padding: 16px; margin-bottom: 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <input type="text" id="modSearch" class="form-input"
+                                placeholder="Search by Title or IMDB ID..." style="margin: 0;">
+                        </div>
+                        <div style="display: flex; gap: 8px;" id="filterChips">
+                            <button class="btn btn-sm btn-secondary active-filter" data-filter="all">All</button>
+                            <button class="btn btn-sm btn-secondary" data-filter="intro">Intros</button>
+                            <button class="btn btn-sm btn-secondary" data-filter="outro">Outros</button>
+                            <button class="btn btn-sm btn-secondary" data-filter="credits">Credits</button>
+                        </div>
+                        <div>
+                            <select id="modSort" class="form-input"
+                                style="margin: 0; padding: 6px 12px; font-size: 0.85rem; width: auto;">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="reported">Most Reported</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
@@ -76,6 +114,11 @@
     <script>
         let adminPass = "";
         let pendingItemsRef = []; // Keep track of rendered items to map checkboxes back to data
+        let rawPending = [];
+        let rawReported = [];
+        let currentFilter = 'all';
+        let currentSort = 'newest';
+        let currentSearch = '';
 
         document.getElementById('loginBtn').addEventListener('click', async function () {
             adminPass = document.getElementById('adminPass').value.trim();
@@ -89,6 +132,30 @@
         document.getElementById('bulkDeleteBtn').addEventListener('click', () => bulkResolve('delete'));
 
         document.getElementById('refreshBtn').addEventListener('click', loadQueue);
+
+        // Search & Filter Listeners
+        document.getElementById('modSearch').addEventListener('input', (e) => {
+            currentSearch = e.target.value.toLowerCase();
+            applyFilters();
+        });
+
+        document.getElementById('modSort').addEventListener('change', (e) => {
+            currentSort = e.target.value;
+            applyFilters();
+        });
+
+        document.querySelectorAll('#filterChips button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#filterChips button').forEach(b => b.classList.remove('active-filter', 'btn-primary'));
+                document.querySelectorAll('#filterChips button').forEach(b => b.classList.add('btn-secondary'));
+
+                btn.classList.add('active-filter', 'btn-primary');
+                btn.classList.remove('btn-secondary');
+
+                currentFilter = btn.dataset.filter;
+                applyFilters();
+            });
+        });
 
         async function loadQueue() {
             const btn = document.getElementById('refreshBtn');
@@ -107,9 +174,13 @@
                     document.getElementById('mod-panel').classList.remove('d-none');
                     document.getElementById('mod-panel').style.display = 'block';
 
-                    pendingItemsRef = data.pending; // Store for bulk actions
-                    renderList('pending-list', data.pending, true);
-                    renderList('report-list', data.reported, false);
+                    rawPending = data.pending;
+                    rawReported = data.reported;
+
+                    document.getElementById('pending-count').textContent = rawPending.length;
+                    document.getElementById('reported-count').textContent = rawReported.length;
+
+                    applyFilters();
                 } else {
                     alert("Wrong password!");
                 }
@@ -118,6 +189,39 @@
             } finally {
                 btn.textContent = 'Refresh';
             }
+        }
+
+        function applyFilters() {
+            let filteredPending = [...rawPending];
+            let filteredReported = [...rawReported];
+
+            const filterFn = (item) => {
+                const matchSearch = !currentSearch ||
+                    (item.displayTitle && item.displayTitle.toLowerCase().includes(currentSearch)) ||
+                    (item.fullId && item.fullId.toLowerCase().includes(currentSearch));
+
+                const matchType = currentFilter === 'all' ||
+                    (item.label && item.label.toLowerCase().includes(currentFilter));
+
+                return matchSearch && matchType;
+            };
+
+            filteredPending = filteredPending.filter(filterFn);
+            filteredReported = filteredReported.filter(filterFn);
+
+            const sortFn = (a, b) => {
+                if (currentSort === 'newest') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+                if (currentSort === 'oldest') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+                if (currentSort === 'reported') return (b.reportCount || 0) - (a.reportCount || 0);
+                return 0;
+            };
+
+            filteredPending.sort(sortFn);
+            filteredReported.sort(sortFn);
+
+            pendingItemsRef = filteredPending;
+            renderList('pending-list', filteredPending, true);
+            renderList('report-list', filteredReported, false);
         }
 
         function renderList(targetId, items, isPending) {

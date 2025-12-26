@@ -80,7 +80,7 @@ async function exportData() {
         try {
             fs.writeFileSync(outputPath, JSON.stringify(exportData, null, 4));
             console.log(`\n🎉 SUCCESS! Data saved to: ${outputPath}`);
-        } catch (e) { }
+        } catch { /* ignore write errors */ }
 
         console.log("---------------- COPY BELOW ----------------");
         console.log(JSON.stringify(exportData, null, 4));

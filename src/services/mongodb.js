@@ -1,4 +1,5 @@
 const { MongoClient } = require('mongodb');
+const log = require('../utils/logger').mongodb;
 
 class MongoService {
     constructor() {
@@ -14,7 +15,7 @@ class MongoService {
         // If no URI, return null (fallback to memory/file will be handled by consumer)
         if (!this.uri) {
             if (!this.warned) {
-                console.warn("[MongoDB] No MONGODB_URI provided. Using in-memory/file storage (Ephemeral).");
+                log.warn('No MONGODB_URI provided. Using in-memory/file storage (Ephemeral).');
                 this.warned = true;
             }
             return null;
@@ -30,12 +31,12 @@ class MongoService {
             const collections = await this.db.listCollections().toArray();
             const names = collections.map(c => c.name);
 
-            console.log(`[MongoDB] Connected to database: ${dbName}`);
-            console.log(`[MongoDB] Collections found: [${names.join(', ')}]`);
+            log.info({ dbName }, 'Connected to database');
+            log.info({ collections: names }, 'Collections found');
 
             return this.db;
         } catch (e) {
-            console.error("[MongoDB] Connection failed:", e.message);
+            log.error({ err: e.message }, 'Connection failed');
             return null;
         }
     }
@@ -51,7 +52,7 @@ class MongoService {
             await this.client.close();
             this.client = null;
             this.db = null;
-            console.log("[MongoDB] Connection closed.");
+            log.info('Connection closed');
         }
     }
 }

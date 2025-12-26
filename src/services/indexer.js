@@ -2,6 +2,7 @@ const catalogService = require('./catalog');
 const skipService = require('./skip-service');
 const cacheRepository = require('../repositories/cache.repository');
 const axios = require('axios');
+const log = require('../utils/logger').indexer;
 
 class IndexerService {
     constructor() {
@@ -27,13 +28,13 @@ class IndexerService {
         try {
             await cacheRepository.setCache(this.STATE_KEY, state);
         } catch (e) {
-            console.error('[Indexer] Failed to save state:', e.message);
+            log.error({ err: e.message }, 'Failed to save state');
         }
     }
 
     async runIndex() {
         if (this.isRunning) {
-            console.log('[Indexer] Already running, skipping cycle.');
+            log.info('Already running, skipping cycle');
             return;
         }
 
@@ -41,15 +42,15 @@ class IndexerService {
 
         // Load State
         const state = await this.loadState();
-        console.log(`[Indexer] Starting catalog indexing cycle (Resuming from Page ${state.page})...`);
+        log.info({ page: state.page }, 'Starting catalog indexing cycle');
 
         try {
             await this.indexAnimeSkipCatalog(state);
         } catch (e) {
-            console.error(`[Indexer] Cycle failed: ${e.message}`);
+            log.error({ err: e.message }, 'Cycle failed');
         } finally {
             this.isRunning = false;
-            console.log('[Indexer] Indexing cycle complete.');
+            log.info('Indexing cycle complete');
         }
     }
 
@@ -86,13 +87,13 @@ class IndexerService {
                 const shows = res.data?.data?.searchShows || [];
 
                 if (shows.length === 0) {
-                    console.log('[Indexer] No more shows found (empty result). Resetting indexer loop.');
+                    log.info('No more shows found (empty result). Resetting indexer loop.');
                     await this.saveState({ page: 0, offset: 0, lastRun: new Date().toISOString() });
                     running = false;
                     break;
                 }
 
-                console.log(`[Indexer] Processing page ${page + 1} (Offset: ${offset}, Shows: ${shows.length})...`);
+                log.info({ page: page + 1, offset, showCount: shows.length }, 'Processing page');
 
                 for (const show of shows) {
                     let imdbId = null;
@@ -114,7 +115,7 @@ class IndexerService {
                             if (searchRes.data?.metas?.length > 0) {
                                 imdbId = searchRes.data.metas[0].id;
                             }
-                        } catch (e) { }
+                        } catch { /* ignore stremio search errors */ }
                     }
 
                     // If registered, add to catalog AND fetch segments
@@ -168,11 +169,11 @@ class IndexerService {
                             }
 
                             if (importedCount > 0) {
-                                console.log(`[Indexer] Imported ${importedCount} segments for ${show.name} (${imdbId})`);
+                                log.info({ count: importedCount, show: show.name, imdbId }, 'Imported segments');
                             }
 
                         } catch (err) {
-                            console.error(`[Indexer] Failed to fetch segments for ${show.name}: ${err.message}`);
+                            log.error({ show: show.name, err: err.message }, 'Failed to fetch segments');
                         }
 
                     }
@@ -191,7 +192,7 @@ class IndexerService {
                 await new Promise(r => setTimeout(r, 1000));
 
             } catch (e) {
-                console.error(`[Indexer] Error on page ${page}: ${e.message}`);
+                log.error({ page, err: e.message }, 'Error on page');
                 // Save state even on error to resume later
                 await this.saveState({ page, offset, error: e.message, lastRun: new Date().toISOString() });
                 running = false;

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 require('dotenv').config();
 const path = require('path');
 // Fix path: relative to THIS file

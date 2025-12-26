@@ -1,6 +1,7 @@
 const { ObjectId } = require('mongodb');
 const crypto = require('crypto');
 const mongoService = require('./mongodb');
+const log = require('../utils/logger').apiKey;
 require('dotenv').config();
 
 class ApiKeyService {
@@ -11,40 +12,40 @@ class ApiKeyService {
 
   async init() {
     if (this.apiKeys && this.apiUsage) return;
-    
+
     try {
       this.apiKeys = await mongoService.getCollection('apiKeys');
       this.apiUsage = await mongoService.getCollection('apiUsage');
-      
+
       // Create indexes
       await this.apiKeys.createIndex({ key: 1 }, { unique: true });
       await this.apiKeys.createIndex({ userId: 1 });
       await this.apiUsage.createIndex({ apiKeyId: 1, timestamp: 1 });
-      
-      console.log('API Key service initialized successfully');
+
+      log.info('API Key service initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize API Key service:', error);
+      log.error({ err: error }, 'Failed to initialize API Key service');
       throw error;
     }
   }
 
   async generateApiKey(userId, name, permissions = [], expiresAt = null, isAdminKey = false) {
     await this.init();
-    
+
     // Check if user already has an active API key
-    const existingKeys = await this.apiKeys.find({ 
-      userId, 
-      isActive: true 
+    const existingKeys = await this.apiKeys.find({
+      userId,
+      isActive: true
     }).toArray();
-    
+
     if (existingKeys.length > 0) {
       throw new Error('You already have an active API key. Please revoke your existing key before generating a new one.');
     }
-    
+
     // Generate a secure random API key
     const keyLength = parseInt(process.env.API_KEY_LENGTH) || 32;
     const apiKey = crypto.randomBytes(keyLength).toString('hex');
-    
+
     const keyDoc = {
       userId,
       name,
@@ -56,37 +57,37 @@ class ApiKeyService {
       isActive: true,
       isAdminKey // New field for unlimited access
     };
-    
+
     const result = await this.apiKeys.insertOne(keyDoc);
     return { ...keyDoc, _id: result.insertedId };
   }
 
   async validateApiKey(apiKey) {
     await this.init();
-    
+
     const keyDoc = await this.apiKeys.findOne({ key: apiKey, isActive: true });
-    
+
     if (!keyDoc) {
       return null;
     }
-    
+
     // Check if key has expired
     if (keyDoc.expiresAt && new Date() > new Date(keyDoc.expiresAt)) {
       return null;
     }
-    
+
     // Update last used timestamp
     await this.apiKeys.updateOne(
       { _id: keyDoc._id },
       { $set: { lastUsed: new Date() } }
     );
-    
+
     return keyDoc;
   }
 
   async trackUsage(apiKeyId, endpoint, responseTime, statusCode) {
     await this.init();
-    
+
     const usage = {
       apiKeyId,
       endpoint,
@@ -94,7 +95,7 @@ class ApiKeyService {
       responseTime,
       statusCode
     };
-    
+
     await this.apiUsage.insertOne(usage);
   }
 
@@ -105,39 +106,41 @@ class ApiKeyService {
 
   async revokeKey(keyId) {
     await this.init();
-    
+
     const objectId = new ObjectId(keyId);
-    
+
     // Delete the API key
     const result = await this.apiKeys.deleteOne({ _id: objectId });
-    
+
     // Also delete all associated usage data
     await this.apiUsage.deleteMany({ apiKeyId: objectId });
-    
+
     return result.deletedCount > 0;
   }
 
   async getUsageStats(apiKeyId, startDate, endDate) {
     await this.init();
-    
+
     const query = { apiKeyId: new ObjectId(apiKeyId) };
-    
+
     if (startDate || endDate) {
       query.timestamp = {};
       if (startDate) query.timestamp.$gte = new Date(startDate);
       if (endDate) query.timestamp.$lte = new Date(endDate);
     }
-    
+
     const stats = await this.apiUsage.aggregate([
       { $match: query },
-      { $group: {
-        _id: "$endpoint",
-        count: { $sum: 1 },
-        avgResponseTime: { $avg: "$responseTime" },
-        statusCodes: { $push: "$statusCode" }
-      }}
+      {
+        $group: {
+          _id: "$endpoint",
+          count: { $sum: 1 },
+          avgResponseTime: { $avg: "$responseTime" },
+          statusCodes: { $push: "$statusCode" }
+        }
+      }
     ]).toArray();
-    
+
     return stats;
   }
 
@@ -145,15 +148,15 @@ class ApiKeyService {
     await this.init();
     return await this.apiKeys.find({}).toArray();
   }
-  
+
   async getKeyDetails(keyId) {
     await this.init();
     return await this.apiKeys.findOne({ _id: new ObjectId(keyId) });
   }
-  
+
   async getKeysWithUserInfo() {
     await this.init();
-    
+
     // Aggregate to join with user info if available
     const keysWithUsers = await this.apiKeys.aggregate([
       {
@@ -180,29 +183,31 @@ class ApiKeyService {
         }
       }
     ]).toArray();
-    
+
     return keysWithUsers;
   }
-  
+
   async getUsageForAllKeys(startDate, endDate) {
     await this.init();
-    
+
     const query = {};
-    
+
     if (startDate || endDate) {
       query.timestamp = {};
       if (startDate) query.timestamp.$gte = new Date(startDate);
       if (endDate) query.timestamp.$lte = new Date(endDate);
     }
-    
+
     const stats = await this.apiUsage.aggregate([
       { $match: query },
-      { $group: {
-        _id: "$apiKeyId",
-        totalCalls: { $sum: 1 },
-        avgResponseTime: { $avg: "$responseTime" },
-        endpoints: { $addToSet: "$endpoint" }
-      }},
+      {
+        $group: {
+          _id: "$apiKeyId",
+          totalCalls: { $sum: 1 },
+          avgResponseTime: { $avg: "$responseTime" },
+          endpoints: { $addToSet: "$endpoint" }
+        }
+      },
       {
         $lookup: {
           from: "apiKeys",
@@ -223,7 +228,7 @@ class ApiKeyService {
         }
       }
     ]).toArray();
-    
+
     return stats;
   }
 }

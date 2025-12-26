@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 require('dotenv').config();
 const skipService = require('../src/services/skip-service');
 const { performance } = require('perf_hooks');

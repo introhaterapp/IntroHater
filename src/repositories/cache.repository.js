@@ -13,7 +13,7 @@ class CacheRepository extends BaseRepository {
         try {
             await this.collection.createIndex({ key: 1 }, { unique: true });
             this.indicesCreated = true;
-        } catch (e) { }
+        } catch { /* ignore index creation errors */ }
     }
 
     async getCache(key) {

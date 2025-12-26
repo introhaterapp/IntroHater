@@ -1,4 +1,5 @@
 const userRepository = require('../repositories/user.repository');
+const log = require('../utils/logger').users;
 
 // Initialize
 let initPromise = null;
@@ -7,10 +8,10 @@ async function ensureInit() {
     if (initPromise) return initPromise;
     initPromise = (async () => {
         try {
-            console.log('[Users] Initializing Database-Only User Service...');
+            log.info('Initializing Database-Only User Service...');
             await userRepository.ensureInit();
         } catch (e) {
-            console.error("[Users] Init Error:", e);
+            log.error({ err: e }, 'Init Error');
         }
     })();
     return initPromise;
@@ -21,11 +22,22 @@ ensureInit();
 
 // --- Stats Operations ---
 
+/**
+ * Get user statistics
+ * @param {string} userId
+ * @returns {Promise<Object|null>}
+ */
 async function getUserStats(userId) {
     await ensureInit();
     return await userRepository.findByUserId(userId);
 }
 
+/**
+ * Add an item to user's watch history
+ * @param {string} userId
+ * @param {Object} item
+ * @returns {Promise<Object|null>} Updated stats
+ */
 async function addWatchHistory(userId, item) {
     await ensureInit();
     let stats = await getUserStats(userId);
@@ -59,6 +71,12 @@ async function addWatchHistory(userId, item) {
     return await updateUserStats(userId, { watchHistory: stats.watchHistory });
 }
 
+/**
+ * Update user statistics atomically
+ * @param {string} userId
+ * @param {Object} updates
+ * @returns {Promise<Object|null>} Updated stats
+ */
 async function updateUserStats(userId, updates) {
     await ensureInit();
 
@@ -118,16 +136,25 @@ async function updateUserStats(userId, updates) {
         }
         return await getUserStats(userId);
     } catch (e) {
-        console.error("[Users] Update Error:", e.message);
+        log.error({ err: e.message }, 'Update Error');
         return null;
     }
 }
 
+/**
+ * Get the top contributors leaderboard
+ * @param {number} limit
+ * @returns {Promise<Array>}
+ */
 async function getLeaderboard(limit = 10) {
     await ensureInit();
     return await userRepository.getLeaderboard(limit);
 }
 
+/**
+ * Get global application statistics
+ * @returns {Promise<Object>}
+ */
 async function getStats() {
     await ensureInit();
     const userCount = await userRepository.countDocuments();
@@ -140,6 +167,12 @@ async function getStats() {
     return { userCount, voteCount, totalSavedTime };
 }
 
+/**
+ * Record time saved for a user and globally
+ * @param {string} userId
+ * @param {number} duration
+ * @returns {Promise<void>}
+ */
 async function incrementSavedTime(userId, duration) {
     if (!duration || duration <= 0) return;
     await ensureInit();
@@ -155,11 +188,20 @@ async function incrementSavedTime(userId, duration) {
 
 // --- Token Operations ---
 
+/**
+ * Get stored token for a user
+ * @param {string} userId
+ * @returns {Promise<Object|null>}
+ */
 async function getUserToken(userId) {
     await ensureInit();
     return await userRepository.findTokenByUserId(userId);
 }
 
+/**
+ * Store a new auth token for a user
+ * @returns {Promise<Object>} The stored entry
+ */
 async function storeUserToken(userId, token, timestamp, nonce) {
     await ensureInit();
     let entry = {

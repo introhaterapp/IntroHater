@@ -64,16 +64,59 @@ const MAINTENANCE = {
     STARTUP_DELAY_MS: 60 * 1000 // 1 minute after startup
 };
 
+// Updated for current MongoDB deployment (Critical Priority Rank 3)
 const REQUIRED_ENV_VARS = [
-    'ORACLE_REGION',
-    'ORACLE_COMPARTMENT_ID',
-    'TOKEN_SECRET',
-    'AUTH0_CLIENT_ID',
-    'AUTH0_CLIENT_SECRET',
-    'AUTH0_DOMAIN',
-    'BASE_URL',
-    'ADMIN_EMAILS'  // Add ADMIN_EMAILS as a required environment variable
+    'MONGODB_URI',      // MongoDB connection string
+    'TOKEN_SECRET',     // JWT Secret for user tokens
+    'ADMIN_EMAILS'      // Comma-separated admin emails
 ];
+
+// Optional but recommended env vars (warnings only)
+const OPTIONAL_ENV_VARS = [
+    'PORT',             // Server port (default: 7005)
+    'PUBLIC_URL',       // Public URL for manifest
+    'OMDB_API_KEY',     // For movie metadata lookups
+    'ANIME_SKIP_CLIENT_ID', // For anime-skip API
+];
+
+/**
+ * Validates environment variables on startup.
+ * Fails fast with clear error messages for missing required configuration.
+ */
+function validateEnv() {
+    const missing = [];
+    const warnings = [];
+
+    // Check required vars
+    for (const varName of REQUIRED_ENV_VARS) {
+        if (!process.env[varName]) {
+            missing.push(varName);
+        }
+    }
+
+    // Check optional vars (warnings only)
+    for (const varName of OPTIONAL_ENV_VARS) {
+        if (!process.env[varName]) {
+            warnings.push(varName);
+        }
+    }
+
+    // Log warnings for optional vars
+    if (warnings.length > 0) {
+        console.warn(`⚠️  Optional environment variables not set: ${warnings.join(', ')}`);
+    }
+
+    // Fail fast on missing required vars
+    if (missing.length > 0) {
+        console.error('\n❌ FATAL: Missing required environment variables:');
+        missing.forEach(v => console.error(`   - ${v}`));
+        console.error('\n   Please set these in your .env file or environment.');
+        console.error('   See .env.example for reference.\n');
+        process.exit(1);
+    }
+
+    console.log('✅ Environment validation passed');
+}
 
 const OMDB = {
     API_KEY: process.env.OMDB_API_KEY,
@@ -102,6 +145,13 @@ const MANIFEST = {
     DESCRIPTION: "Universal Skip Intro for Stremio (TV/Mobile/PC)"
 };
 
+const PROBE = {
+    TIMEOUT_MS: 15000,           // Default ffprobe timeout
+    SPLICE_TIMEOUT_MS: 20000,    // Splice probe timeout
+    CHAPTER_TIMEOUT_MS: 10000,   // Chapter probe timeout
+    CACHE_TTL_MS: 30 * 60 * 1000 // 30 minutes cache TTL
+};
+
 module.exports = {
     SECURITY,
     SEGMENTS,
@@ -110,9 +160,12 @@ module.exports = {
     SUBMISSION,
     MAINTENANCE,
     REQUIRED_ENV_VARS,
+    OPTIONAL_ENV_VARS,
+    validateEnv,
     OMDB,
     ANIME_SKIP,
     SERVER,
     STATS,
-    MANIFEST
+    MANIFEST,
+    PROBE
 };

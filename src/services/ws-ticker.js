@@ -5,6 +5,7 @@
 
 const WebSocket = require('ws');
 const metrics = require('./metrics');
+const log = require('../utils/logger').ws;
 
 let wss = null;
 let clients = new Set();
@@ -16,10 +17,10 @@ let clients = new Set();
 function init(server) {
     wss = new WebSocket.Server({ server, path: '/ws/ticker' });
 
-    wss.on('connection', (ws, req) => {
+    wss.on('connection', (ws) => {
         clients.add(ws);
         metrics.incActiveConnections();
-        console.log(`[WS] Client connected. Total: ${clients.size}`);
+        log.info({ total: clients.size }, 'Client connected');
 
         // Send welcome message with current connection count
         ws.send(JSON.stringify({
@@ -35,11 +36,11 @@ function init(server) {
         ws.on('close', () => {
             clients.delete(ws);
             metrics.decActiveConnections();
-            console.log(`[WS] Client disconnected. Total: ${clients.size}`);
+            log.info({ total: clients.size }, 'Client disconnected');
         });
 
         ws.on('error', (err) => {
-            console.error('[WS] Client error:', err.message);
+            log.error({ err: err.message }, 'Client error');
             clients.delete(ws);
             metrics.decActiveConnections();
         });
@@ -61,7 +62,7 @@ function init(server) {
         clearInterval(heartbeatInterval);
     });
 
-    console.log('[WS] WebSocket ticker server initialized on /ws/ticker');
+    log.info('WebSocket ticker server initialized on /ws/ticker');
     return wss;
 }
 
@@ -94,13 +95,13 @@ function broadcast(segment) {
                 client.send(message);
                 sent++;
             } catch (e) {
-                console.error('[WS] Broadcast error:', e.message);
+                log.error({ err: e.message }, 'Broadcast error');
             }
         }
     });
 
     if (sent > 0) {
-        console.log(`[WS] Broadcasted new segment to ${sent} clients`);
+        log.info({ count: sent }, 'Broadcasted new segment');
     }
 }
 

@@ -54,7 +54,7 @@ async function verifyRdKey(rdKey, timeout = 3000) {
         rdKeyCache.set(rdKey, { valid, timestamp: Date.now() });
 
         return valid;
-    } catch (e) {
+    } catch {
         rdKeyCache.set(rdKey, { valid: false, timestamp: Date.now() });
         return false;
     }

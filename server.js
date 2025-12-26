@@ -11,10 +11,13 @@ const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
 const hpp = require('hpp');
+const morgan = require('morgan');
+const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const log = require('./src/utils/logger').server;
 
 // Configuration
-const { SECURITY, SERVER } = require('./src/config/constants');
+const { SECURITY, SERVER, validateEnv } = require('./src/config/constants');
 
 // Configure ffmpeg/ffprobe paths
 const ffmpeg = require('fluent-ffmpeg');
@@ -24,7 +27,7 @@ if (process.platform === 'win32') {
         const ffprobePath = require('ffprobe-static').path;
         ffmpeg.setFfmpegPath(ffmpegPath);
         ffmpeg.setFfprobePath(ffprobePath);
-    } catch (e) { console.log("Using system ffmpeg"); }
+    } catch { log.info("Using system ffmpeg"); }
 } else {
     ffmpeg.setFfmpegPath('ffmpeg');
     ffmpeg.setFfprobePath('ffprobe');
@@ -47,19 +50,33 @@ const PUBLIC_URL = SERVER.PUBLIC_URL || `http://127.0.0.1:${PORT}`;
 // Trust proxy for rate limiting behind reverse proxies
 app.set('trust proxy', 1);
 
-// Security middleware
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://code.jquery.com", "https://cdn.datatables.net", "https://static.cloudflareinsights.com", "https://cdn.jsdelivr.net"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.datatables.net", "https://fonts.googleapis.com"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            imgSrc: ["'self'", "data:", "https://cdn.datatables.net", "https://m.media-amazon.com", "https://v3-cinemeta.strem.io"],
-            connectSrc: ["'self'"],
+// Request logging (Critical Priority Rank 1)
+app.use(morgan(':remote-addr :method :url :status :response-time ms - :res[content-length]'));
+
+// CSP Nonce middleware (Critical Priority Rank 2)
+app.use((req, res, next) => {
+    res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+    next();
+});
+
+// Security middleware with nonce-based CSP
+app.use((req, res, next) => {
+    const nonce = res.locals.cspNonce;
+    helmet({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                // Nonce for inline scripts, plus trusted CDNs
+                scriptSrc: ["'self'", `'nonce-${nonce}'`, "https://code.jquery.com", "https://cdn.datatables.net", "https://static.cloudflareinsights.com", "https://cdn.jsdelivr.net"],
+                // Note: 'unsafe-inline' kept for styleSrc - inline styles are lower risk and nonce injection is complex for static HTML
+                styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.datatables.net", "https://fonts.googleapis.com"],
+                fontSrc: ["'self'", "https://fonts.gstatic.com"],
+                imgSrc: ["'self'", "data:", "https://cdn.datatables.net", "https://m.media-amazon.com", "https://v3-cinemeta.strem.io"],
+                connectSrc: ["'self'"],
+            },
         },
-    },
-}));
+    })(req, res, next);
+});
 app.use(hpp());
 app.use(cors());
 app.use(express.json());
@@ -111,15 +128,49 @@ app.use((req, res) => {
 
 // ==================== Server Startup ====================
 
+// Graceful Shutdown
+const mongoService = require('./src/services/mongodb');
+
+function gracefulShutdown(signal, server) {
+    log.info({ signal }, 'Received shutdown signal. Shutting down gracefully...');
+
+    server.close(async () => {
+        log.info('HTTP server closed');
+
+        try {
+            await mongoService.close();
+            log.info('MongoDB connection closed');
+        } catch (e) {
+            log.error({ err: e.message }, 'Error closing MongoDB');
+        }
+
+        log.info('Goodbye!');
+        process.exit(0);
+    });
+
+    // Force exit after 10s if connections don't close
+    setTimeout(() => {
+        log.error('Force shutdown after timeout');
+        process.exit(1);
+    }, 10000);
+}
+
 if (require.main === module) {
+    // Validate environment variables on startup (Critical Priority Rank 3)
+    validateEnv();
+
     // Start Indexer
     try {
         indexerService.start();
-    } catch (e) { console.error("Failed to start indexer:", e); }
+    } catch (e) { log.error({ err: e }, 'Failed to start indexer'); }
 
-    app.listen(PORT, () => {
-        console.log(`IntroHater Lite running on ${PORT} (${PUBLIC_URL})`);
+    const server = app.listen(PORT, () => {
+        log.info({ port: PORT, publicUrl: PUBLIC_URL }, 'IntroHater Lite running');
     });
+
+    // Register Shutdown Handlers
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM', server));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT', server));
 }
 
 module.exports = app;

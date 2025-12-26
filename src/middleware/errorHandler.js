@@ -29,7 +29,7 @@ class ApiError extends Error {
  * @param {import('express').Response} res - Express response
  * @param {import('express').NextFunction} next - Express next function
  */
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
     // Default to 500 if no status code set
     const statusCode = err.statusCode || 500;
     const isOperational = err.isOperational !== undefined ? err.isOperational : false;
@@ -68,7 +68,7 @@ const asyncHandler = (fn) => (req, res, next) => {
  * Call this once during server initialization
  */
 const setupGlobalErrorHandlers = () => {
-    process.on('unhandledRejection', (reason, promise) => {
+    process.on('unhandledRejection', (reason) => {
         console.error(`[${new Date().toISOString()}] [UNHANDLED REJECTION]`, reason);
         // Don't exit - let the app continue running
     });

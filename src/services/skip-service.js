@@ -3,6 +3,7 @@ const cacheRepository = require('../repositories/cache.repository');
 const axios = require('axios');
 const catalogService = require('./catalog');
 const { ANIME_SKIP } = require('../config/constants');
+const log = require('../utils/logger').skip;
 
 // Initialize
 let initPromise = null;
@@ -12,11 +13,11 @@ async function ensureInit() {
 
     initPromise = (async () => {
         try {
-            console.log('[SkipService] Initializing Database-Only Storage...');
+            log.info('Initializing Database-Only Storage...');
             await skipRepository.ensureInit();
             await cacheRepository.ensureInit();
         } catch (e) {
-            console.error("[SkipService] Init Error:", e);
+            log.error({ err: e }, 'Init Error');
         }
     })();
 
@@ -28,13 +29,11 @@ ensureInit();
 
 // --- Helpers ---
 
-function escapeRegex(string) {
-    return string.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
-}
-
 /**
  * Get all segments for a specific video ID or Series.
  * Optimized to prefer denormalized catalog data.
+ * @param {string} fullId - Video ID (e.g. tt12345:1:1)
+ * @returns {Promise<Array>} List of segments
  */
 async function getSegments(fullId) {
     await ensureInit();
@@ -114,7 +113,7 @@ async function getSegments(fullId) {
         }
 
     } catch (e) {
-        console.error("[SkipService] Retrieval Error:", e.message);
+        log.error({ err: e.message }, 'Retrieval Error');
         return [];
     }
 
@@ -166,7 +165,7 @@ async function getSegmentCount() {
     try {
         const result = await skipRepository.getGlobalStats();
         return result[0]?.total || 0;
-    } catch (e) {
+    } catch {
         return 0;
     }
 }
@@ -181,38 +180,16 @@ async function getAllSegments() {
 
 /**
  * Get recent segments for the activity ticker.
- * Returns an array of recent segment submissions sorted by createdAt desc.
+ * Uses MongoDB aggregation for efficiency (O(1) query).
+ * @param {number} limit - Number of recent segments to return
+ * @returns {Promise<Array>} Array of recent segment submissions sorted by createdAt desc
  */
 async function getRecentSegments(limit = 20) {
     await ensureInit();
     try {
-        // Query all documents and flatten their segments with fullId
-        const allDocs = await skipRepository.find({}, {
-            projection: { fullId: 1, segments: 1 },
-            limit: 100 // Limit docs to avoid loading everything
-        });
-
-        const allSegments = [];
-        allDocs.forEach(doc => {
-            if (doc.segments) {
-                doc.segments.forEach(seg => {
-                    if (seg.createdAt) {
-                        allSegments.push({
-                            videoId: doc.fullId,
-                            label: seg.label || 'Intro',
-                            createdAt: seg.createdAt,
-                            source: seg.source || 'community'
-                        });
-                    }
-                });
-            }
-        });
-
-        // Sort by createdAt descending and take top N
-        allSegments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        return allSegments.slice(0, limit);
+        return await skipRepository.getRecentSegments(limit);
     } catch (e) {
-        console.error('[SkipService] getRecentSegments error:', e.message);
+        log.error({ err: e.message }, 'getRecentSegments error');
         return [];
     }
 }
@@ -228,17 +205,17 @@ async function getMalId(imdbId) {
         const name = metaRes.data?.meta?.name;
         if (!name) return null;
 
-        console.log(`[SkipService] Searching MAL ID for "${name}"...`);
+        log.info({ name }, 'Searching MAL ID');
         const jikanRes = await axios.get(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(name)}&type=tv&limit=1`);
 
         if (jikanRes.data?.data?.[0]?.mal_id) {
             const malId = jikanRes.data.data[0].mal_id;
-            console.log(`[SkipService] Mapped ${imdbId} (${name}) -> MAL ${malId}`);
+            log.info({ imdbId, name, malId }, 'Mapped to MAL ID');
             await cacheRepository.setCache(`mal:${imdbId}`, malId);
             return malId;
         }
     } catch (e) {
-        console.error(`[SkipService] Mapping failed for ${imdbId}: ${e.message}`);
+        log.error({ imdbId, err: e.message }, 'MAL ID mapping failed');
     }
     return null;
 }
@@ -264,7 +241,7 @@ async function fetchAniskip(malId, episode) {
                 return result;
             }
         }
-    } catch (e) { }
+    } catch { /* ignore aniskip errors */ }
 
     await cacheRepository.setCache(cacheKey, null);
     return null;
@@ -284,7 +261,7 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
             try {
                 const metaRes = await axios.get(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`);
                 name = metaRes.data?.meta?.name;
-            } catch (e) { }
+            } catch { /* ignore cinemeta errors */ }
         }
 
         if (name) {
@@ -349,7 +326,7 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
             }
         }
     } catch (e) {
-        console.error(`[SkipService] Anime-Skip fetch failed: ${e.message}`);
+        log.error({ err: e.message }, 'Anime-Skip fetch failed');
     }
 
     await cacheRepository.setCache(cacheKey, null);
@@ -378,20 +355,18 @@ async function getSkipSegment(fullId) {
         const imdbId = parts[0];
         const episode = parseInt(parts[2]);
 
-        // Hit external APIs (AniSkip first, then Anime-Skip)
         const malId = await getMalId(imdbId);
         if (malId) {
-            // Attempt concurrent check for both sources if possible, but sequential for now to preserve priority
             const aniSkip = await fetchAniskip(malId, episode);
             if (aniSkip) {
-                console.log(`[SkipService] Found Aniskip for ${fullId}: ${aniSkip.start}-${aniSkip.end}`);
+                log.info({ fullId, start: aniSkip.start, end: aniSkip.end }, 'Found Aniskip');
                 addSkipSegment(fullId, aniSkip.start, aniSkip.end, 'Intro', 'aniskip').catch(() => { });
                 return aniSkip;
             }
 
             const animeSkip = await fetchAnimeSkip(malId, episode, imdbId);
             if (animeSkip) {
-                console.log(`[SkipService] Found Anime-Skip for ${fullId}: ${animeSkip.start}-${animeSkip.end}`);
+                log.info({ fullId, start: animeSkip.start, end: animeSkip.end }, 'Found Anime-Skip');
                 addSkipSegment(fullId, animeSkip.start, animeSkip.end, 'Intro', 'anime-skip').catch(() => { });
                 return animeSkip;
             }
@@ -474,7 +449,7 @@ async function getPendingModeration() {
             }
         });
     } catch (e) {
-        console.error("[SkipService] Error fetching pending moderation:", e);
+        log.error({ err: e }, 'Error fetching pending moderation');
     }
 
     return { pending, reported };
@@ -531,15 +506,43 @@ async function reportSegment(fullId, index) {
     return true;
 }
 
-async function forceSave() {
-    // No-op
-}
+// forceSave removed as it was a no-op
 
 async function cleanupDuplicates() {
     await ensureInit();
-    console.log('[SkipService] Starting duplicate cleanup...');
-    // ... logic remains standard but strictly DB
-    return 0; // Simplified for now
+    log.info('Starting duplicate cleanup...');
+
+    let totalRemoved = 0;
+    try {
+        const docs = await skipRepository.find({ "segments.1": { $exists: true } }); // Docs with at least 2 segments
+
+        for (const doc of docs) {
+            const originalCount = doc.segments.length;
+            const uniqueSegments = [];
+
+            for (const seg of doc.segments) {
+                const isDuplicate = uniqueSegments.some(existing =>
+                    Math.abs(existing.start - seg.start) < 1.0 &&
+                    Math.abs(existing.end - seg.end) < 1.0
+                );
+
+                if (!isDuplicate) {
+                    uniqueSegments.push(seg);
+                }
+            }
+
+            if (uniqueSegments.length < originalCount) {
+                const removedCount = originalCount - uniqueSegments.length;
+                log.info(`Removing ${removedCount} duplicates from ${doc.fullId}`);
+                await skipRepository.updateSegments(doc.fullId, uniqueSegments);
+                totalRemoved += removedCount;
+            }
+        }
+    } catch (e) {
+        log.error(`Duplicate cleanup failed: ${e.message}`);
+    }
+
+    return totalRemoved;
 }
 
 module.exports = {
@@ -553,6 +556,5 @@ module.exports = {
     getPendingModeration,
     resolveModeration,
     resolveModerationBulk,
-    reportSegment,
-    forceSave
+    reportSegment
 };

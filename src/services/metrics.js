@@ -2,7 +2,6 @@
  * Prometheus Metrics Service
  * Exposes application metrics for Grafana/Prometheus monitoring
  */
-
 const client = require('prom-client');
 
 // Create a Registry

@@ -19,7 +19,6 @@ async function bulkBake() {
 
         let count = 0;
         for (const imdbId of imdbIds) {
-            const tShow = performance.now();
             // getSegments handles the merging and series-level logic
             const segments = await skipService.getSegments(imdbId);
 

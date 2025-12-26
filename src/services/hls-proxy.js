@@ -1,8 +1,7 @@
-const ffmpeg = require('fluent-ffmpeg');
-const { Readable } = require('stream');
 const { spawn } = require('child_process');
-const path = require('path');
 const axios = require('axios'); // Requires axios
+const { PROBE } = require('../config/constants');
+const log = require('../utils/logger').hls;
 let ffprobePath = 'ffprobe';
 
 // We rely on 'ffprobe' being in the PATH (Docker/Linux or System install)
@@ -12,46 +11,10 @@ try {
     if (process.platform === 'win32') {
         ffprobePath = require('ffprobe-static').path;
     }
-} catch (e) { }
+} catch { /* ignore optional ffprobe-static */ }
 
-// Internal Cache for Probes (with TTL)
-const PROBE_CACHE = new Map();
-const MAX_PROBE_CACHE_SIZE = 1000;
-const PROBE_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const { getCachedProbe, setCachedProbe } = require('./cache-service');
 
-/**
- * Get a cached probe result (checks TTL)
- * @param {string} key - Cache key
- * @returns {any|null} Cached value or null if expired/missing
- */
-function getCachedProbe(key) {
-    if (!PROBE_CACHE.has(key)) return null;
-    const entry = PROBE_CACHE.get(key);
-
-    // Check TTL
-    if (Date.now() - entry.timestamp > PROBE_CACHE_TTL) {
-        PROBE_CACHE.delete(key);
-        return null;
-    }
-
-    // Move to end (MRU)
-    PROBE_CACHE.delete(key);
-    PROBE_CACHE.set(key, entry);
-    return entry.value;
-}
-
-/**
- * Store a probe result in cache (with timestamp)
- * @param {string} key - Cache key
- * @param {any} val - Value to cache
- */
-function setCachedProbe(key, val) {
-    if (PROBE_CACHE.has(key)) PROBE_CACHE.delete(key);
-    else if (PROBE_CACHE.size >= MAX_PROBE_CACHE_SIZE) {
-        PROBE_CACHE.delete(PROBE_CACHE.keys().next().value); // Remove oldest (LRU)
-    }
-    PROBE_CACHE.set(key, { value: val, timestamp: Date.now() });
-}
 
 // SSRF Protection (Duplicate of server logic for modularity)
 function isSafeUrl(urlStr) {
@@ -62,7 +25,7 @@ function isSafeUrl(urlStr) {
         if (host.startsWith('10.') || host.startsWith('192.168.') || host.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return false;
         if (host === '169.254.169.254') return false;
         return ['http:', 'https:'].includes(url.protocol);
-    } catch (e) { return false; }
+    } catch { return false; }
 }
 
 /**
@@ -85,7 +48,7 @@ async function getStreamDetails(url) {
             contentLength: response.headers['content-length'] ? parseInt(response.headers['content-length']) : null
         };
     } catch (e) {
-        console.warn(`[Helper] HEAD request failed: ${e.message}. Using original URL.`);
+        log.warn({ err: e.message }, 'HEAD request failed. Using original URL.');
         return { finalUrl: url, contentLength: null };
     }
 }
@@ -98,11 +61,11 @@ async function getByteOffset(url, startTime) {
     const cacheKey = `byte:${url}:${startTime}`;
     const cached = getCachedProbe(cacheKey);
     if (cached !== null) {
-        console.log(`[HLS Proxy] Using cached byte offset for ${startTime}s`);
+        log.info({ startTime }, 'Using cached byte offset');
         return cached;
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         // Arguments for ffprobe with read_intervals
         // We ensure we read significantly PAST the start time to find a keyframe
         // Increased to 60s to handle sparse keyframes
@@ -119,14 +82,14 @@ async function getByteOffset(url, startTime) {
             url
         ];
 
-        console.log(`[HLS Proxy] Spawning ffprobe for ${startTime}s...`);
+        log.info({ startTime }, 'Spawning ffprobe');
         const proc = spawn(ffprobePath, args);
 
         const timeout = setTimeout(() => {
-            console.warn(`[HLS Proxy] FFprobe timeout for ${startTime}s. Killing.`);
+            log.warn({ startTime }, 'FFprobe timeout. Killing.');
             proc.kill('SIGKILL');
             resolve(0);
-        }, 15000); // 15s timeout
+        }, PROBE.TIMEOUT_MS);
 
         let stdout = '';
         let stderr = '';
@@ -137,7 +100,7 @@ async function getByteOffset(url, startTime) {
         proc.on('close', (code) => {
             clearTimeout(timeout);
             if (code !== 0) {
-                console.warn(`[HLS Proxy] FFprobe exited with code ${code}. Stderr: ${stderr}`);
+                log.warn({ code, stderr }, 'FFprobe exited with error');
                 return resolve(0);
             }
 
@@ -145,18 +108,18 @@ async function getByteOffset(url, startTime) {
                 const data = JSON.parse(stdout);
 
                 if (!data.packets || data.packets.length === 0) {
-                    console.warn(`[HLS Proxy] No packets found (Packets array empty). Stderr: ${stderr}`);
+                    log.warn({ stderr }, 'No packets found (Packets array empty)');
                     return resolve(0);
                 }
 
                 // Check first packet
                 const firstPkt = data.packets[0];
                 const firstPts = parseFloat(firstPkt.pts_time);
-                console.log(`[HLS Proxy] First packet at ${firstPts}s (pos: ${firstPkt.pos})`);
+                log.info({ firstPts, pos: firstPkt.pos }, 'First packet found');
 
                 // If the first packet is WAY off (e.g. 0 when we asked for 90), seeking failed
                 if (firstPts < (startTime - 20)) {
-                    console.warn(`[HLS Proxy] Seek failed? Requested ${startTime}s, got ${firstPts}s.`);
+                    log.warn({ startTime, firstPts }, 'Seek failed? Requested time significantly different from first packet.');
                     // If we are somewhat close (e.g. 70s for 90s), we might accept it? 
                     // No, 20s drift is too much.
                     return resolve(0);
@@ -166,14 +129,14 @@ async function getByteOffset(url, startTime) {
                 const packet = data.packets.find(p => parseFloat(p.pts_time) >= startTime);
 
                 if (packet && packet.pos) {
-                    console.log(`[HLS Proxy] Found precise offset: ${packet.pos} (pts: ${packet.pts_time})`);
+                    log.info({ pos: packet.pos, pts: packet.pts_time }, 'Found precise offset');
                     const pos = parseInt(packet.pos);
                     setCachedProbe(cacheKey, pos);
                     resolve(pos);
                 } else if (firstPkt.pos) {
                     // Fallback: If we couldn't find exact >= start, but we have *something* close (e.g. 88s for 90s)
                     // We take the closest one we have.
-                    console.log(`[HLS Proxy] Exact >= seek failed, using closest packet at ${firstPts}s`);
+                    log.info({ firstPts }, 'Exact >= seek failed, using closest packet');
                     const pos = parseInt(firstPkt.pos);
                     setCachedProbe(cacheKey, pos);
                     resolve(pos);
@@ -181,7 +144,7 @@ async function getByteOffset(url, startTime) {
                     resolve(0);
                 }
             } catch (e) {
-                console.error(`[HLS Proxy] Parse error: ${e.message}. Stderr: ${stderr}`);
+                log.error({ err: e.message, stderr }, 'Parse error');
                 resolve(0);
             }
         });
@@ -195,7 +158,7 @@ async function getByteOffset(url, startTime) {
  * @param {number} byteOffset - The start byte offset.
  * @returns {string} - The m3u8 content.
  */
-function generateSmartManifest(videoUrl, duration, byteOffset, totalLength, startTime) {
+function generateSmartManifest(videoUrl, duration, byteOffset, totalLength) {
     // Strategy: Use a "Fake Splice" to bypass player 'EXT-X-START' issues.
     // We send the file Header (0-1MB) to initialize the decoder, 
     // then jump (Splice) to the content at byteOffset.
@@ -239,11 +202,11 @@ async function getRefinedOffsets(url, startSec, endSec) {
     const cacheKey = `refined:${url}:${startSec}:${endSec}`;
     const cached = getCachedProbe(cacheKey);
     if (cached) {
-        console.log(`[HLS Proxy] Using cached refined offsets for ${startSec}s & ${endSec}s`);
+        log.info({ startSec, endSec }, 'Using cached refined offsets');
         return cached;
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         // We probe both intervals in one command to save overhead
         // ffprobe read_intervals syntax: start%+duration,start2%+duration
         // Optimized: Reduced interval to +10s, added analyzeduration/probesize limits
@@ -261,14 +224,14 @@ async function getRefinedOffsets(url, startSec, endSec) {
             url
         ];
 
-        console.log(`[HLS Proxy] Probing splice points: ${startSec}s & ${endSec}s`);
+        log.info({ startSec, endSec }, 'Probing splice points');
         const proc = spawn(ffprobePath, args);
 
         const timeout = setTimeout(() => {
-            console.warn(`[HLS Proxy] FFprobe splice probe timeout. Killing.`);
+            log.warn('FFprobe splice probe timeout. Killing.');
             proc.kill('SIGKILL');
             resolve(null);
-        }, 20000); // 20s timeout
+        }, PROBE.SPLICE_TIMEOUT_MS);
 
         let stdout = '';
         let stderr = '';
@@ -279,7 +242,7 @@ async function getRefinedOffsets(url, startSec, endSec) {
         proc.on('close', (code) => {
             clearTimeout(timeout);
             if (code !== 0) {
-                console.warn(`[HLS Proxy] Probe failed code ${code}`);
+                log.warn({ code }, 'Probe failed');
                 return resolve(null);
             }
 
@@ -305,7 +268,7 @@ async function getRefinedOffsets(url, startSec, endSec) {
                 const endPkt = findPacket(endSec);
 
                 if (startPkt && endPkt) {
-                    console.log(`[HLS Proxy] Splice points found: ${startPkt.pts_time}s (${startPkt.pos}) -> ${endPkt.pts_time}s (${endPkt.pos})`);
+                    log.info({ startPts: startPkt.pts_time, startPos: startPkt.pos, endPts: endPkt.pts_time, endPos: endPkt.pos }, 'Splice points found');
                     const res = {
                         startOffset: parseInt(startPkt.pos),
                         endOffset: parseInt(endPkt.pos)
@@ -315,11 +278,11 @@ async function getRefinedOffsets(url, startSec, endSec) {
                 } else {
                     const lastPkt = data.packets[data.packets.length - 1];
                     const maxTime = lastPkt ? lastPkt.pts_time : "unknown";
-                    console.warn(`[HLS Proxy] Could not find packets for both ${startSec} and ${endSec}. Max timestamp found: ${maxTime}s`);
+                    log.warn({ startSec, endSec, maxTime }, 'Could not find packets for both points');
                     resolve(null);
                 }
             } catch (e) {
-                console.error(`[HLS Proxy] Parse error: ${e.message}`);
+                log.error({ err: e.message }, 'Parse error');
                 resolve(null);
             }
         });
@@ -338,14 +301,14 @@ async function getChapters(url) {
             url
         ];
 
-        console.log(`[HLS Proxy] Probing chapters for ${url}...`);
+        log.info({ url }, 'Probing chapters');
         const proc = spawn(ffprobePath, args);
 
         const timeout = setTimeout(() => {
-            console.warn(`[HLS Proxy] FFprobe chapter probe timeout. Killing.`);
+            log.warn('FFprobe chapter probe timeout. Killing.');
             proc.kill('SIGKILL');
             resolve([]);
-        }, 10000); // 10s timeout
+        }, PROBE.CHAPTER_TIMEOUT_MS);
 
         let stdout = '';
         let stderr = '';
@@ -356,7 +319,7 @@ async function getChapters(url) {
         proc.on('close', (code) => {
             clearTimeout(timeout);
             if (code !== 0) {
-                console.warn(`[HLS Proxy] Chapter probe failed code ${code}. Stderr: ${stderr}`);
+                log.warn({ code, stderr }, 'Chapter probe failed');
                 return resolve([]);
             }
 
@@ -370,10 +333,10 @@ async function getChapters(url) {
                     title: c.tags ? (c.tags.title || c.tags.TITLE || 'Chapter') : 'Chapter'
                 }));
 
-                console.log(`[HLS Proxy] Found ${chapters.length} chapters.`);
+                log.info({ count: chapters.length }, 'Found chapters');
                 resolve(chapters);
             } catch (e) {
-                console.error(`[HLS Proxy] Chapter parse error: ${e.message}`);
+                log.error({ err: e.message }, 'Chapter parse error');
                 resolve([]);
             }
         });

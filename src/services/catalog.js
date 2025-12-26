@@ -1,10 +1,16 @@
 const axios = require('axios');
 const catalogRepository = require('../repositories/catalog.repository');
+const log = require('../utils/logger').catalog;
 
 async function ensureInit() {
     await catalogRepository.ensureInit();
 }
 
+/**
+ * Fetch metadata for an IMDB ID
+ * @param {string} imdbId
+ * @returns {Promise<Object>} Metadata object { Title, Year, Poster }
+ */
 async function fetchMetadata(imdbId) {
     const omdbKey = process.env.OMDB_API_KEY;
     let data = null;
@@ -21,7 +27,7 @@ async function fetchMetadata(imdbId) {
                 };
             }
         } catch (error) {
-            console.error('[Catalog] OMDB Error:', error.message);
+            log.error({ err: error.message }, 'OMDB Error');
         }
     }
 
@@ -39,7 +45,7 @@ async function fetchMetadata(imdbId) {
                 };
             }
         } catch (error) {
-            console.error('[Catalog] Cinemeta Fallback Error:', error.message);
+            log.error({ err: error.message }, 'Cinemeta Fallback Error');
         }
     }
 
@@ -55,19 +61,31 @@ async function fetchMetadata(imdbId) {
     return data;
 }
 
+/**
+ * Check if an IMDB ID is a series
+ * @param {string} imdbId
+ * @returns {Promise<boolean>}
+ */
 async function isSeries(imdbId) {
     try {
         const res = await axios.get(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`);
         return !!res.data?.meta;
-    } catch (e) { return false; }
+    } catch { return false; }
 }
 
+/**
+ * Register a show in the catalog
+ * @param {string} videoId
+ * @param {number|null} segmentCount
+ * @param {Array|null} segments
+ * @returns {Promise<void>}
+ */
 async function registerShow(videoId, segmentCount = null, segments = null) {
     const parts = String(videoId).split(':');
     const imdbId = parts[0];
 
     if (!imdbId.match(/^tt\d+$/)) {
-        console.warn(`[Catalog] Rejected invalid ID: ${imdbId}`);
+        log.warn({ imdbId }, 'Rejected invalid ID');
         return;
     }
 
@@ -130,6 +148,9 @@ async function registerShow(videoId, segmentCount = null, segments = null) {
 
 /**
  * Bakes all segments for a show into its catalog entry for high-speed retrieval.
+ * @param {string} imdbId
+ * @param {Object} segmentsByEpisode
+ * @returns {Promise<void>}
  */
 async function bakeShowSegments(imdbId, segmentsByEpisode) {
     await ensureInit();
@@ -166,11 +187,20 @@ async function bakeShowSegments(imdbId, segmentsByEpisode) {
     await catalogRepository.upsertCatalogEntry(imdbId, media);
 }
 
+/**
+ * Get show data by IMDB ID
+ * @param {string} imdbId
+ * @returns {Promise<Object|null>}
+ */
 async function getShowByImdbId(imdbId) {
     await ensureInit();
     return await catalogRepository.findByImdbId(imdbId);
 }
 
+/**
+ * Get catalog data with pagination, search and sort
+ * @returns {Promise<Object>} Catalog response object
+ */
 async function getCatalogData(page = 1, limit = 1000, search = '', sort = { title: 1 }) {
     await ensureInit();
     const skip = (page - 1) * limit;
@@ -185,7 +215,7 @@ async function getCatalogData(page = 1, limit = 1000, search = '', sort = { titl
 
     const media = {};
     items.forEach(item => {
-        const { _id, ...rest } = item;
+        const { ...rest } = item;
         media[item.imdbId] = rest;
     });
 
@@ -203,6 +233,10 @@ async function getCatalogData(page = 1, limit = 1000, search = '', sort = { titl
     };
 }
 
+/**
+ * Get global catalog statistics
+ * @returns {Promise<Object>}
+ */
 async function getCatalogStats() {
     await ensureInit();
     const query = {
@@ -212,14 +246,19 @@ async function getCatalogStats() {
     return await catalogRepository.getCatalogStats(query);
 }
 
+/**
+ * Repair/Sync catalog from source of truth
+ * @param {Object} allSkips
+ * @returns {Promise<void>}
+ */
 async function repairCatalog(allSkips) {
     if (!allSkips) return;
 
     const skipKeys = Object.keys(allSkips);
-    console.log(`[Catalog] Running database-only catalog sync from ${skipKeys.length} items...`);
+    log.info({ count: skipKeys.length }, 'Running database-only catalog sync');
 
     if (skipKeys.length < 5) { // Lower threshold for DB-only
-        console.warn('[Catalog] Aborting repair: Source of truth looks suspicious.');
+        log.warn('Aborting repair: Source of truth looks suspicious');
         return;
     }
 
@@ -244,13 +283,13 @@ async function repairCatalog(allSkips) {
         try {
             await bakeShowSegments(imdbId, episodes);
             changes++;
-            if (changes % 50 === 0) console.log(`[Catalog] Synced ${changes} shows...`);
+            if (changes % 50 === 0) log.info({ changes }, 'Synced shows');
         } catch (e) {
-            console.error(`[Catalog] Failed to sync ${imdbId}:`, e.message);
+            log.error({ imdbId, err: e.message }, 'Failed to sync show');
         }
     }
 
-    console.log(`[Catalog] Database Rebuild/Sync Complete. Processed ${changes} shows.`);
+    log.info({ totalProcessed: changes }, 'Database Rebuild/Sync Complete');
 }
 
 module.exports = {
