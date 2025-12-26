@@ -8,6 +8,14 @@ const SECURITY = {
             WINDOW_MS: 60 * 60 * 1000, // 1 hour
             MAX_REQUESTS: 5000
         },
+        SUBMIT: {
+            WINDOW_MS: 15 * 60 * 1000, // 15 minutes
+            MAX_REQUESTS: 10
+        },
+        REPORT: {
+            WINDOW_MS: 15 * 60 * 1000, // 15 minutes
+            MAX_REQUESTS: 5
+        },
         SUBMISSION: {
             WINDOW_MS: 60 * 60 * 1000, // 1 hour
             MAX_REQUESTS: 5,
@@ -77,6 +85,23 @@ const ANIME_SKIP = {
     BASE_URL: 'https://api.anime-skip.com/graphql'
 };
 
+const SERVER = {
+    PORT: process.env.PORT || 7005,
+    PUBLIC_URL: process.env.PUBLIC_URL
+};
+
+const STATS = {
+    ANISKIP_ESTIMATE: 145000,
+    REFRESH_INTERVAL_MS: 15 * 60 * 1000  // 15 minutes
+};
+
+const MANIFEST = {
+    ID: "org.introhater",
+    VERSION: "1.0.0",
+    NAME: "IntroHater",
+    DESCRIPTION: "Universal Skip Intro for Stremio (TV/Mobile/PC)"
+};
+
 module.exports = {
     SECURITY,
     SEGMENTS,
@@ -86,5 +111,8 @@ module.exports = {
     MAINTENANCE,
     REQUIRED_ENV_VARS,
     OMDB,
-    ANIME_SKIP
+    ANIME_SKIP,
+    SERVER,
+    STATS,
+    MANIFEST
 };

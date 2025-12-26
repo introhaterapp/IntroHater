@@ -1,0 +1,50 @@
+version: '3.8'
+
+# IntroHater Development Environment
+# Start with: docker-compose up
+# Stop with: docker-compose down
+# View logs: docker-compose logs -f
+
+services:
+  # MongoDB Database
+  mongo:
+    image: mongo:7
+    container_name: introhater-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=introhater
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # IntroHater Application
+  introhater:
+    build: .
+    container_name: introhater-app
+    ports:
+      - "7005:7000"
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/introhater
+      - PORT=7000
+      - NODE_ENV=development
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      # Mount source for hot-reload development (optional)
+      # Uncomment for development mode:
+      # - ./server.js:/app/server.js
+      # - ./src:/app/src
+      # - ./docs:/app/docs
+      - ./data:/app/data
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+    driver: local

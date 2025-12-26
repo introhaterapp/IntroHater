@@ -187,32 +187,106 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function initTicker() {
     const el = document.getElementById('ticker-content');
+    if (!el) return;
+
+    let tickerData = [];
+    let currentIndex = 0;
+    let ws = null;
+    let wsRetries = 0;
+    const maxRetries = 5;
+
+    // Rotation function to cycle through items
+    const rotate = () => {
+        if (tickerData.length === 0) return;
+
+        const item = tickerData[currentIndex];
+        const timeAgo = Math.floor((new Date() - new Date(item.timestamp)) / 60000);
+        const timeStr = timeAgo < 1 ? 'just now' : `${timeAgo}m ago`;
+
+        el.style.opacity = 0;
+        setTimeout(() => {
+            const displayName = item.title || item.videoId.split(':')[0];
+            const episodePart = item.episode ? ` ${item.episode}` : '';
+            el.innerText = `${displayName}${episodePart} - ${item.label} skip added ${timeStr}`;
+            el.style.opacity = 1;
+        }, 500);
+
+        currentIndex = (currentIndex + 1) % tickerData.length;
+    };
+
+    // Add new item with "pop" animation
+    const addItem = (item) => {
+        // Add to front and limit to 20 items
+        tickerData = [item, ...tickerData].slice(0, 20);
+        currentIndex = 0; // Reset to show newest first
+
+        // Flash animation for new item
+        el.style.transform = 'scale(1.05)';
+        setTimeout(() => {
+            el.style.transform = 'scale(1)';
+        }, 300);
+    };
+
+    // WebSocket connection
+    const connectWebSocket = () => {
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws/ticker`;
+
+        try {
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('[Ticker] WebSocket connected');
+                wsRetries = 0;
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'new_segment' && msg.data) {
+                        addItem(msg.data);
+                        rotate(); // Immediately show new item
+                    }
+                } catch (e) {
+                    console.warn('[Ticker] Message parse error:', e);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('[Ticker] WebSocket closed');
+                ws = null;
+                // Retry with exponential backoff
+                if (wsRetries < maxRetries) {
+                    wsRetries++;
+                    setTimeout(connectWebSocket, Math.min(1000 * Math.pow(2, wsRetries), 30000));
+                }
+            };
+
+            ws.onerror = (err) => {
+                console.warn('[Ticker] WebSocket error, falling back to polling');
+            };
+        } catch (e) {
+            console.warn('[Ticker] WebSocket not available, using polling only');
+        }
+    };
+
+    // Initial data fetch via polling
     try {
         const res = await fetch(`${API_BASE_URL}/api/activity`);
         const data = await res.json();
-        if (!data || data.length === 0) return;
-
-        let currentIndex = 0;
-        const rotate = () => {
-            const item = data[currentIndex];
-            const timeAgo = Math.floor((new Date() - new Date(item.timestamp)) / 60000);
-            const timeStr = timeAgo < 1 ? 'just now' : `${timeAgo}m ago`;
-
-            el.style.opacity = 0;
-            setTimeout(() => {
-                const displayName = item.title || item.videoId.split(':')[0];
-                const episodePart = item.episode ? ` ${item.episode}` : '';
-                el.innerText = `${displayName}${episodePart} - ${item.label} skip added ${timeStr}`;
-                el.style.opacity = 1;
-            }, 500);
-
-            currentIndex = (currentIndex + 1) % data.length;
-        };
-
-        el.style.transition = 'opacity 0.5s ease';
-        rotate();
-        setInterval(rotate, 5000);
+        if (data && data.length > 0) {
+            tickerData = data;
+            el.style.transition = 'opacity 0.5s ease, transform 0.3s ease';
+            rotate();
+            setInterval(rotate, 5000);
+        }
     } catch (e) {
-        console.warn("Ticker failed:", e);
+        console.warn("[Ticker] Initial fetch failed:", e);
+    }
+
+    // Try WebSocket connection
+    if (typeof WebSocket !== 'undefined') {
+        connectWebSocket();
     }
 }
+

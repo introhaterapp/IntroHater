@@ -1,9 +1,9 @@
-const { BaseRepository, SimpleLRUCache } = require('./base.repository');
+const { BaseRepository, LRUCache } = require('./base.repository');
 
 class SkipRepository extends BaseRepository {
     constructor() {
         super('skips');
-        this.cache = new SimpleLRUCache(500); // Unified skip cache
+        this.cache = new LRUCache({ max: 500, ttl: 1000 * 60 * 5 }); // 5 min TTL
         this.indicesCreated = false;
     }
 

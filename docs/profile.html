@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntroHater - My Profile</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="icon32.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+
+    <style>
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .profile-info h2 {
+            margin: 0;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .profile-info p {
+            color: var(--text-muted);
+            margin: 4px 0 0;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-card .label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        .badge-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .badge {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 24px;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge.earned {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+            border-color: var(--primary);
+        }
+
+        .badge.locked {
+            opacity: 0.4;
+        }
+
+        .submission-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .stat-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Auth Overlay -->
+    <div id="login-overlay">
+        <div class="glass-panel" style="max-width: 450px; width: 100%; padding: 40px;">
+            <div class="text-center" style="margin-bottom: 30px;">
+                <h2 class="text-gradient" style="font-size: 2rem;">My Profile</h2>
+                <p style="color: var(--text-muted); margin-top: 10px;">Paste your Real-Debrid API key to view your
+                    profile.</p>
+            </div>
+            <div class="form-group">
+                <input type="text" id="authKey" class="form-input" placeholder="Real-Debrid Private Token (F4...)">
+            </div>
+            <button id="enterBtn" class="btn btn-primary"
+                style="width: 100%; justify-content: center; margin-top: 10px;">View Profile</button>
+            <p style="text-align: center; margin-top: 20px; font-size: 0.85rem;">
+                <a href="https://real-debrid.com/apitoken" target="_blank" style="color: var(--primary);">Get your key
+                    here ↗</a>
+            </p>
+        </div>
+    </div>
+
+    <header>
+        <div class="container">
+            <a href="index.html" class="logo text-gradient">
+                <img src="icon32.png" alt="Logo">
+                IntroHater
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="catalog.html">Catalog</a></li>
+                    <li><a href="leaderboard.html">Leaderboard</a></li>
+                    <li><a href="community.html">Community</a></li>
+                    <li><a href="https://github.com/introhaterapp/IntroHater" target="_blank">GitHub</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <a href="configure.html" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Install
+                    Addon</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="section">
+            <div class="container" style="padding-top: 100px; max-width: 900px;">
+
+                <!-- Profile Header -->
+                <div id="profile-content" style="display: none;">
+                    <div class="profile-header">
+                        <div class="profile-avatar" id="avatar">?</div>
+                        <div class="profile-info">
+                            <h2 id="userName">Loading...</h2>
+                            <p>Rank: <span id="userRank">#-</span> · Member since <span id="joinDate">-</span></p>
+                        </div>
+                        <button id="logoutBtn" class="btn btn-secondary"
+                            style="margin-left: auto; border: 1px solid #ef4444; color: #ef4444;">
+                            Logout
+                        </button>
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="value" id="statSegments">0</div>
+                            <div class="label">Segments Submitted</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="value" id="statVotes">0</div>
+                            <div class="label">Votes Cast</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="value" id="statSaved">0h</div>
+                            <div class="label">Time Saved</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="value" id="statWatched">0</div>
+                            <div class="label">Shows Watched</div>
+                        </div>
+                    </div>
+
+                    <!-- Badges Section -->
+                    <div class="glass-panel" style="padding: 24px; margin-bottom: 24px;">
+                        <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 16px;">🏆 Achievements</h3>
+                        <div class="badge-grid" id="badgeGrid">
+                            <!-- Badges loaded dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Submission History -->
+                    <div class="glass-panel" style="padding: 24px;">
+                        <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 16px;">📜 Recent Activity
+                        </h3>
+                        <div id="history-list" style="display: flex; flex-direction: column; gap: 12px;">
+                            <!-- History items -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let rdKey = localStorage.getItem('introhater_rdkey') || "";
+
+        // Badge definitions
+        const BADGES = [
+            { id: 'first_skip', icon: '🌟', name: 'First Skip', desc: 'Submit your first segment', check: s => s.segments >= 1 },
+            { id: 'contributor_10', icon: '🎯', name: 'Contributor', desc: 'Submit 10 segments', check: s => s.segments >= 10 },
+            { id: 'power_user', icon: '⚡', name: 'Power User', desc: 'Submit 50 segments', check: s => s.segments >= 50 },
+            { id: 'legend', icon: '👑', name: 'Legend', desc: 'Submit 100 segments', check: s => s.segments >= 100 },
+            { id: 'voter', icon: '🗳️', name: 'Voter', desc: 'Cast 10 votes', check: s => s.votes >= 10 },
+            { id: 'time_saver', icon: '⏰', name: 'Time Saver', desc: 'Save 1 hour', check: s => s.savedTime >= 3600 },
+            { id: 'marathon', icon: '🏃', name: 'Marathon', desc: 'Save 10 hours', check: s => s.savedTime >= 36000 },
+            { id: 'top_100', icon: '🏅', name: 'Top 100', desc: 'Reach top 100 on leaderboard', check: s => s.rank && s.rank <= 100 },
+        ];
+
+        // Auth Flow
+        if (rdKey) {
+            document.getElementById('login-overlay').style.display = 'none';
+            loadProfile();
+        }
+
+        document.getElementById('enterBtn').onclick = async () => {
+            const key = document.getElementById('authKey').value.trim();
+            if (!key) return;
+
+            const btn = document.getElementById('enterBtn');
+            btn.textContent = 'Verifying...';
+
+            try {
+                const res = await fetch('/api/stats/personal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rdKey: key })
+                });
+
+                if (res.ok) {
+                    rdKey = key;
+                    localStorage.setItem('introhater_rdkey', key);
+                    document.getElementById('login-overlay').style.display = 'none';
+                    loadProfile();
+                } else {
+                    alert("Verification failed. Please check your Real-Debrid API Key.");
+                }
+            } catch (e) {
+                alert("Server error.");
+            } finally {
+                btn.textContent = 'View Profile';
+            }
+        };
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('introhater_rdkey');
+            location.reload();
+        });
+
+        async function loadProfile() {
+            try {
+                const res = await fetch('/api/stats/personal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rdKey })
+                });
+                const data = await res.json();
+
+                document.getElementById('profile-content').style.display = 'block';
+
+                // Avatar
+                const initials = (data.userId || 'U').substring(0, 2).toUpperCase();
+                document.getElementById('avatar').textContent = initials;
+
+                // Profile info
+                document.getElementById('userName').textContent = `User ${(data.userId || '').substring(0, 8)}`;
+                document.getElementById('userRank').textContent = data.rank ? `#${data.rank}` : '#-';
+                document.getElementById('joinDate').textContent = data.lastUpdated ? new Date(data.lastUpdated).toLocaleDateString() : '-';
+
+                // Stats
+                document.getElementById('statSegments').textContent = data.segments || 0;
+                document.getElementById('statVotes').textContent = data.votes || 0;
+                document.getElementById('statWatched').textContent = data.history ? data.history.length : 0;
+
+                // Format saved time
+                const seconds = data.savedTime || 0;
+                let savedText = "0s";
+                if (seconds > 86400) savedText = (seconds / 86400).toFixed(1) + "d";
+                else if (seconds > 3600) savedText = (seconds / 3600).toFixed(1) + "h";
+                else if (seconds > 60) savedText = (seconds / 60).toFixed(0) + "m";
+                else savedText = seconds.toFixed(0) + "s";
+                document.getElementById('statSaved').textContent = savedText;
+
+                // Badges
+                const badgeGrid = document.getElementById('badgeGrid');
+                badgeGrid.innerHTML = '';
+                BADGES.forEach(badge => {
+                    const earned = badge.check(data);
+                    const el = document.createElement('div');
+                    el.className = `badge ${earned ? 'earned' : 'locked'}`;
+                    el.innerHTML = `<span style="font-size: 1.2rem;">${badge.icon}</span> ${badge.name}`;
+                    el.title = badge.desc;
+                    badgeGrid.appendChild(el);
+                });
+
+                // History
+                const historyList = document.getElementById('history-list');
+                historyList.innerHTML = '';
+
+                if (data.history && data.history.length > 0) {
+                    data.history.forEach(item => {
+                        const el = document.createElement('div');
+                        el.className = 'submission-card';
+                        el.innerHTML = `
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                ${item.poster ? `<img src="${item.poster}" style="width: 40px; height: 60px; object-fit: cover; border-radius: 6px;">` : ''}
+                                <div>
+                                    <div style="font-weight: 600;">${item.title || item.videoId}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</div>
+                                </div>
+                            </div>
+                            <span style="color: var(--primary); font-size: 0.85rem;">Watched</span>
+                        `;
+                        historyList.appendChild(el);
+                    });
+                } else {
+                    historyList.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No recent activity. Watch something on Stremio!</p>';
+                }
+
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    </script>
+
+</body>
+
+</html>

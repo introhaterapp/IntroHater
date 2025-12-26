@@ -259,6 +259,25 @@ npm start
 <summary><b>🐳 Docker Deployment</b></summary>
 <br/>
 
+#### Quick Start with Docker Compose (Recommended)
+
+The easiest way to run IntroHater locally with MongoDB:
+
+```bash
+# Start everything (MongoDB + IntroHater)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f introhater
+
+# Stop
+docker-compose down
+```
+
+The app will be available at `http://localhost:7005`
+
+#### Manual Docker Build
+
 ```bash
 # Build
 docker build -t introhater .

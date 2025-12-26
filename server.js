@@ -1,35 +1,23 @@
+/**
+ * IntroHater Server
+ * 
+ * This is the main entry point for the application.
+ * All route handlers have been modularized into separate files.
+ */
+
 require('dotenv').config();
-const { addonBuilder, getRouter } = require("stremio-addon-sdk");
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { getByteOffset, generateSmartManifest, getStreamDetails, getRefinedOffsets, generateSpliceManifest, getChapters } = require('./src/services/hls-proxy');
-const skipService = require('./src/services/skip-service');
-const {
-    getSkipSegment,
-    getSegments,
-    getAllSegments,
-    getRecentSegments,
-    getSegmentCount,
-    addSkipSegment
-} = skipService;
-const catalogService = require('./src/services/catalog');
-const userService = require('./src/services/user-service');
-const indexerService = require('./src/services/indexer');
-const axios = require('axios');
-
-// Configure ffmpeg/ffprobe paths
-const ffmpeg = require('fluent-ffmpeg');
-const crypto = require('crypto');
 const helmet = require('helmet');
 const hpp = require('hpp');
 const rateLimit = require('express-rate-limit');
-const { generateUserToken, verifyUserToken } = require('./src/utils/auth.js');
-const { SECURITY } = require('./src/config/constants');
-const fs = require('fs').promises;
 
-// In production, we use the system-installed ffmpeg (from apt-get)
-// We only use static binaries for local Windows dev if needed
+// Configuration
+const { SECURITY, SERVER } = require('./src/config/constants');
+
+// Configure ffmpeg/ffprobe paths
+const ffmpeg = require('fluent-ffmpeg');
 if (process.platform === 'win32') {
     try {
         const ffmpegPath = require('ffmpeg-static');
@@ -38,118 +26,28 @@ if (process.platform === 'win32') {
         ffmpeg.setFfprobePath(ffprobePath);
     } catch (e) { console.log("Using system ffmpeg"); }
 } else {
-    // Linux/Docker: Use system paths
     ffmpeg.setFfmpegPath('ffmpeg');
     ffmpeg.setFfprobePath('ffprobe');
 }
 
-// Helper: Format Seconds to VTT Time (HH:MM:SS.mmm)
-function toVTTTime(seconds) {
-    const date = new Date(0);
-    date.setMilliseconds(seconds * 1000);
-    return date.toISOString().substr(11, 12);
-}
+// Services
+const indexerService = require('./src/services/indexer');
 
-// Helper: Generate Secure User ID from RD Key
-function generateUserId(rdKey) {
-    if (!rdKey) return 'anonymous';
-    return crypto.createHash('sha256').update(rdKey).digest('hex').substring(0, 32);
-}
+// Route Modules
+const apiRoutes = require('./src/routes/api');
+const hlsRoutes = require('./src/routes/hls');
+const addonRoutes = require('./src/routes/addon');
 
-// Helper: Persistent Metadata Cache handled in Catalog Service
-// Logic removed from server.js to centralize in catalogService
+// ==================== Express App Setup ====================
 
-// Configuration
-const PORT = process.env.PORT || 7005;
-const PUBLIC_URL = process.env.PUBLIC_URL || `http://127.0.0.1:${PORT}`;
-
-// Manifest
-const manifest = {
-    id: "org.introhater",
-    version: "1.0.0",
-    name: "IntroHater",
-    description: "Universal Skip Intro for Stremio (TV/Mobile/PC)",
-    resources: ["stream"],
-    types: ["movie", "series", "anime"],
-    catalogs: [],
-    behaviorHints: {
-        configurable: true,
-        configurationRequired: false
-    }
-};
-
-const builder = new addonBuilder(manifest);
-
-// Stream Handler Function
-async function handleStreamRequest(type, id, rdKey, baseUrl) {
-    if (!rdKey) {
-        console.error("[Server] No RD Key provided.");
-        return { streams: [] };
-    }
-
-    console.log(`[Server] Request for ${type} ${id}`);
-    let originalStreams = [];
-    let skipSeg = null;
-
-    try {
-        const torrentioUrl = `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex,rutor,rutracker,torrent9,mejortorrent,wolfmax4k%7Csort=qualitysize%7Clanguage=korean%7Cqualityfilter=scr,cam%7Cdebridoptions=nodownloadlinks,nocatalog%7Crealdebrid=${rdKey}/stream/${type}/${id}.json`;
-
-        // Parallelize external fetch and skip lookup
-        const [torrentioResponse, skipResult] = await Promise.all([
-            axios.get(torrentioUrl).catch(e => {
-                console.error("Error fetching upstream:", e.message);
-                return { status: 500, data: { streams: [] } };
-            }),
-            getSkipSegment(id).catch(e => {
-                console.error("Error getting skip:", e.message);
-                return null;
-            })
-        ]);
-
-        if (torrentioResponse.status === 200 && torrentioResponse.data.streams) {
-            originalStreams = torrentioResponse.data.streams;
-            console.log(`[Server] Fetched ${originalStreams.length} streams from upstream`);
-        }
-
-        skipSeg = skipResult;
-        if (skipSeg) {
-            console.log(`[Server] Found skip for ${id}: ${skipSeg.start}-${skipSeg.end}s`);
-        }
-    } catch (e) {
-        console.error("[Server] Stream Request Lifecycle Error:", e.message);
-    }
-
-    const modifiedStreams = [];
-
-    originalStreams.forEach((stream) => {
-        if (!stream.url) return;
-
-        const encodedUrl = encodeURIComponent(stream.url);
-        const userId = generateUserId(rdKey);
-
-        // Pass 0,0 if no skip found - the manifest handler will handle it.
-        const start = skipSeg ? skipSeg.start : 0;
-        const end = skipSeg ? skipSeg.end : 0;
-
-        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&rdKey=${rdKey}`;
-
-        // Determine indicator
-        const indicator = skipSeg ? "🚀" : "🔍";
-
-        modifiedStreams.push({
-            ...stream,
-            url: proxyUrl,
-            title: `${indicator} [IntroHater] ${stream.title || stream.name}`,
-            behaviorHints: { notWebReady: false }
-        });
-    });
-
-    return { streams: modifiedStreams };
-}
-
-// Express Server
 const app = express();
+const PORT = SERVER.PORT;
+const PUBLIC_URL = SERVER.PUBLIC_URL || `http://127.0.0.1:${PORT}`;
+
+// Trust proxy for rate limiting behind reverse proxies
 app.set('trust proxy', 1);
+
+// Security middleware
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -158,7 +56,7 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.datatables.net", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             imgSrc: ["'self'", "data:", "https://cdn.datatables.net", "https://m.media-amazon.com", "https://v3-cinemeta.strem.io"],
-            connectSrc: ["'self'"], // Add external APIs here if client-side fetches are needed later
+            connectSrc: ["'self'"],
         },
     },
 }));
@@ -174,815 +72,44 @@ const globalLimiter = rateLimit({
 });
 app.use('/api/', globalLimiter);
 
-// 1. Serve Website (Docs)
+// ==================== Static Files ====================
+
+// Serve Website (Docs)
 app.use(express.static(path.join(__dirname, 'docs')));
 
-// Handle /configure and /:config/configure to redirect to main page or serve it
-app.get(['/configure', '/:config/configure'], (req, res) => {
-    // If config is present, we could potentially inject it, but for now just serving the static HTML is safer/easier.
-    // The user can re-enter their key or we can parse it from URL in frontend if we want to be fancy.
-    // For now, let's just serve the file.
-    res.sendFile(path.join(__dirname, 'docs', 'configure.html'));
-});
+// ==================== Mount Route Modules ====================
 
-// Middleware to extract config (RD Key)
-// Supports /:config/manifest.json and /manifest.json (fallback env)
-app.get(['/:config/manifest.json', '/manifest.json'], (req, res) => {
-    const config = req.params.config;
-    const manifestClone = { ...manifest };
+// API routes with versioning
+// v1 routes (preferred for new clients)
+app.use('/api/v1', apiRoutes);
+// Backward compatibility: keep /api working for existing clients
+app.use('/api', apiRoutes);
 
-    if (config) {
-        manifestClone.description += " (Configured)";
-    }
+// HLS routes (/hls/*, /vote/*, /sub/*)
+app.use('/', hlsRoutes);
 
-    res.json(manifestClone);
-});
+// Stremio Addon routes (/manifest.json, /stream/*, /configure)
+app.use('/', addonRoutes);
 
-app.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (req, res) => {
-    const { config, type, id } = req.params;
-    // Prefer config from URL, fallback to env var
-    const rdKey = config || process.env.RPDB_KEY;
+// ==================== Misc Routes ====================
 
-    if (!rdKey) {
-        return res.json({ streams: [{ title: "⚠️ Configuration Required. Please reinstall addon.", url: "" }] });
-    }
-
-    // Handle .json extension in ID if present (Stremio quirks)
-    const cleanId = id.replace('.json', '');
-    const protocol = req.protocol;
-    const host = req.get('host');
-    const baseUrl = `${protocol}://${host}`;
-
-    // Pass baseUrl to handleStreamRequest
-    const result = await handleStreamRequest(type, cleanId, rdKey, baseUrl);
-    res.json(result);
-});
-
-// 2. API: Leaderboard
-app.get('/api/leaderboard', async (req, res) => {
-    // Increased limit to 100 to allow client-side sorting visibility
-    const board = await userService.getLeaderboard(100);
-
-    // Return Object format expected by leaderboard.html
-    res.json({
-        users: board.map((u, i) => ({
-            rank: i + 1,
-            userId: u.userId,
-            segments: u.segments,
-            votes: u.votes,
-            savedTime: u.savedTime || 0
-        })),
-        lastUpdated: new Date().toISOString()
-    });
-});
-
-// 2.1 API: Recent Activity (Ticker)
-app.get('/api/activity', async (req, res) => {
-    try {
-        const recent = await getRecentSegments(50); // Fetch more, then dedupe
-
-        // Enrich with show names from catalog
-        const enriched = await Promise.all(recent.map(async (r) => {
-            const parts = r.videoId.split(':');
-            const imdbId = parts[0];
-            const season = parts[1];
-            const episode = parts[2];
-            let title = imdbId;
-
-            // Try to get title from catalog cache
-            if (global.metadataCache && global.metadataCache[imdbId]) {
-                title = global.metadataCache[imdbId].Title;
-            } else {
-                // Try catalog service
-                try {
-                    const show = await catalogService.getShowByImdbId(imdbId);
-                    if (show && show.title) {
-                        title = show.title;
-                        // Cache it
-                        if (!global.metadataCache) global.metadataCache = {};
-                        global.metadataCache[imdbId] = { Title: show.title };
-                    }
-                } catch (e) { }
-            }
-
-            // Format episode info
-            let episodeInfo = null;
-            if (season && episode) {
-                episodeInfo = `S${season}E${episode}`;
-            }
-
-            return {
-                videoId: r.videoId,
-                title: title,
-                episode: episodeInfo,
-                label: r.label || 'Intro',
-                timestamp: r.createdAt || new Date()
-            };
-        }));
-
-        // Deduplicate by videoId - keep only the most recent entry for each episode
-        const seen = new Set();
-        const deduplicated = enriched.filter(item => {
-            if (seen.has(item.videoId)) return false;
-            seen.add(item.videoId);
-            return true;
-        }).slice(0, 20); // Limit to 20 unique entries
-
-        res.json(deduplicated);
-    } catch (e) {
-        console.error('[API] Activity error:', e.message);
-        res.status(500).json([]);
-    }
-});
-
-// 2.5 API: Stats (with Background Refresh)
-const ANISKIP_ESTIMATE = 145000;
-let globalStats = {
-    users: 0,
-    skips: ANISKIP_ESTIMATE,
-    savedTime: 0,
-    votes: 0,
-    segments: 0,
-    showCount: 0,
-    episodeCount: 0,
-    sources: { local: 0, aniskip: ANISKIP_ESTIMATE, animeSkip: 0 }
-};
-
-const { performance } = require('perf_hooks');
-
-async function refreshGlobalStats() {
-    const start = performance.now();
-    try {
-        console.log(`[Stats] [${new Date().toISOString()}] Refreshing global stats...`);
-
-        // Run all independent fetches in parallel
-        const [userStats, localSegmentCount, animeSkipRes, catalogStats] = await Promise.all([
-            userService.getStats().catch(e => { console.warn("[Stats] User stats failed:", e.message); return {}; }),
-            getSegmentCount().catch(e => { console.warn("[Stats] Segment count failed:", e.message); return 0; }),
-            axios.post('https://api.anime-skip.com/graphql',
-                { query: `query { counts { timestamps shows episodes } }` },
-                {
-                    headers: { 'X-Client-ID': 'th2oogUKrgOf1J8wMSIUPV0IpBMsLOJi' },
-                    timeout: 5000
-                }
-            ).catch(e => { console.warn("[Stats] Anime-Skip failed:", e.message); return { data: { data: { counts: { timestamps: 0, shows: 0, episodes: 0 } } } }; }),
-            catalogService.getCatalogStats().catch(e => { console.warn("[Stats] Catalog stats failed:", e.message); return { showCount: 0, episodeCount: 0 }; })
-        ]);
-
-        const { userCount = 0, voteCount = 0, totalSavedTime = 0 } = userStats;
-        const animeSkipCount = animeSkipRes.data?.data?.counts?.timestamps || 0;
-        const animeSkipShows = animeSkipRes.data?.data?.counts?.shows || 0;
-        const animeSkipEpisodes = animeSkipRes.data?.data?.counts?.episodes || 0;
-
-        globalStats = {
-            users: userCount,
-            skips: (localSegmentCount || 0) + ANISKIP_ESTIMATE + animeSkipCount,
-            savedTime: totalSavedTime,
-            votes: voteCount,
-            segments: localSegmentCount || 0,
-            showCount: (catalogStats.showCount || 0) + animeSkipShows,
-            episodeCount: (catalogStats.episodeCount || 0) + animeSkipEpisodes,
-            sources: {
-                local: localSegmentCount || 0,
-                aniskip: ANISKIP_ESTIMATE,
-                animeSkip: animeSkipCount
-            },
-            lastUpdated: new Date().toISOString()
-        };
-        console.log(`[Stats] Global stats updated successfully. Total time: ${Math.round(performance.now() - start)}ms`);
-    } catch (e) {
-        console.error(`[Stats] Critical Refresh Failure:`, e);
-    }
-}
-
-// Initial refresh and then every 15 minutes
-refreshGlobalStats();
-setInterval(refreshGlobalStats, 15 * 60 * 1000);
-
-app.get('/api/stats', (req, res) => {
-    res.json(globalStats);
-});
-
-// 2.6 API: Personal Stats (Protected by RD Key)
-app.use(express.json()); // Enable JSON body parsing
-app.post('/api/stats/personal', async (req, res) => {
-    const { rdKey } = req.body;
-    if (!rdKey) return res.status(400).json({ error: "RD Key required" });
-
-    try {
-        // --- VERIFY RD KEY ---
-        try {
-            await axios.get('https://api.real-debrid.com/rest/1.0/user', {
-                headers: { 'Authorization': `Bearer ${rdKey}` },
-                timeout: 3000
-            });
-        } catch (e) {
-            return res.status(401).json({ error: "Invalid Real-Debrid Key" });
-        }
-
-        const userId = generateUserId(rdKey);
-        const stats = await userService.getUserStats(userId);
-
-        if (stats) {
-            // Calculate rank
-            const leaderboard = await userService.getLeaderboard(1000);
-            const rank = leaderboard.findIndex(u => u.userId === userId) + 1;
-
-            // Resolve history metadata (Titles instead of pure IDs)
-            const enrichedHistory = await Promise.all((stats.watchHistory || []).slice(0, 15).map(async (item) => {
-                const parts = item.videoId.split(':');
-                const imdbId = parts[0];
-                const season = parts[1];
-                const episode = parts[2];
-
-                let title = imdbId;
-                let poster = null;
-                if (!global.metadataCache) global.metadataCache = {};
-
-                // Use cached title if available, otherwise just use ID for speed
-                if (global.metadataCache[imdbId]) {
-                    title = global.metadataCache[imdbId].Title;
-                    poster = global.metadataCache[imdbId].Poster !== "N/A" ? global.metadataCache[imdbId].Poster : null;
-                } else {
-                    try {
-                        const data = await catalogService.fetchMetadata(imdbId);
-                        if (data) {
-                            title = data.Title;
-                            poster = data.Poster;
-                            global.metadataCache[imdbId] = data; // Cache for next time
-                        }
-                    } catch (e) { }
-                }
-
-                return {
-                    ...item,
-                    title: season && episode ? `${title} S${season}E${episode}` : title,
-                    poster: poster
-                };
-            }));
-
-            res.json({
-                ...stats,
-                userId: userId,
-                savedTime: stats.savedTime || 0,
-                rank: rank > 0 ? rank : "-",
-                history: enrichedHistory
-            });
-        } else {
-            res.json({ userId: userId, segments: 0, votes: 0, savedTime: 0, rank: "-", history: [] });
-        }
-    } catch (e) {
-        console.error("Personal Stats error:", e);
-        res.status(500).json({ error: "Internal server error" });
-    }
-});
-
-// 2.7 API: Report Issue (From Dashboard)
-app.post('/api/report', async (req, res) => {
-    const { rdKey, videoId, reason, segmentIndex } = req.body;
-    if (!rdKey || !videoId) return res.status(400).json({ error: "RD Key and Video ID required" });
-
-    const userId = generateUserId(rdKey);
-    console.log(`[Report] User ${userId.substr(0, 6)} reported ${videoId} (Seg: ${segmentIndex}): ${reason || 'No reason'}`);
-
-    // Verify RD Key to prevent spam
-    try {
-        await axios.get('https://api.real-debrid.com/rest/1.0/user', {
-            headers: { 'Authorization': `Bearer ${rdKey}` }
-        });
-    } catch (e) {
-        return res.status(401).json({ error: "Invalid Real-Debrid Key. Only real users can report." });
-    }
-
-    // Register Report in Skip Service
-    await skipService.reportSegment(videoId, segmentIndex || 0);
-
-    // Track impact
-    await userService.updateUserStats(userId, {
-        votes: -1,
-        videoId: videoId
-    });
-
-    res.json({ success: true, message: "Issue reported. Thank you!" });
-});
-
-// 2.8 API: Search (Proxy to OMDB)
-app.get('/api/search', async (req, res) => {
-    const { q } = req.query;
-    const omdbKey = process.env.OMDB_API_KEY;
-    if (!q || !omdbKey) return res.json({ Search: [] });
-
-    try {
-        const response = await axios.get(`https://www.omdbapi.com/?s=${encodeURIComponent(q)}&apikey=${omdbKey}`);
-        res.json(response.data);
-    } catch (e) {
-        res.status(500).json({ error: "Search failed" });
-    }
-});
-
-// 2.9 API: Submit Segment
-app.post('/api/submit', async (req, res) => {
-    const { rdKey, imdbID, season, episode, start, end, label, applyToSeries } = req.body;
-    if (!rdKey || !imdbID || start === undefined || end === undefined) {
-        return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    // Verify RD Key to prevent bot submissions
-    try {
-        const rdCheck = await axios.get('https://api.real-debrid.com/rest/1.0/user', {
-            headers: { 'Authorization': `Bearer ${rdKey}` }
-        });
-        if (!rdCheck.data || !rdCheck.data.id) throw new Error("Invalid user");
-    } catch (e) {
-        return res.status(401).json({ error: "Invalid Real-Debrid Key. Only active RD users can contribute." });
-    }
-
-    const userId = generateUserId(rdKey);
-
-    // Improved ID Construction: Prevent doubling if imdbID already contains colons (full ID)
-    let fullId = imdbID;
-    if (season && episode && !imdbID.includes(':')) {
-        fullId = `${imdbID}:${season}:${episode}`;
-    }
-
-    // Log proper context
-    if (applyToSeries) {
-        console.log(`[Submit] User ${userId.substr(0, 6)} submitted GLOBAL SERIES SKIP ${start}-${end}s for ${imdbID}`);
-    } else {
-        console.log(`[Submit] User ${userId.substr(0, 6)} submitted ${start}-${end}s for ${fullId}`);
-    }
-
-    const newSeg = await skipService.addSkipSegment(fullId, parseFloat(start), parseFloat(end), label || "Intro", userId, applyToSeries);
-
-    // Give user credit
-    await userService.updateUserStats(userId, {
-        segments: 1
-    });
-
-    res.json({ success: true, segment: newSeg });
-});
-
-// 2.10 API: Admin Moderation (Protected)
-const ADMIN_PASS = process.env.ADMIN_PASSWORD;
-if (!ADMIN_PASS) {
-    console.warn("CRITICAL: ADMIN_PASSWORD not set. Admin API is DISABLED.");
-}
-
-// 2.11 API: Generate Extension Token
-app.post('/api/generate-token', async (req, res) => {
-    const { userId, rdKey } = req.body;
-    const apiKey = req.headers['x-api-key'];
-
-    // Extension usually sends X-API-Key or we can verify via RD Key
-    if (apiKey !== process.env.API_KEY && !rdKey) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    // If RD Key provided, verify it first
-    if (rdKey) {
-        try {
-            await axios.get('https://api.real-debrid.com/rest/1.0/user', {
-                headers: { 'Authorization': `Bearer ${rdKey}` },
-                timeout: 5000
-            });
-        } catch (e) {
-            return res.status(401).json({ error: "Invalid RD Key" });
-        }
-    }
-
-    const tokenData = generateUserToken(userId);
-    await userService.storeUserToken(userId, tokenData.token, tokenData.timestamp, tokenData.nonce);
-    res.json(tokenData);
-});
-
-// 2.12 API: Track Skip (From Extension)
-app.post('/api/track/skip', async (req, res) => {
-    const { userId, token, duration } = req.body;
-
-    // 1. Verify Token
-    if (!userId || !token || !duration) {
-        return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    const isValid = await verifyUserToken(userId, token);
-    if (!isValid) {
-        return res.status(401).json({ error: "Invalid or expired token" });
-    }
-
-    // 2. Increment Stats
-    await userService.incrementSavedTime(userId, parseFloat(duration));
-
-    res.json({ success: true });
-});
-
-app.post('/api/admin/pending', async (req, res) => {
-    const { password } = req.body;
-    if (password !== ADMIN_PASS) return res.status(401).json({ error: "Unauthorized" });
-
-    const data = await skipService.getPendingModeration();
-
-    // Helper to enrich items with titles
-    const enrich = async (list) => {
-        return Promise.all(list.map(async (item) => {
-            const parts = item.fullId.split(':');
-            const imdbId = parts[0];
-            const season = parts[1];
-            const episode = parts[2];
-
-            let title = imdbId;
-            // Check Server Cache
-            if (global.metadataCache && global.metadataCache[imdbId]) {
-                title = global.metadataCache[imdbId].Title;
-            } else {
-                // Try OMDb if key exists (optional, might be slow for many items, maybe skip for now to avoid timeout again?)
-                // Let's rely on what's in cache or just return ID if not found to be safe.
-                // Or check Catalog Service?
-                // For now, let's keep it fast. If it's in cache, great.
-            }
-
-            const displayTitle = season && episode ? `${title} S${season}E${episode}` : title;
-            return { ...item, displayTitle, imdbId };
-        }));
-    };
-
-    const pending = await enrich(data.pending);
-    const reported = await enrich(data.reported);
-
-    res.json({ pending, reported });
-});
-
-app.post('/api/admin/resolve', async (req, res) => {
-    const { password, fullId, index, action } = req.body;
-    if (password !== ADMIN_PASS) return res.status(401).json({ error: "Unauthorized" });
-
-    const success = await skipService.resolveModeration(fullId, index, action);
-    res.json({ success });
-});
-
-app.post('/api/admin/resolve-bulk', async (req, res) => {
-    const { password, items, action } = req.body;
-    if (password !== ADMIN_PASS) return res.status(401).json({ error: "Unauthorized" });
-    if (!items || !Array.isArray(items)) return res.status(400).json({ error: "Invalid items" });
-
-    const count = await skipService.resolveModerationBulk(items, action);
-    res.json({ success: true, count });
-});
-
-// 3. API: Catalog (Built from Skips)
-// 3. API: Catalog (Built from Skips with OMDB Metadata)
-// 3. API: Catalog (Universal Registry)
-app.get('/api/catalog', async (req, res) => {
-    try {
-        console.log("[API] Catalog Request Query:", JSON.stringify(req.query));
-        // DataTables parameters
-        const draw = parseInt(req.query.draw) || 1;
-        const start = parseInt(req.query.start) || 0;
-        const length = parseInt(req.query.length) || 1000;
-        const search = req.query.search?.value || '';
-
-        // Sorting
-        let sort = { title: 1 };
-        const orderData = req.query.order;
-        if (orderData) {
-            let colIdx, dir;
-            if (Array.isArray(orderData) && orderData[0]) {
-                colIdx = parseInt(orderData[0].column);
-                dir = orderData[0].dir === 'desc' ? -1 : 1;
-            } else if (typeof orderData === 'object') {
-                // Support both indexed { '0': { ... } } and flat { column, dir }
-                const firstOrder = orderData[0] || orderData;
-                colIdx = parseInt(firstOrder.column);
-                dir = firstOrder.dir === 'desc' ? -1 : 1;
-            }
-
-            if (colIdx !== undefined) {
-                const colMap = ['title', 'year', 'totalSegments'];
-                const field = colMap[colIdx] || 'title';
-                sort = { [field]: dir };
-            }
-        }
-
-        const page = Math.floor(start / length) + 1;
-        const catalog = await catalogService.getCatalogData(page, length, search, sort);
-
-        // Return DataTables format if 'draw' is present, otherwise standard format
-        if (req.query.draw) {
-            return res.json({
-                draw: draw,
-                recordsTotal: catalog.total || 0,
-                recordsFiltered: catalog.filteredTotal || 0,
-                data: Object.entries(catalog.media || {}).map(([id, item]) => [
-                    item.title,
-                    item.year,
-                    item.episodes,
-                    item.totalSegments,
-                    id
-                ])
-            });
-        }
-
-        res.json(catalog);
-    } catch (e) {
-        console.error("[API] Catalog Error:", e);
-        res.status(500).json({ error: "Failed to load catalog" });
-    }
-});
-
-
-
-// 4. API: Get Segments
-// 4. API: Get Segments
-app.get('/api/segments/:videoId', async (req, res) => {
-    const list = await skipService.getSegments(req.params.videoId);
-    res.json(list);
-});
-
-// 5. Auth Mock
+// Auth Mock
 app.get('/me', (req, res) => res.json(null));
 
+// Health Check
 app.get('/ping', (req, res) => res.send('pong'));
 
-// Basic LRU Cache Implementation for Manifests
-class SimpleLRUCache {
-    constructor(maxSize = 500) {
-        this.maxSize = maxSize;
-        this.cache = new Map();
-    }
-    get(key) {
-        if (!this.cache.has(key)) return null;
-        const value = this.cache.get(key);
-        this.cache.delete(key);
-        this.cache.set(key, value);
-        return value;
-    }
-    set(key, value) {
-        if (this.cache.has(key)) this.cache.delete(key);
-        else if (this.cache.size >= this.maxSize) {
-            this.cache.delete(this.cache.keys().next().value);
-        }
-        this.cache.set(key, value);
-    }
-    has(key) { return this.cache.has(key); }
-}
+// Global Error Handler (must be after all routes)
+const { errorHandler, setupGlobalErrorHandlers } = require('./src/middleware/errorHandler');
+setupGlobalErrorHandlers();
+app.use(errorHandler);
 
-const manifestCache = new SimpleLRUCache(1000);
-
-// SSRF Protection: Block internal/private IP ranges
-function isSafeUrl(urlStr) {
-    try {
-        const url = new URL(urlStr);
-        const host = url.hostname.toLowerCase();
-
-        // Block localhost and common private ranges
-        if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '::1') return false;
-
-        // Private IP Ranges (simplified check)
-        if (host.startsWith('10.') ||
-            host.startsWith('192.168.') ||
-            host.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return false;
-
-        // Metadata services
-        if (host === '169.254.169.254') return false;
-
-        return ['http:', 'https:'].includes(url.protocol);
-    } catch (e) {
-        return false;
-    }
-}
-
-app.get('/sub/status/:videoId.vtt', (req, res) => {
-    const vid = req.params.videoId;
-    const segments = getSegments(vid) || [];
-
-    let vtt = "WEBVTT\n\n";
-
-    if (segments.length === 0) {
-        vtt += `00:00:00.000 --> 00:00:05.000\nNo skip segments found.\n\n`;
-    } else {
-        segments.forEach(seg => {
-            const start = toVTTTime(seg.start);
-            const end = toVTTTime(seg.end);
-            const label = seg.category || 'Intro';
-            vtt += `${start} --> ${end}\n[${label}] ⏭️ Skipping...\n\n`;
-        });
-    }
-
-    res.set('Content-Type', 'text/vtt');
-    res.send(vtt);
-});
-
-// HLS Media Playlist Endpoint (Formerly manifest.m3u8)
-app.get('/hls/manifest.m3u8', async (req, res) => {
-    const { stream, start: startStr, end: endStr, id: videoId, user: userId } = req.query;
-
-    if (!stream || !isSafeUrl(decodeURIComponent(stream))) {
-        return res.status(400).send("Invalid or unsafe stream URL");
-    }
-
-    // --- AUTHENTICATED TELEMETRY ---
-    const rdKey = req.query.rdKey;
-    if (videoId && userId && rdKey) {
-        const telemetryKey = `${userId}:${videoId}`;
-        if (!global.loggedHistory?.[telemetryKey]) {
-            try {
-                // Verify RD Key before updating stats/history
-                await axios.get('https://api.real-debrid.com/rest/1.0/user', {
-                    headers: { 'Authorization': `Bearer ${rdKey}` },
-                    timeout: 2000
-                });
-
-                if (!global.loggedHistory) global.loggedHistory = {};
-                global.loggedHistory[telemetryKey] = Date.now();
-
-                console.log(`[Telemetry] Play logged for ${userId.substr(0, 6)} on ${videoId}`);
-
-                // Log to history
-                userService.addWatchHistory(userId, {
-                    videoId: videoId,
-                    skip: { start: parseFloat(startStr), end: parseFloat(endStr) }
-                });
-
-                userService.updateUserStats(userId, {
-                    votes: 1,
-                    videoId: videoId
-                });
-            } catch (e) {
-                console.warn(`[Telemetry] Auth failed for ${userId.substr(0, 6)}: ${e.message}`);
-            }
-
-            // GC old history logs every hour
-            if (global.loggedHistory && Object.keys(global.loggedHistory).length > 2000) {
-                const cutoff = Date.now() - 3600000;
-                for (const k in global.loggedHistory) {
-                    if (global.loggedHistory[k] < cutoff) delete global.loggedHistory[k];
-                }
-            }
-        }
-    }
-
-    try {
-        let streamUrl = decodeURIComponent(stream);
-        const introStart = parseFloat(startStr) || 0;
-        const introEnd = parseFloat(endStr) || 0;
-
-        // Cache Key
-        const cacheKey = `${streamUrl}_${introStart}_${introEnd}`;
-        if (manifestCache.has(cacheKey)) {
-            // console.log(`[HLS] Serving cached manifest for ${introStart}s - ${introEnd}s`);
-            res.set('Content-Type', 'application/vnd.apple.mpegurl');
-            return res.send(manifestCache.get(cacheKey));
-        }
-
-        console.log(`[HLS] Generating manifest for Intro: ${introStart}s - ${introEnd}s`);
-
-        // 0. Resolve Redirects & Get Length
-        console.log(`[HLS] Probing URL: ${streamUrl}`);
-        const details = await getStreamDetails(streamUrl);
-        if (details.finalUrl !== streamUrl) {
-            console.log(`[HLS] Resolved Redirect: ${details.finalUrl}`);
-            streamUrl = details.finalUrl;
-        }
-        const totalLength = details.contentLength;
-        console.log(`[HLS] Content-Length: ${totalLength || 'Unknown'}`);
-
-        // 0.5 Check for Invalid/Error Streams (e.g. failed_opening_v2.mp4)
-        // If the file is < 15MB or has "failed_opening" in the URL, it's likely an error video.
-        // We should just redirect to it so the user sees the error.
-        const URL_LOWER = streamUrl.toLowerCase();
-        if (URL_LOWER.includes('failed_opening')) {
-            console.warn(`[HLS] Detected error stream (URL: ...${streamUrl.slice(-20)}). Bypassing proxy.`);
-            return res.redirect(streamUrl);
-        }
-
-        let manifest = "";
-        let isSuccess = false;
-
-        // 1.5 Try Chapter Discovery if no skip segments provided
-        if ((!introStart || introStart === 0) && (!introEnd || introEnd === 0)) {
-            console.log(`[HLS] No skip segments for ${videoId}. Checking chapters...`);
-            const chapters = await getChapters(streamUrl);
-            const skipChapter = chapters.find(c => {
-                const t = c.title.toLowerCase();
-                return t.includes('intro') || t.includes('opening') || t === 'op';
-            });
-
-            if (skipChapter) {
-                console.log(`[HLS] Found intro chapter: ${skipChapter.title} (${skipChapter.startTime}-${skipChapter.endTime}s)`);
-
-                // Use these for the manifest
-                const cStart = skipChapter.startTime;
-                const cEnd = skipChapter.endTime;
-
-                // BACKFILL: Fire and forget submission to DB
-                if (videoId && userId) {
-                    console.log(`[HLS] Backfilling chapter data for ${videoId} as 'chapter-bot'`);
-                    skipService.addSkipSegment(videoId, cStart, cEnd, "Intro", "chapter-bot")
-                        .catch(e => console.error(`[HLS] Backfill failed: ${e.message}`));
-                }
-
-                // Proceed with splicing using these values
-                const points = await getRefinedOffsets(streamUrl, cStart, cEnd);
-                if (points) {
-                    manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
-                    isSuccess = true;
-                }
-            }
-        }
-
-        // 1. Get Offsets (Start & End)
-        // If we have both, we try to splice
-        if (!isSuccess && introStart > 0 && introEnd > introStart) {
-            const points = await getRefinedOffsets(streamUrl, introStart, introEnd);
-            if (points) {
-                console.log(`[HLS] Splicing at bytes: ${points.startOffset} -> ${points.endOffset}`);
-                manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
-                isSuccess = true;
-            } else {
-                console.warn("[HLS] Failed to find splice points. Falling back to simple skip.");
-            }
-        }
-
-        // Fallback or Simple Skip (Start at X)
-        if (!manifest) {
-            const startTime = introEnd || introStart;
-            // Only try if startTime is valid
-            if (startTime > 0) {
-                const offset = await getByteOffset(streamUrl, startTime);
-
-                if (offset > 0) {
-                    manifest = generateSmartManifest(streamUrl, 7200, offset, totalLength, startTime);
-                    isSuccess = true;
-                } else {
-                    console.warn(`[HLS] Failed to find offset for ${startTime}s. Returning non-skipping stream.`);
-                    // We DO NOT cache this failure, so we can retry later
-                }
-            }
-        }
-
-        // If all logic failed, just return the original stream as a pass-through manifest
-        if (!manifest || !isSuccess) {
-            console.log(`[HLS] No valid skip points found. Generating pass-through manifest for: ...${streamUrl.slice(-30)}`);
-            // Create a manifest that just plays the whole file (0 to end)
-            // Using 0 as startTime ensures generateSmartManifest doesn't try to splice
-            manifest = generateSmartManifest(streamUrl, 7200, 0, totalLength, 0);
-            isSuccess = true;
-        }
-
-        // Store in Cache - We cache even "failed" or pass-through manifests to prevent spamming ffprobe
-        manifestCache.set(cacheKey, manifest);
-
-        // 3. Serve
-        res.set('Content-Type', 'application/vnd.apple.mpegurl');
-        res.send(manifest);
-
-    } catch (e) {
-        console.error("Proxy Error:", e.message);
-        // If an error occurs, we still redirect to the original stream
-        console.log("Fallback: Redirecting to original stream (Error-based redirect)");
-        res.redirect(req.query.stream);
-    }
-});
-
-// 7. Voting Tracks: Side-effect endpoints
-// Voting Actions Redirects
-app.get('/vote/:action/:videoId', (req, res) => {
-    const { action, videoId } = req.params;
-    const { stream, start, end, user } = req.query; // stream is encoded URL
-    const protocol = req.protocol;
-    const host = req.get('host');
-    const baseUrl = `${protocol}://${host}`;
-
-    const userId = user || 'anonymous';
-    console.log(`[Vote] User ${userId.substr(0, 6)}... voted ${action.toUpperCase()} on ${videoId}`);
-
-    // Track vote for specific user
-    userService.updateUserStats(userId, {
-        votes: 1,
-        videoId: videoId // Explicitly pass videoId as videoId for the list check
-    });
-
-    if (action === 'down') {
-        // Downvote -> Redirect to ORIGINAL stream (No skipping)
-        // We decode it because Stremio needs the real URL now
-        const originalUrl = decodeURIComponent(stream);
-        console.log(`[Vote] Redirecting to original: ${originalUrl}`);
-        res.redirect(originalUrl);
-    } else {
-        // Upvote -> Redirect to SKIPPING stream
-        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${stream}&start=${start}&end=${end}`;
-        console.log(`[Vote] Redirecting to skip: ${proxyUrl}`);
-        res.redirect(proxyUrl);
-    }
-});
-
-// Serve Addon
-// Serve Addon - Handled by custom routes above
-// app.use('/', addonRouter); // DEPRECATED
-
-// 404 Handler (Last Route)
+// 404 Handler (Last Route - after error handler)
 app.use((req, res) => {
-    res.status(404).json({ error: "IntroHater Lite: Route not found", path: req.path });
+    res.status(404).json({ success: false, error: "Route not found", path: req.path });
 });
+
+// ==================== Server Startup ====================
 
 if (require.main === module) {
     // Start Indexer

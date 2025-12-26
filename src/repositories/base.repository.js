@@ -1,47 +1,12 @@
 const mongoService = require('../services/mongodb');
-
-class SimpleLRUCache {
-    constructor(maxSize = 200) {
-        this.maxSize = maxSize;
-        this.cache = new Map();
-    }
-
-    get(key) {
-        if (!this.cache.has(key)) return null;
-        const value = this.cache.get(key);
-        this.cache.delete(key);
-        this.cache.set(key, value);
-        return value;
-    }
-
-    set(key, value) {
-        if (this.cache.has(key)) {
-            this.cache.delete(key);
-        } else if (this.cache.size >= this.maxSize) {
-            const firstKey = this.cache.keys().next().value;
-            this.cache.delete(firstKey);
-        }
-        this.cache.set(key, value);
-    }
-
-    delete(key) {
-        this.cache.delete(key);
-    }
-
-    has(key) {
-        return this.cache.has(key);
-    }
-
-    clear() {
-        this.cache.clear();
-    }
-}
+const { LRUCache } = require('lru-cache');
 
 class BaseRepository {
     constructor(collectionName) {
         this.collectionName = collectionName;
         this.collection = null;
-        this.cache = new SimpleLRUCache(500); // Unified repository-level cache
+        // Repository-level cache with TTL using lru-cache npm package
+        this.cache = new LRUCache({ max: 500, ttl: 1000 * 60 * 5 }); // 5 min TTL
     }
 
     async ensureInit() {
@@ -99,4 +64,5 @@ class BaseRepository {
     }
 }
 
-module.exports = { BaseRepository, SimpleLRUCache };
+module.exports = { BaseRepository, LRUCache };
+

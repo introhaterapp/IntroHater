@@ -14,24 +14,43 @@ try {
     }
 } catch (e) { }
 
-// Internal Cache for Probes
+// Internal Cache for Probes (with TTL)
 const PROBE_CACHE = new Map();
 const MAX_PROBE_CACHE_SIZE = 1000;
+const PROBE_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
+/**
+ * Get a cached probe result (checks TTL)
+ * @param {string} key - Cache key
+ * @returns {any|null} Cached value or null if expired/missing
+ */
 function getCachedProbe(key) {
     if (!PROBE_CACHE.has(key)) return null;
-    const val = PROBE_CACHE.get(key);
+    const entry = PROBE_CACHE.get(key);
+
+    // Check TTL
+    if (Date.now() - entry.timestamp > PROBE_CACHE_TTL) {
+        PROBE_CACHE.delete(key);
+        return null;
+    }
+
+    // Move to end (MRU)
     PROBE_CACHE.delete(key);
-    PROBE_CACHE.set(key, val); // Move to end (MRU)
-    return val;
+    PROBE_CACHE.set(key, entry);
+    return entry.value;
 }
 
+/**
+ * Store a probe result in cache (with timestamp)
+ * @param {string} key - Cache key
+ * @param {any} val - Value to cache
+ */
 function setCachedProbe(key, val) {
     if (PROBE_CACHE.has(key)) PROBE_CACHE.delete(key);
     else if (PROBE_CACHE.size >= MAX_PROBE_CACHE_SIZE) {
         PROBE_CACHE.delete(PROBE_CACHE.keys().next().value); // Remove oldest (LRU)
     }
-    PROBE_CACHE.set(key, val);
+    PROBE_CACHE.set(key, { value: val, timestamp: Date.now() });
 }
 
 // SSRF Protection (Duplicate of server logic for modularity)

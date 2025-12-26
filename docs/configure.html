@@ -77,6 +77,23 @@
                             </p>
                         </div>
 
+                        <!-- Strict Mode Toggle -->
+                        <div class="form-group"
+                            style="margin-top: 20px; padding: 16px; background: rgba(99, 102, 241, 0.05); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.1);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <input type="checkbox" id="strictMode"
+                                    style="width: 22px; height: 22px; accent-color: var(--primary); cursor: pointer; border-radius: 6px;">
+                                <label for="strictMode"
+                                    style="font-weight: 600; cursor: pointer; color: var(--text-main);">
+                                    🛡️ Strict Mode
+                                </label>
+                            </div>
+                            <p
+                                style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px; margin-left: 34px;">
+                                Only show streams if skip data exists. Saves bandwidth but limits content availability.
+                            </p>
+                        </div>
+
                         <div style="margin-top: 20px;">
                             <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
                                 Generate Install Link
@@ -214,13 +231,16 @@
             const key = document.getElementById('rdKey').value.trim();
             if (!key) return;
 
+            // Check if strict mode is enabled
+            const strictMode = document.getElementById('strictMode').checked;
+            const configValue = strictMode ? `${key}-strict` : key;
+
             // Construct Stremio Install URL
-            // Ensure we use stremio:// protocol (not stremios/https if mixed content is an issue locally, but standard is stremio://)
             const protocol = 'stremio:';
             const host = window.location.host;
 
-            // Format: stremio://DOMAIN/KEY/manifest.json
-            const installUrl = `${protocol}//${host}/${key}/manifest.json`;
+            // Format: stremio://DOMAIN/KEY/manifest.json or stremio://DOMAIN/KEY-strict/manifest.json
+            const installUrl = `${protocol}//${host}/${configValue}/manifest.json`;
 
             // Show result
             document.getElementById('installLink').value = installUrl;
@@ -228,8 +248,6 @@
 
             // Unhide
             document.getElementById('result-section').style.display = 'block';
-
-            // Hide generate button to reduce clutter? Or keep it.
         };
 
         // Check Stats Logic
