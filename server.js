@@ -12,7 +12,7 @@ const path = require('path');
 const helmet = require('helmet');
 const hpp = require('hpp');
 const morgan = require('morgan');
-const crypto = require('crypto');
+
 const rateLimit = require('express-rate-limit');
 const log = require('./src/utils/logger').server;
 
