@@ -3,14 +3,26 @@ const app = require('../../server');
 const axios = require('axios');
 
 // Mocks
+// Mocks
 jest.mock('../../src/services/skip-service.js', () => ({
     getSkipSegment: jest.fn().mockResolvedValue(null),
-    getAllSegments: jest.fn().mockResolvedValue({})
+    getAllSegments: jest.fn().mockResolvedValue({}),
+    getSegmentCount: jest.fn().mockResolvedValue(0)
 }));
 
-jest.mock('../../src/services/user-service.js', () => ({}));
-jest.mock('../../src/services/catalog.js', () => ({ repairCatalog: jest.fn() }));
-jest.mock('../../src/services/indexer.js', () => ({}));
+jest.mock('../../src/services/user-service.js', () => ({
+    getStats: jest.fn().mockResolvedValue({}),
+    getLeaderboard: jest.fn().mockResolvedValue([])
+}));
+
+jest.mock('../../src/services/catalog.js', () => ({
+    repairCatalog: jest.fn(),
+    getCatalogStats: jest.fn().mockResolvedValue({})
+}));
+
+jest.mock('../../src/services/indexer.js', () => ({
+    start: jest.fn()
+}));
 
 jest.mock('axios');
 

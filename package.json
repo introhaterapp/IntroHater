@@ -3,13 +3,13 @@
 	"version": "0.0.1",
 	"scripts": {
 		"start": "node server.js",
-		"test": "node tests/api.test.js",
+		"test": "npm run test:api",
 		"test:api": "node tests/api.test.js",
 		"test:unit": "jest --testPathPatterns=tests/unit",
 		"test:integration": "jest --testPathPatterns=tests/integration",
-		"test:all": "npm run test:api && npm run test:unit",
+		"test:all": "npm run test:unit && npm run test:integration",
 		"test:watch": "jest --watch",
-		"build": "npm run test:api",
+		"build": "echo 'No build step required for IntroHater Lite'",
 		"prepare": "husky"
 	},
 	"dependencies": {

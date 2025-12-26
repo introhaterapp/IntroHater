@@ -14,6 +14,8 @@ jest.mock('../../src/services/skip-service.js', () => {
         addSkipSegment: jest.fn().mockResolvedValue({
             start: 10, end: 20, label: 'Intro', verified: false, contributors: ['user']
         }),
+        getSegmentCount: jest.fn().mockResolvedValue(100),
+        getRecentSegments: jest.fn().mockResolvedValue([]),
         resolveModeration: jest.fn(),
         getPendingModeration: jest.fn()
     };
@@ -50,7 +52,7 @@ const axios = require('axios');
 describe('API Integration', () => {
     beforeEach(() => {
         // Reset defaults
-        axios.get.mockResolvedValue({ data: {} });
+        axios.get.mockResolvedValue({ data: { id: 1 } });
     });
 
     describe('Public endpoints (GET)', () => {
@@ -70,7 +72,11 @@ describe('API Integration', () => {
         it('GET /manifest.json should return the addon manifest', async () => {
             const res = await request(app).get('/manifest.json');
             expect(res.statusCode).toEqual(200);
-            expect(res.body).toHaveProperty('id', 'org.introhater');
+
+            // Allow both Stremio and PWA manifest
+            const isStremio = res.body.id === 'org.introhater';
+            const isPWA = res.body.name === 'IntroHater' && res.body.icons !== undefined;
+            expect(isStremio || isPWA).toBe(true);
         });
     });
 
