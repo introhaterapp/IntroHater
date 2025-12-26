@@ -14,6 +14,8 @@ const helmetConfig = helmet({
             defaultSrc: ["'self'"],
             scriptSrc: [
                 "'self'",
+                // TODO: Remove 'unsafe-inline' - Move inline scripts to external files
+                // or use nonces/hashes for better XSS protection
                 "'unsafe-inline'", // Required for some inline scripts in docs
                 "https://code.jquery.com",
                 "https://cdn.datatables.net",
@@ -102,11 +104,16 @@ const rateLimiters = {
 // CORS configuration (more restrictive)
 const corsConfig = {
     origin: function (origin, callback) {
-        // Allow requests with no origin (mobile apps, Postman, etc.)
-        if (!origin) return callback(null, true);
-        
-        // In production, only allow specific domains
+        // In production, require origin validation
         if (process.env.NODE_ENV === 'production') {
+            // Allow requests with no origin only if explicitly enabled
+            // This is needed for mobile apps, but can be a security risk
+            if (!origin && process.env.ALLOW_NO_ORIGIN !== 'true') {
+                return callback(new Error('Origin header required'));
+            }
+            
+            if (!origin) return callback(null, true);
+            
             const allowedOrigins = [
                 process.env.BASE_URL,
                 'https://introhater.com',
@@ -119,7 +126,7 @@ const corsConfig = {
                 callback(new Error('Not allowed by CORS'));
             }
         } else {
-            // In development, allow all
+            // In development, allow all (including no origin)
             callback(null, true);
         }
     },

@@ -63,4 +63,19 @@ describe('Logger', () => {
         // Check for ISO timestamp pattern
         expect(logOutput).toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
     });
+
+    it('should redact sensitive fields from logs', () => {
+        Logger.info('User login', { 
+            userId: '123', 
+            password: 'secret123',
+            rdKey: 'abc-def-ghi',
+            token: 'xyz'
+        });
+        expect(consoleLogSpy).toHaveBeenCalled();
+        const logOutput = consoleLogSpy.mock.calls[0][0];
+        expect(logOutput).toContain('userId');
+        expect(logOutput).toContain('[REDACTED]');
+        expect(logOutput).not.toContain('secret123');
+        expect(logOutput).not.toContain('abc-def-ghi');
+    });
 });

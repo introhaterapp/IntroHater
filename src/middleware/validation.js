@@ -17,7 +17,7 @@ function handleValidationErrors(req, res, next) {
     next();
 }
 
-// URL validation with SSRF protection
+// URL validation with enhanced SSRF protection
 function isSecureUrl(url) {
     try {
         const parsed = new URL(url);
@@ -28,10 +28,21 @@ function isSecureUrl(url) {
             return false;
         }
 
-        // Block private IP ranges
-        if (host.match(/^10\./) || 
-            host.match(/^192\.168\./) || 
-            host.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) {
+        // Block IPv4 private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+        const ipv4Match = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+        if (ipv4Match) {
+            const octets = ipv4Match.slice(1).map(Number);
+            // 10.0.0.0/8
+            if (octets[0] === 10) return false;
+            // 172.16.0.0/12 (172.16.0.0 - 172.31.255.255)
+            if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return false;
+            // 192.168.0.0/16
+            if (octets[0] === 192 && octets[1] === 168) return false;
+        }
+
+        // Block IPv6 private ranges (simplified check for common private ranges)
+        // fc00::/7 (ULA), fe80::/10 (Link-local)
+        if (host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80')) {
             return false;
         }
 
@@ -96,7 +107,7 @@ const validators = {
         .optional()
         .isInt({ min: 0, max: 999 }).withMessage('Episode must be between 0 and 999'),
 
-    // Stream URL validation (with SSRF protection)
+    // Stream URL validation (with enhanced SSRF protection)
     streamUrl: () => query('stream')
         .exists().withMessage('Stream URL is required')
         .custom((value) => {
