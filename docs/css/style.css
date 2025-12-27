@@ -1317,6 +1317,7 @@ table.dataTable tbody td {
     header .container {
         display: flex;
         justify-content: space-between;
+        align-items: center;
     }
 
     .nav-links,
@@ -1328,110 +1329,109 @@ table.dataTable tbody td {
         display: flex;
     }
 
-    /* Mobile Menu Active State */
-    .header-active .nav-links {
-        display: flex;
-        flex-direction: column;
+    /* Mobile Menu Open State - using .open class on #mainNav */
+    #mainNav.open {
+        display: block;
         position: fixed;
         top: 0;
+        left: 0;
         right: 0;
+        bottom: 0;
         width: 100%;
         height: 100vh;
         background: var(--bg-dark);
-        padding: 100px 40px;
-        gap: 30px;
         z-index: 1000;
-        text-align: center;
+        padding-top: 100px;
     }
 
-    .header-active .nav-links a {
-        font-size: 1.5rem;
-    }
-
-    .header-active .header-actions {
+    #mainNav.open .nav-links {
         display: flex;
-        position: fixed;
-        bottom: 40px;
-        left: 0;
-        width: 100%;
-        justify-content: center;
-        z-index: 1001;
+        flex-direction: column;
+        gap: 24px;
+        text-align: center;
+        padding: 0 40px;
     }
 
-    .header-active .menu-toggle span:nth-child(1) {
+    #mainNav.open .nav-links a {
+        font-size: 1.5rem;
+        display: block;
+    }
+
+    /* Hamburger X animation when active */
+    .menu-toggle.active span:nth-child(1) {
         transform: translateY(9.5px) rotate(45deg);
     }
 
-    .header-active .menu-toggle span:nth-child(2) {
+    .menu-toggle.active span:nth-child(2) {
         opacity: 0;
     }
 
-    .header-active .menu-toggle span:nth-child(3) {
+    .menu-toggle.active span:nth-child(3) {
         transform: translateY(-9.5px) rotate(-45deg);
     }
+}
 
-    /* Hero Section Mobile */
-    .hero {
-        padding: 80px 0 40px;
-        text-align: center;
-    }
+/* Hero Section Mobile */
+.hero {
+    padding: 80px 0 40px;
+    text-align: center;
+}
 
-    .hero-title {
-        font-size: 2.25rem !important;
-    }
+.hero-title {
+    font-size: 2.25rem !important;
+}
 
-    .hero-subtitle {
-        font-size: 1rem !important;
-        margin: 0 auto 30px auto;
-    }
+.hero-subtitle {
+    font-size: 1rem !important;
+    margin: 0 auto 30px auto;
+}
 
-    .hero-buttons {
-        justify-content: center;
-    }
+.hero-buttons {
+    justify-content: center;
+}
 
-    .hero-visual {
-        display: none;
-    }
+.hero-visual {
+    display: none;
+}
 
-    .stats-bar {
-        gap: 30px !important;
-        flex-direction: column;
-    }
+.stats-bar {
+    gap: 30px !important;
+    flex-direction: column;
+}
 
-    /* Section Mobile */
-    .section-header h2 {
-        font-size: 1.75rem !important;
-    }
+/* Section Mobile */
+.section-header h2 {
+    font-size: 1.75rem !important;
+}
 
-    .section {
-        padding: 60px 0;
-    }
+.section {
+    padding: 60px 0;
+}
 
-    .grid-3 {
-        grid-template-columns: 1fr;
-    }
+.grid-3 {
+    grid-template-columns: 1fr;
+}
 
-    /* Forms */
-    .filters-bar {
-        flex-direction: column;
-    }
+/* Forms */
+.filters-bar {
+    flex-direction: column;
+}
 
-    /* Modal Mobile */
-    .modal-content {
-        padding: 20px;
-        width: 90%;
-    }
+/* Modal Mobile */
+.modal-content {
+    padding: 20px;
+    width: 90%;
+}
 
-    /* Table Adjustments */
-    .table-container {
-        overflow-x: auto;
-    }
+/* Table Adjustments */
+.table-container {
+    overflow-x: auto;
+}
 
-    table.dataTable thead th,
-    table.dataTable tbody td {
-        padding: 12px 16px !important;
-        font-size: 0.85rem;
-    }
+table.dataTable thead th,
+table.dataTable tbody td {
+    padding: 12px 16px !important;
+    font-size: 0.85rem;
 }
 
 /* Skeleton Loading Effect */
