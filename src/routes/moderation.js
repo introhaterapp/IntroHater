@@ -1,10 +1,6 @@
-/**
- * Moderation Routes
- * Handles /api/admin/* endpoints for moderation
- */
-
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 
 const skipService = require('../services/skip-service');
 const cacheService = require('../services/cache-service');
@@ -26,15 +22,37 @@ router.post('/admin/pending', async (req, res) => {
             const episode = parts[2];
 
             let title = imdbId;
+
+            // Try cache first
             const cached = cacheService.getMetadata(imdbId);
             if (cached) {
                 title = cached.Title;
+            } else {
+                // Fetch from Cinemeta if not cached
+                try {
+                    const metaRes = await axios.get(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`, { timeout: 5000 });
+                    if (metaRes.data?.meta?.name) {
+                        title = metaRes.data.meta.name;
+                        // Cache for future requests
+                        cacheService.setMetadata(imdbId, { Title: title });
+                    }
+                } catch {
+                    // Try movie endpoint if series fails
+                    try {
+                        const movieRes = await axios.get(`https://v3-cinemeta.strem.io/meta/movie/${imdbId}.json`, { timeout: 5000 });
+                        if (movieRes.data?.meta?.name) {
+                            title = movieRes.data.meta.name;
+                            cacheService.setMetadata(imdbId, { Title: title });
+                        }
+                    } catch { /* Keep imdbId as fallback */ }
+                }
             }
 
             const displayTitle = season && episode ? `${title} S${season}E${episode}` : title;
             return { ...item, displayTitle, imdbId };
         }));
     };
+
 
     const pending = await enrich(data.pending);
     const reported = await enrich(data.reported);

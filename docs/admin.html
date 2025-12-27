@@ -18,6 +18,60 @@
             border-color: var(--primary) !important;
             color: white !important;
         }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            .mod-grid {
+                grid-template-columns: 1fr !important;
+                gap: 20px !important;
+            }
+
+            .mod-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 16px !important;
+            }
+
+            .mod-header h1 {
+                font-size: 1.5rem !important;
+            }
+
+            .mod-filter-bar {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+
+            .mod-filter-bar>div {
+                width: 100% !important;
+                min-width: unset !important;
+            }
+
+            #filterChips {
+                flex-wrap: wrap !important;
+            }
+
+            .mod-section-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 12px !important;
+            }
+
+            .mod-section-header>div {
+                width: 100% !important;
+            }
+
+            .mod-section-header .btn {
+                flex: 1 !important;
+            }
+
+            .mod-item-actions {
+                flex-direction: column !important;
+            }
+
+            .mod-item-actions .btn {
+                width: 100% !important;
+            }
+        }
     </style>
 </head>
 
@@ -54,7 +108,7 @@
                 </div>
 
                 <div id="mod-panel" class="d-none">
-                    <div
+                    <div class="mod-header"
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
                         <h1 class="text-gradient">Moderation Queue</h1>
                         <div style="display: flex; gap: 12px; align-items: center;">
@@ -69,7 +123,7 @@
                     </div>
 
                     <!-- Search and Filter Bar -->
-                    <div class="glass-panel"
+                    <div class="glass-panel mod-filter-bar"
                         style="padding: 16px; margin-bottom: 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">
                         <div style="flex: 1; min-width: 250px;">
                             <input type="text" id="modSearch" class="form-input"
@@ -91,9 +145,9 @@
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <div class="mod-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
                         <div>
-                            <div
+                            <div class="mod-section-header"
                                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                                 <h3 style="margin: 0;">Pending Submissions</h3>
                                 <div style="display: flex; gap: 10px;">
@@ -267,9 +321,9 @@
                             </div>
                             ${!isPending ? `<div style="color:#ef4444; font-size:0.75rem;">Reports: ${item.reportCount}</div>` : ''}
                         </div>
-                        <div style="display: flex; gap: 10px;">
-                            <button class="btn btn-primary mod-approve" style="flex:1; font-size:0.75rem;" data-fullid="${item.fullId}" data-index="${item.index}">Approve</button>
-                            <button class="btn btn-secondary mod-delete" style="flex:1; font-size:0.75rem; background:#ef4444; border-color:#ef4444;" data-fullid="${item.fullId}" data-index="${item.index}">Delete</button>
+                        <div class="mod-item-actions" style="display: flex; gap: 10px;">
+                            <button class="btn btn-primary mod-approve" style="flex:1; font-size:0.75rem;" data-fullid="${item.fullId}" data-index="${item.index}">${isPending ? 'Approve' : 'Dismiss Reports'}</button>
+                            <button class="btn btn-secondary mod-delete" style="flex:1; font-size:0.75rem; background:#ef4444; border-color:#ef4444;" data-fullid="${item.fullId}" data-index="${item.index}">${isPending ? 'Delete' : 'Remove Skip'}</button>
                         </div>
                     </div>
                 `;
