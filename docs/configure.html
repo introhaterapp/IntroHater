@@ -410,30 +410,6 @@
             }
         }
 
-        // Quick report from search results
-        async function reportFromSearch(videoId) {
-            const key = document.getElementById('rdKey').value.trim();
-            if (!key) {
-                Toast.warning("Please enter your RD Key first to report issues.");
-                return;
-            }
-
-            try {
-                const res = await fetch('/api/report', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rdKey: key, videoId, reason: "Bad skip reported from search" })
-                });
-                if (res.ok) {
-                    Toast.success("Report submitted. Thank you for helping improve the database!");
-                } else {
-                    Toast.error("Failed to submit report.");
-                }
-            } catch (e) {
-                Toast.error("Network error. Please try again.");
-            }
-        }
-
         // --- Search & Submit Logic ---
         let currentSubmitItem = null;
 
@@ -485,28 +461,15 @@
                         details.appendChild(title);
                         details.appendChild(sub);
 
-                        const actions = document.createElement('div');
-                        actions.style.display = 'flex';
-                        actions.style.gap = '6px';
-
                         const contributeBtn = document.createElement('button');
-                        contributeBtn.className = 'btn btn-secondary';
-                        contributeBtn.style.fontSize = '0.7rem';
+                        contributeBtn.className = 'btn btn-primary';
+                        contributeBtn.style.fontSize = '0.75rem';
                         contributeBtn.textContent = 'Contribute';
                         contributeBtn.onclick = () => openSubmit(item);
 
-                        const reportBtn = document.createElement('button');
-                        reportBtn.className = 'btn';
-                        reportBtn.style.cssText = 'font-size: 0.7rem; border: 1px solid #ef4444; color: #ef4444; background: transparent; padding: 4px 8px;';
-                        reportBtn.textContent = 'Report';
-                        reportBtn.onclick = () => reportFromSearch(item.imdbID);
-
-                        actions.appendChild(contributeBtn);
-                        actions.appendChild(reportBtn);
-
                         row.appendChild(img);
                         row.appendChild(details);
-                        row.appendChild(actions);
+                        row.appendChild(contributeBtn);
                         resultsCont.appendChild(row);
                     });
                 } else {

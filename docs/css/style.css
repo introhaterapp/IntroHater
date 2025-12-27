@@ -954,6 +954,45 @@ tr:hover td {
     clear: both;
 }
 
+/* DataTables Mobile Responsiveness */
+@media (max-width: 768px) {
+
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+        float: none;
+        text-align: center;
+        margin-bottom: 16px;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        width: 100%;
+        max-width: 280px;
+        margin-left: 0;
+        margin-top: 8px;
+    }
+
+    .dataTables_wrapper .dataTables_length select {
+        margin-left: 0;
+        margin-top: 8px;
+    }
+
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        float: none;
+        text-align: center;
+        margin-top: 16px;
+    }
+
+    .dataTables_wrapper .dataTables_paginate {
+        margin-top: 12px;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 8px 12px !important;
+        font-size: 0.8rem;
+    }
+}
+
 /* Ensure table container matches leaderboard */
 .table-container {
     background: transparent;
@@ -1373,7 +1412,7 @@ table.dataTable tbody td {
 
 /* Hero Section Mobile */
 .hero {
-    padding: 80px 0 40px;
+    padding: 40px 0 40px;
     text-align: center;
 }
 
@@ -1397,6 +1436,70 @@ table.dataTable tbody td {
 .stats-bar {
     gap: 30px !important;
     flex-direction: column;
+}
+
+/* Mobile Ticker Adjustments */
+@media (max-width: 768px) {
+    #activity-ticker {
+        margin-top: var(--header-height-mobile);
+        padding: 10px 0;
+    }
+
+    .ticker-pill {
+        font-size: 0.7rem;
+    }
+
+    #ticker-content {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+/* Leaderboard Tabs Mobile */
+@media (max-width: 600px) {
+    .tabs-premium {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .tabs-premium::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-btn-premium {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    /* Leaderboard Table Mobile */
+    .leaderboard-table th,
+    .leaderboard-table td {
+        padding: 10px 8px !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* Hide less important columns on mobile */
+    .leaderboard-table th:nth-child(4),
+    .leaderboard-table td:nth-child(4),
+    .leaderboard-table th:nth-child(5),
+    .leaderboard-table td:nth-child(5) {
+        display: none;
+    }
+
+    .leaderboard-table th:nth-child(1),
+    .leaderboard-table td:nth-child(1) {
+        width: 50px !important;
+    }
+
+    .user-cell {
+        font-size: 0.75rem;
+    }
 }
 
 /* Section Mobile */
@@ -1474,18 +1577,20 @@ table.dataTable tbody td {
     }
 }
 
-/* Live Activity Ticker (Hero) */
+/* Live Activity Ticker (Static Bar Below Navbar) */
 #activity-ticker {
-    position: absolute;
-    top: 40px;
-    /* Below nav which is approx 72px, but hero padding handles that. This is relative to hero-container */
-    right: 24px;
-    margin-top: 0;
-    text-align: right;
+    margin-top: calc(var(--header-height) + 0px);
+    padding: 12px 0;
+    background: rgba(24, 24, 27, 0.6);
+    border-bottom: 1px solid var(--border);
+    text-align: center;
     display: flex;
-    justify-content: flex-end;
-    /* Ensure it doesn't overlap on small screens */
-    z-index: 10;
+    justify-content: center;
+}
+
+#activity-ticker .container {
+    display: flex;
+    justify-content: center;
 }
 
 .ticker-pill {

@@ -65,6 +65,18 @@
                     </p>
                 </div>
 
+                <!-- Login Required Banner (shown via JS if not logged in) -->
+                <div id="login-banner" class="d-none"
+                    style="background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 1.5rem;">🔑</span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #fbbf24;">Login Required</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">You need to be logged in with your
+                            Real-Debrid key to contribute or report issues.</div>
+                    </div>
+                    <a href="configure.html" class="btn btn-primary" style="white-space: nowrap;">Configure</a>
+                </div>
+
                 <!-- Search/Contribute Section -->
                 <div id="search-section">
                     <div class="glass-panel" style="padding: 30px;">
@@ -157,39 +169,6 @@
         </div>
     </div>
 
-    <!-- Report Modal -->
-    <div id="report-overlay" class="modal">
-        <div class="glass-panel" style="width: 100%; max-width: 450px; padding: 40px; position: relative;">
-            <button id="closeReportX"
-                style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
-            <h2 style="margin-bottom: 15px; font-family: 'Space Grotesk', sans-serif; color: #ef4444;">Report Issue ⚠️
-            </h2>
-            <p style="color: var(--text-muted); margin-bottom: 25px;">
-                flagging this skip segment as incorrect or poor quality.
-            </p>
-
-            <div class="form-group">
-                <label class="form-label">Reason (Optional)</label>
-                <select id="reportReason" class="form-input" style="appearance: auto; cursor: pointer;">
-                    <option value="Incorrect Timestamp">Incorrect Timestamp</option>
-                    <option value="Did not skip">Did not skip</option>
-                    <option value="Skipped too much">Skipped too much</option>
-                    <option value="Spoiler content">Spoiler content</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
-
-            <input type="hidden" id="reportVideoId">
-
-            <div style="display: flex; gap: 15px; margin-top: 30px;">
-                <button id="closeReportBtn" class="btn btn-secondary" style="flex: 1;">Cancel</button>
-                <button id="submitReportBtn" class="btn"
-                    style="flex: 1; justify-content: center; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid #ef4444;">Submit
-                    Report</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         let rdKey = localStorage.getItem('introhater_rdkey') || "";
         let currentItem = null;
@@ -197,8 +176,15 @@
         // --- Event Listeners (Fix for CSP) ---
         document.getElementById('closeSubmitX')?.addEventListener('click', closeSubmit);
         document.getElementById('closeSubmitBtn')?.addEventListener('click', closeSubmit);
-        document.getElementById('closeReportX')?.addEventListener('click', closeReport);
-        document.getElementById('closeReportBtn')?.addEventListener('click', closeReport);
+
+        // Show login banner if not logged in
+        if (!rdKey) {
+            const banner = document.getElementById('login-banner');
+            if (banner) {
+                banner.classList.remove('d-none');
+                banner.style.display = 'flex';
+            }
+        }
 
         // --- Search/Submit Logic ---
         let searchTimeout = null;
@@ -243,27 +229,15 @@
                             <div style="font-size: 0.85rem; color: var(--text-muted);">${item.Year} • ${item.Type}</div>
                         `;
 
-                        const actionsEl = document.createElement('div');
-                        actionsEl.style.cssText = 'display: flex; gap: 8px;';
-
                         const contributeBtn = document.createElement('button');
-                        contributeBtn.className = 'btn btn-secondary';
-                        contributeBtn.style.fontSize = '0.8rem';
+                        contributeBtn.className = 'btn btn-primary';
+                        contributeBtn.style.fontSize = '0.85rem';
                         contributeBtn.textContent = 'Contribute';
                         contributeBtn.onclick = (e) => { e.stopPropagation(); openSubmit(item); };
 
-                        const reportBtn = document.createElement('button');
-                        reportBtn.className = 'btn';
-                        reportBtn.style.cssText = 'font-size: 0.8rem; border: 1px solid #ef4444; color: #ef4444; background: transparent;';
-                        reportBtn.textContent = 'Report ⚠️';
-                        reportBtn.onclick = (e) => { e.stopPropagation(); openReportModal(item.imdbID); };
-
-                        actionsEl.appendChild(contributeBtn);
-                        actionsEl.appendChild(reportBtn);
-
                         row.appendChild(imgEl);
                         row.appendChild(infoEl);
-                        row.appendChild(actionsEl);
+                        row.appendChild(contributeBtn);
                         cont.appendChild(row);
                     });
                 } else {
@@ -277,6 +251,11 @@
         }
 
         function openSubmit(item) {
+            if (!rdKey) {
+                alert("Please log in with your Real-Debrid key first (go to Configure page).");
+                return;
+            }
+
             currentItem = item;
             document.getElementById('submit-name').textContent = item.Title;
             document.getElementById('submit-year').textContent = `${item.Year} (${item.imdbID})`;
@@ -401,57 +380,11 @@
             }
         };
 
-        // --- Report Modal Logic ---
-        function openReportModal(videoId) {
-            document.getElementById('reportVideoId').value = videoId;
-            document.getElementById('report-overlay').style.display = 'flex';
-        }
-
-        function closeReport() {
-            document.getElementById('report-overlay').style.display = 'none';
-        }
-
-        document.getElementById('submitReportBtn').onclick = async () => {
-            const videoId = document.getElementById('reportVideoId').value;
-            const reason = document.getElementById('reportReason').value;
-
-            if (!videoId) return;
-
-            const btn = document.getElementById('submitReportBtn');
-            btn.textContent = 'Submitting...';
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/report', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rdKey, videoId, reason })
-                });
-
-                if (res.ok) {
-                    alert("Reported. Thank you!");
-                    closeReport();
-                } else {
-                    alert("Failed to send report.");
-                }
-            } catch (e) {
-                console.error(e);
-                alert("Network error.");
-            } finally {
-                btn.textContent = 'Submit Report';
-                btn.disabled = false;
-            }
-        }
-
         // --- Global Modal Close ---
         window.onclick = function (event) {
             const submitOverlay = document.getElementById('submit-overlay');
-            const reportOverlay = document.getElementById('report-overlay');
             if (event.target == submitOverlay) {
                 closeSubmit();
-            }
-            if (event.target == reportOverlay) {
-                closeReport();
             }
         }
     </script>
