@@ -138,60 +138,15 @@
 
                 </div>
 
-                <!-- Stats Panel (Hidden by default) -->
-                <div id="stats-panel" class="d-none" style="margin-top: 24px;">
-                    <div class="glass-panel"
-                        style="padding: 20px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">User ID
-                            </div>
-                            <div id="userIdDisplay" style="font-weight: 700;">-</div>
-                        </div>
-                        <div style="display: flex; gap: 30px;">
-                            <div class="text-center">
-                                <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">
-                                    Rank</div>
-                                <div id="userRank" style="font-weight: 700;">-</div>
-                            </div>
-                            <div class="text-center">
-                                <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">
-                                    Votes</div>
-                                <div id="userVotes" style="font-weight: 700;">0</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- History Panel (Hidden by default) -->
-                <div id="history-panel" class="d-none" style="margin-top: 24px;">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 12px; font-family: 'Space Grotesk', sans-serif;">Recent
-                        Activity</h3>
-                    <div id="history-list" style="display: flex; flex-direction: column; gap: 10px;">
-                        <!-- Items populated by JS -->
-                    </div>
-                </div>
-
-                <!-- Search Panel -->
-                <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border);">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 12px; font-family: 'Space Grotesk', sans-serif;">Search
-                        & Contribute</h3>
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <input type="text" id="searchInput" class="form-input"
-                            placeholder="Search for movies or series...">
-                        <button id="searchBtn" class="btn btn-primary" style="padding: 8px 16px;">Search</button>
-                    </div>
-                    <div id="search-results"
-                        style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
-                        <!-- Results populated by JS -->
-                    </div>
-                </div>
-
-                <div
-                    style="margin-top: 24px; text-align: center; border-top: 1px solid var(--border); padding-top: 24px;">
+                <!-- Helpful Links -->
+                <div class="mt-24 pt-24 text-center border-top">
                     <p style="color: var(--text-muted); font-size: 0.9rem;">
-                        Don't have Real-Debrid?
-                        <br>
-                        This addon currently requires it to proxy streams efficiently.
+                        <a href="profile.html" style="color: var(--primary);">My Profile</a> ·
+                        <a href="contribute.html" style="color: var(--primary);">Contribute</a> ·
+                        <a href="leaderboard.html" style="color: var(--primary);">Leaderboard</a>
+                    </p>
+                    <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 12px;">
+                        Don't have Real-Debrid? This addon requires it to proxy streams.
                     </p>
                 </div>
 
@@ -199,400 +154,75 @@
 
             </div>
         </section>
-    </main>
 
-    <!-- Submit Skip Modal -->
-    <div id="submit-overlay" class="modal d-none">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Submit Skip Segment</h3>
-                <span class="modal-close" onclick="closeSubmit()">&times;</span>
-            </div>
-            <div class="submit-meta-card">
-                <div class="poster-wrapper">
-                    <img id="submit-poster" class="poster-img" src="/icon32.png" alt="Poster">
-                </div>
-                <div>
-                    <h4 id="submit-name" style="margin-bottom: 8px;">Title</h4>
-                    <p id="submit-year" style="color: var(--text-muted); font-size: 0.9rem;">Year (IMDB ID)</p>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label" for="skipStart">Start Time</label>
-                    <input type="text" id="skipStart" class="form-input" placeholder="e.g. 0:30 or 30">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="skipEnd">End Time</label>
-                    <input type="text" id="skipEnd" class="form-input" placeholder="e.g. 1:30 or 90">
-                </div>
-            </div>
-            <button id="submitSkipBtn" class="btn btn-primary" style="width: 100%;">Submit</button>
-        </div>
-    </div>
-
-    <script>
-        // Persistence Logic
-        (function () {
-            const savedKey = localStorage.getItem('introhater_rdkey');
-            if (savedKey) {
-                document.getElementById('rdKey').value = savedKey;
-                document.getElementById('logoutBtn').classList.remove('d-none');
-            }
-
-            // Path-based auto-fill (Stremio redirect fallback)
-            const parts = window.location.pathname.split('/').filter(p => p);
-            if (parts.length >= 2 && parts[parts.length - 1] === 'configure') {
-                const potentialKey = parts[0];
-                if (potentialKey.length > 5) {
-                    document.getElementById('rdKey').value = potentialKey;
-                }
-            }
-        })();
-
-        document.getElementById('logoutBtn').onclick = function () {
-            localStorage.removeItem('introhater_rdkey');
-            location.reload();
-        };
-
-        document.getElementById('config-form').onsubmit = function (e) {
-            e.preventDefault();
-            const key = document.getElementById('rdKey').value.trim();
-            if (!key) return;
-
-            // Check if strict mode is enabled
-            const strictMode = document.getElementById('strictMode').checked;
-            const configValue = strictMode ? `${key}-strict` : key;
-
-            // Construct Stremio Install URL
-            const protocol = 'stremio:';
-            const host = window.location.host;
-
-            // Format: stremio://DOMAIN/KEY/manifest.json or stremio://DOMAIN/KEY-strict/manifest.json
-            const installUrl = `${protocol}//${host}/${configValue}/manifest.json`;
-
-            // Show result
-            document.getElementById('installLink').value = installUrl;
-            document.getElementById('installBtn').href = installUrl;
-
-            // Unhide
-            document.getElementById('result-section').style.display = 'block';
-        };
-
-        // Check Stats Logic
-        document.getElementById('checkStatsBtn').onclick = async function () {
-            const key = document.getElementById('rdKey').value.trim();
-            if (!key) {
-                Toast.warning("Please enter your RD Key first!");
-                return;
-            }
-
-            const btn = this;
-            const originalText = btn.textContent;
-            btn.textContent = "Loading...";
-
-            try {
-                const res = await fetch('/api/stats/personal', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rdKey: key })
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    localStorage.setItem('introhater_rdkey', key);
+        <script>
+            // Persistence Logic - load saved key on page load
+            (function () {
+                const savedKey = localStorage.getItem('introhater_rdkey');
+                if (savedKey) {
+                    document.getElementById('rdKey').value = savedKey;
                     document.getElementById('logoutBtn').classList.remove('d-none');
-                    document.getElementById('userIdDisplay').classList.remove('d-none'); // Ensure visible
+                }
 
-                    // Show ID (Shortened)
-                    if (data.userId) {
-                        document.getElementById('userIdDisplay').textContent = data.userId.substr(0, 8);
-                        document.getElementById('userIdDisplay').title = data.userId; // Full ID on hover
+                // Path-based auto-fill (Stremio redirect fallback)
+                const parts = window.location.pathname.split('/').filter(p => p);
+                if (parts.length >= 2 && parts[parts.length - 1] === 'configure') {
+                    const potentialKey = parts[0];
+                    if (potentialKey.length > 5) {
+                        document.getElementById('rdKey').value = potentialKey;
                     }
-
-                    document.getElementById('userRank').textContent = data.rank || '-';
-                    document.getElementById('userVotes').textContent = data.votes || 0;
-
-                    // Update History
-                    const historyList = document.getElementById('history-list');
-                    historyList.innerHTML = '';
-
-                    if (data.history && data.history.length > 0) {
-                        data.history.forEach(item => {
-                            const row = document.createElement('div');
-                            row.className = 'glass-panel';
-                            row.style.padding = '10px';
-                            row.style.display = 'flex';
-                            row.style.justifyContent = 'space-between';
-                            row.style.alignItems = 'center';
-                            row.style.fontSize = '0.85rem';
-
-                            const info = document.createElement('div');
-                            const titleEl = document.createElement('strong');
-                            titleEl.textContent = item.title || item.videoId;
-                            info.appendChild(titleEl);
-                            info.appendChild(document.createElement('br'));
-
-                            const timeSpan = document.createElement('span');
-                            timeSpan.style.color = 'var(--text-muted)';
-                            timeSpan.style.fontSize = '0.75rem';
-                            timeSpan.textContent = new Date(item.timestamp).toLocaleString();
-                            info.appendChild(timeSpan);
-
-                            const actions = document.createElement('div');
-                            actions.style.display = 'flex';
-                            actions.style.gap = '6px';
-
-                            const refineBtn = document.createElement('button');
-                            refineBtn.textContent = 'Refine';
-                            refineBtn.className = 'btn btn-secondary';
-                            refineBtn.style.padding = '4px 8px';
-                            refineBtn.style.fontSize = '0.7rem';
-                            refineBtn.onclick = () => openSubmitFromHistory(item.videoId, item.title, item.poster);
-
-                            const reportBtn = document.createElement('button');
-                            reportBtn.textContent = 'Report ⚠️';
-                            reportBtn.className = 'btn';
-                            reportBtn.style.cssText = 'padding: 4px 8px; font-size: 0.7rem; border: 1px solid #ef4444; color: #ef4444; background: transparent;';
-                            reportBtn.onclick = () => reportIssue(item.videoId, reportBtn);
-
-                            actions.appendChild(refineBtn);
-                            actions.appendChild(reportBtn);
-                            row.appendChild(info);
-                            row.appendChild(actions);
-                            historyList.appendChild(row);
-                        });
-                        document.getElementById('history-panel').classList.remove('d-none');
-                    } else {
-                        document.getElementById('history-panel').classList.add('d-none');
-                    }
-
-                    const panel = document.getElementById('stats-panel');
-                    panel.classList.remove('d-none');
-                    panel.style.animation = "fadeIn 0.5s ease";
-                } else if (res.status === 401) {
-                    Toast.error("Invalid Real-Debrid Key. Please verify your token.");
-                    localStorage.removeItem('introhater_rdkey');
-                    document.getElementById('logoutBtn').classList.add('d-none');
-                    document.getElementById('stats-panel').classList.add('d-none');
-                    document.getElementById('history-panel').classList.add('d-none');
-                } else {
-                    const err = await res.json();
-                    Toast.error(err.error || "Failed to fetch stats");
                 }
-            } catch (e) {
-                console.error(e);
-            } finally {
-                btn.textContent = originalText;
-            }
-        };
+            })();
 
-        async function reportIssue(videoId, btn) {
-            const key = document.getElementById('rdKey').value.trim();
-            if (!confirm("Is this skip incorrect? Report it to help improve the database.")) return;
-
-            btn.disabled = true;
-            btn.textContent = "Reporting...";
-
-            try {
-                const res = await fetch('/api/report', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rdKey: key, videoId, reason: "Manual report from dashboard" })
-                });
-                if (res.ok) {
-                    btn.textContent = "Reported ✅";
-                    btn.style.background = "var(--success)";
-                }
-            } catch (e) {
-                btn.disabled = false;
-                btn.textContent = "Failed";
-            }
-        }
-
-        // --- Search & Submit Logic ---
-        let currentSubmitItem = null;
-
-        document.getElementById('searchBtn').onclick = performSearch;
-        document.getElementById('searchInput').onkeypress = (e) => e.key === 'Enter' && performSearch();
-
-        async function performSearch() {
-            const query = document.getElementById('searchInput').value.trim();
-            if (!query) return;
-
-            const btn = document.getElementById('searchBtn');
-            btn.textContent = '...';
-
-            try {
-                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-                const data = await res.json();
-
-                const resultsCont = document.getElementById('search-results');
-                resultsCont.innerHTML = '';
-
-                if (data.Search) {
-                    data.Search.forEach(item => {
-                        const row = document.createElement('div');
-                        row.className = 'glass-panel';
-                        row.style.padding = '10px';
-                        row.style.display = 'flex';
-                        row.style.gap = '15px';
-                        row.style.alignItems = 'center';
-
-                        const img = document.createElement('img');
-                        img.src = item.Poster !== 'N/A' ? item.Poster : '/icon32.png';
-                        img.style.width = '40px';
-                        img.style.height = '60px';
-                        img.style.objectFit = 'cover';
-                        img.style.borderRadius = '4px';
-
-                        const details = document.createElement('div');
-                        details.style.flex = '1';
-
-                        const title = document.createElement('div');
-                        title.style.fontWeight = '600';
-                        title.textContent = item.Title;
-
-                        const sub = document.createElement('div');
-                        sub.style.fontSize = '0.8rem';
-                        sub.style.color = 'var(--text-muted)';
-                        sub.textContent = `${item.Year} • ${item.Type}`;
-
-                        details.appendChild(title);
-                        details.appendChild(sub);
-
-                        const contributeBtn = document.createElement('button');
-                        contributeBtn.className = 'btn btn-primary';
-                        contributeBtn.style.fontSize = '0.75rem';
-                        contributeBtn.textContent = 'Contribute';
-                        contributeBtn.onclick = () => openSubmit(item);
-
-                        row.appendChild(img);
-                        row.appendChild(details);
-                        row.appendChild(contributeBtn);
-                        resultsCont.appendChild(row);
-                    });
-                } else {
-                    resultsCont.innerHTML = '<p class="text-center" style="font-size: 0.9rem; color: var(--text-muted);">No results found.</p>';
-                }
-            } catch (e) {
-                console.error(e);
-            } finally {
-                btn.textContent = 'Search';
-            }
-        }
-
-        function openSubmit(item) {
-            currentSubmitItem = item;
-            document.getElementById('submit-name').textContent = item.Title;
-            document.getElementById('submit-year').textContent = `${item.Year} (${item.imdbID})`;
-            document.getElementById('submit-poster').src = item.Poster !== 'N/A' ? item.Poster : '/icon32.png';
-
-            document.getElementById('submit-overlay').classList.remove('d-none');
-            document.getElementById('submit-overlay').style.display = 'flex';
-        }
-
-        function closeSubmit() {
-            document.getElementById('submit-overlay').classList.add('d-none');
-            document.getElementById('submit-overlay').style.display = 'none';
-        }
-
-        function openSubmitFromHistory(videoId, title, poster) {
-            // Parse video ID to get IMDB ID and episode info
-            const parts = videoId.split(':');
-            const imdbID = parts[0];
-
-            currentSubmitItem = {
-                Title: title || videoId,
-                imdbID: videoId,
-                Year: parts.length >= 3 ? 'Refine existing' : 'Movie',
-                Poster: poster || '/icon32.png'
+            // Logout
+            document.getElementById('logoutBtn').onclick = function () {
+                localStorage.removeItem('introhater_rdkey');
+                location.reload();
             };
 
-            document.getElementById('submit-name').textContent = title || videoId;
-            document.getElementById('submit-year').textContent = `Refining skip for: ${videoId}`;
-            document.getElementById('submit-poster').src = poster || '/icon32.png';
+            // Generate Install Link Form
+            document.getElementById('config-form').onsubmit = function (e) {
+                e.preventDefault();
+                const key = document.getElementById('rdKey').value.trim();
+                if (!key) return;
 
-            document.getElementById('submit-overlay').classList.remove('d-none');
-            document.getElementById('submit-overlay').style.display = 'flex';
-        }
+                // Save key to localStorage
+                localStorage.setItem('introhater_rdkey', key);
+                document.getElementById('logoutBtn').classList.remove('d-none');
 
-        function parseTime(val) {
-            if (val.includes(':')) {
-                const parts = val.split(':').map(p => parseFloat(p));
-                if (parts.length === 2) return parts[0] * 60 + parts[1];
-            }
-            return parseFloat(val);
-        }
+                // Check if strict mode is enabled
+                const strictMode = document.getElementById('strictMode').checked;
+                const configValue = strictMode ? `${key}-strict` : key;
 
-        document.getElementById('submitSkipBtn').onclick = async function () {
-            const rdKey = document.getElementById('rdKey').value.trim();
-            const startVal = document.getElementById('skipStart').value.trim();
-            const endVal = document.getElementById('skipEnd').value.trim();
+                // Construct Stremio Install URL
+                const protocol = 'stremio:';
+                const host = window.location.host;
+                const installUrl = `${protocol}//${host}/${configValue}/manifest.json`;
 
-            if (!rdKey || !startVal || !endVal) {
-                Toast.warning("Please fill all fields!");
-                return;
-            }
+                // Show result
+                document.getElementById('installLink').value = installUrl;
+                document.getElementById('installBtn').href = installUrl;
+                document.getElementById('result-section').style.display = 'block';
+            };
 
-            const start = parseTime(startVal);
-            const end = parseTime(endVal);
-
-            if (isNaN(start) || isNaN(end) || end <= start) {
-                Toast.error("Invalid durations! End time must be after start time.");
-                return;
-            }
-
-            this.disabled = true;
-            this.textContent = "Submitting...";
-
-            try {
-                const res = await fetch('/api/submit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        rdKey,
-                        videoId: currentSubmitItem.imdbID,
-                        start,
-                        end,
-                        label: 'Intro'
-                    })
+            // Copy Button
+            document.getElementById('copyBtn').onclick = function () {
+                const link = document.getElementById('installLink');
+                link.select();
+                navigator.clipboard.writeText(link.value).then(() => {
+                    const btn = this;
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => btn.textContent = originalText, 2000);
                 });
+            };
 
-                if (res.ok) {
-                    Toast.success("Submission successful! It will be reviewed by the community.");
-                    closeSubmit();
-                    // Refresh stats
-                    document.getElementById('checkStatsBtn').click();
-                } else {
-                    const err = await res.json();
-                    Toast.error(err.error || "Submission failed");
-                }
-            } catch (e) {
-                console.error(e);
-                Toast.error("Network error. Please try again.");
-            } finally {
-                this.disabled = false;
-                this.textContent = "Submit";
-            }
-        };
-
-        document.getElementById('copyBtn').onclick = function () {
-            const link = document.getElementById('installLink');
-            link.select();
-            navigator.clipboard.writeText(link.value).then(() => {
-                const btn = this;
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                setTimeout(() => btn.textContent = originalText, 2000);
-            });
-        };
-
-        document.getElementById('installLink').onclick = function () {
-            this.select();
-        };
-    </script>
-    <script src="js/toast.js"></script>
+            // Select link on click
+            document.getElementById('installLink').onclick = function () {
+                this.select();
+            };
+        </script>
+        <script src="js/toast.js"></script>
 </body>
 
 </html>

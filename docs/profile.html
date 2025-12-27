@@ -549,16 +549,46 @@
                     data.history.forEach(item => {
                         const el = document.createElement('div');
                         el.className = 'submission-card';
-                        el.innerHTML = `
-                            <div style="display: flex; gap: 12px; align-items: center;">
-                                ${item.poster ? `<img src="${item.poster}" style="width: 40px; height: 60px; object-fit: cover; border-radius: 6px;">` : ''}
-                                <div>
-                                    <div style="font-weight: 600;">${item.title || item.videoId}</div>
-                                    <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</div>
-                                </div>
-                            </div>
-                            <span style="color: var(--primary); font-size: 0.85rem;">Watched</span>
+
+                        // Left side - poster and info
+                        const infoDiv = document.createElement('div');
+                        infoDiv.style.cssText = 'display: flex; gap: 12px; align-items: center;';
+
+                        if (item.poster) {
+                            const img = document.createElement('img');
+                            img.src = item.poster;
+                            img.style.cssText = 'width: 40px; height: 60px; object-fit: cover; border-radius: 6px;';
+                            infoDiv.appendChild(img);
+                        }
+
+                        const textDiv = document.createElement('div');
+                        textDiv.innerHTML = `
+                            <div style="font-weight: 600;">${item.title || item.videoId}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</div>
                         `;
+                        infoDiv.appendChild(textDiv);
+
+                        // Right side - action buttons
+                        const actionsDiv = document.createElement('div');
+                        actionsDiv.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+
+                        const refineBtn = document.createElement('a');
+                        refineBtn.href = `contribute.html?refine=${encodeURIComponent(item.videoId)}&title=${encodeURIComponent(item.title || '')}`;
+                        refineBtn.className = 'btn btn-secondary';
+                        refineBtn.style.cssText = 'padding: 6px 12px; font-size: 0.75rem;';
+                        refineBtn.textContent = 'Refine';
+
+                        const reportBtn = document.createElement('button');
+                        reportBtn.className = 'btn';
+                        reportBtn.style.cssText = 'padding: 6px 12px; font-size: 0.75rem; border: 1px solid #ef4444; color: #ef4444; background: transparent;';
+                        reportBtn.textContent = 'Report ⚠️';
+                        reportBtn.onclick = () => reportIssue(item.videoId, reportBtn);
+
+                        actionsDiv.appendChild(refineBtn);
+                        actionsDiv.appendChild(reportBtn);
+
+                        el.appendChild(infoDiv);
+                        el.appendChild(actionsDiv);
                         historyList.appendChild(el);
                     });
                 } else {
@@ -567,6 +597,34 @@
 
             } catch (e) {
                 console.error(e);
+            }
+        }
+
+        // Report an issue with a skip
+        async function reportIssue(videoId, btn) {
+            if (!confirm("Is this skip incorrect? Report it to help improve the database.")) return;
+
+            btn.disabled = true;
+            btn.textContent = "Reporting...";
+
+            try {
+                const res = await fetch('/api/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rdKey, videoId, reason: "Manual report from profile" })
+                });
+                if (res.ok) {
+                    btn.textContent = "Reported ✅";
+                    btn.style.background = "var(--success)";
+                    btn.style.borderColor = "var(--success)";
+                    btn.style.color = "white";
+                } else {
+                    btn.textContent = "Failed";
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                btn.disabled = false;
+                btn.textContent = "Failed";
             }
         }
     </script>
