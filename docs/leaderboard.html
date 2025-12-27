@@ -14,7 +14,7 @@
         rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="stylesheet" href="css/style.css?v=4">
 
 </head>
 
@@ -150,14 +150,20 @@
             });
 
             tbody.innerHTML = users.slice(0, 50).map((user, index) => {
-                let rankClass = '';
-                if (index === 0) rankClass = 'rank-1';
-                if (index === 1) rankClass = 'rank-2';
-                if (index === 2) rankClass = 'rank-3';
+                let rankDisplay = '';
+                if (index === 0) {
+                    rankDisplay = '<span class="rank-badge rank-badge-1">1</span>';
+                } else if (index === 1) {
+                    rankDisplay = '<span class="rank-badge rank-badge-2">2</span>';
+                } else if (index === 2) {
+                    rankDisplay = '<span class="rank-badge rank-badge-3">3</span>';
+                } else {
+                    rankDisplay = `<span style="font-weight: 600; color: var(--text-muted);">#${index + 1}</span>`;
+                }
 
                 return `
                 <tr>
-                    <td style="text-align: center; font-weight: 700; font-size: 1.2rem;" class="${rankClass}">#${index + 1}</td>
+                    <td style="text-align: center;">${rankDisplay}</td>
                     <td><span class="user-cell" title="${user.userId}">${(user.userId || 'Unknown').substring(0, 8)}</span></td>
                     <td style="text-align: right; font-weight: 600;">${(user.segments || 0).toLocaleString()}</td>
                     <td style="text-align: right; font-weight: 600;">${(user.votes || 0).toLocaleString()}</td>

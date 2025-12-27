@@ -15,7 +15,7 @@
         rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 
 <body>
@@ -45,7 +45,7 @@
 
     <main>
         <section class="section">
-            <div class="container" style="padding-top: 100px; max-width: 600px;">
+            <div class="container pt-100 max-w-600">
 
                 <div class="header-content text-center" style="margin-bottom: 40px;">
                     <h1 class="text-gradient" style="font-size: 2.5rem; margin-bottom: 16px;">Configure Addon</h1>
@@ -54,81 +54,75 @@
                     </p>
                 </div>
 
-                <div class="glass-panel" style="padding: 40px;">
+                <div class="glass-panel p-40">
 
                     <form id="config-form">
                         <div class="form-group">
                             <label class="form-label" for="rdKey">Real-Debrid API Key</label>
-                            <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+                            <div class="flex gap-10 mb-8">
                                 <input type="text" id="rdKey" class="form-input"
                                     placeholder="Paste your key here (e.g. F4...)" required>
-                                <a href="https://real-debrid.com/apitoken" target="_blank" class="btn btn-secondary"
-                                    style="white-space: nowrap;">
+                                <a href="https://real-debrid.com/apitoken" target="_blank"
+                                    class="btn btn-secondary nowrap">
                                     Get Key ↗
                                 </a>
+                                </a>
                             </div>
-                            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                                <button type="button" id="checkStatsBtn" class="btn btn-secondary"
-                                    style="flex: 1;">Check My Stats</button>
-                                <button type="button" id="logoutBtn" class="btn btn-secondary d-none"
-                                    style="flex: 1; border: 1px solid #ef4444; color: #ef4444;">Logout</button>
+                            <div class="flex gap-10 mt-10">
+                                <button type="button" id="checkStatsBtn" class="btn btn-secondary flex-1">Check My
+                                    Stats</button>
+                                <button type="button" id="logoutBtn"
+                                    class="btn btn-danger-outline d-none flex-1">Logout</button>
                             </div>
-                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 15px;">
+                            <p class="text-sm mt-15" style="color: var(--text-muted);">
                                 We need the <strong>Private Token</strong> to stream links via Torrentio.
                             </p>
                         </div>
 
                         <!-- Strict Mode Toggle -->
-                        <div class="form-group"
-                            style="margin-top: 20px; padding: 16px; background: rgba(99, 102, 241, 0.05); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.1);">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <input type="checkbox" id="strictMode"
-                                    style="width: 22px; height: 22px; accent-color: var(--primary); cursor: pointer; border-radius: 6px;">
-                                <label for="strictMode"
-                                    style="font-weight: 600; cursor: pointer; color: var(--text-main);">
+                        <div class="form-group feature-box">
+                            <div class="flex items-center gap-12">
+                                <input type="checkbox" id="strictMode" class="checkbox-lg">
+                                <label for="strictMode" class="feature-box-label">
                                     🛡️ Strict Mode
                                 </label>
                             </div>
-                            <p
-                                style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px; margin-left: 34px;">
+                            <p class="feature-box-hint">
                                 Only show streams if skip data exists. Saves bandwidth but limits content availability.
                             </p>
                         </div>
 
-                        <div style="margin-top: 20px;">
-                            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                        <div class="mt-20">
+                            <button type="submit" class="btn btn-primary w-full justify-center">
                                 Generate Install Link
                             </button>
                         </div>
                     </form>
 
                     <!-- Result Section (Hidden by default) -->
-                    <div id="result-section" class="d-none"
-                        style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 30px;">
+                    <div id="result-section" class="d-none mt-30 pt-30 border-top">
 
                         <div class="form-group">
                             <label class="form-label">Your Install Link</label>
-                            <div style="display: flex; gap: 10px;">
+                            <div class="flex gap-10">
                                 <input type="text" id="installLink" class="form-input" readonly>
                                 <button id="copyBtn" class="btn btn-secondary">Copy</button>
                             </div>
                         </div>
 
-                        <div style="display: flex; gap: 16px; margin-top: 20px;">
-                            <a id="installBtn" href="#" class="btn btn-primary"
-                                style="flex: 1; justify-content: center;">
+                        <div class="flex gap-16 mt-20">
+                            <a id="installBtn" href="#" class="btn btn-primary flex-1 justify-center">
                                 Install on Stremio
                             </a>
                         </div>
 
-                        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-top: 16px;">
+                        <p class="text-sm text-center mt-16" style="color: var(--text-muted);">
                             If installation fails, copy the link above and paste it into the Stremio search bar to
                             install manually.
                         </p>
                     </div>
 
-                    <div
-                        style="margin-top: 24px; text-align: center; border-top: 1px solid var(--border); padding-top: 24px;">
+                    <div class="mt-24 pt-24 text-center border-top">
                         <p style="color: var(--text-muted); font-size: 0.9rem;">
                             Want to contribute or check history?
                             <br>
@@ -201,7 +195,35 @@
         </section>
     </main>
 
-    </main>
+    <!-- Submit Skip Modal -->
+    <div id="submit-overlay" class="modal d-none">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Submit Skip Segment</h3>
+                <span class="modal-close" onclick="closeSubmit()">&times;</span>
+            </div>
+            <div class="submit-meta-card">
+                <div class="poster-wrapper">
+                    <img id="submit-poster" class="poster-img" src="/icon32.png" alt="Poster">
+                </div>
+                <div>
+                    <h4 id="submit-name" style="margin-bottom: 8px;">Title</h4>
+                    <p id="submit-year" style="color: var(--text-muted); font-size: 0.9rem;">Year (IMDB ID)</p>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="skipStart">Start Time</label>
+                    <input type="text" id="skipStart" class="form-input" placeholder="e.g. 0:30 or 30">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="skipEnd">End Time</label>
+                    <input type="text" id="skipEnd" class="form-input" placeholder="e.g. 1:30 or 90">
+                </div>
+            </div>
+            <button id="submitSkipBtn" class="btn btn-primary" style="width: 100%;">Submit</button>
+        </div>
+    </div>
 
     <script>
         // Persistence Logic
@@ -255,7 +277,7 @@
         document.getElementById('checkStatsBtn').onclick = async function () {
             const key = document.getElementById('rdKey').value.trim();
             if (!key) {
-                alert("Please enter your RD Key first!");
+                Toast.warning("Please enter your RD Key first!");
                 return;
             }
 
@@ -333,14 +355,14 @@
                     panel.classList.remove('d-none');
                     panel.style.animation = "fadeIn 0.5s ease";
                 } else if (res.status === 401) {
-                    alert("Invalid Real-Debrid Key. Please verify your token.");
+                    Toast.error("Invalid Real-Debrid Key. Please verify your token.");
                     localStorage.removeItem('introhater_rdkey');
                     document.getElementById('logoutBtn').classList.add('d-none');
                     document.getElementById('stats-panel').classList.add('d-none');
                     document.getElementById('history-panel').classList.add('d-none');
                 } else {
                     const err = await res.json();
-                    alert("Error: " + (err.error || "Failed to fetch stats"));
+                    Toast.error(err.error || "Failed to fetch stats");
                 }
             } catch (e) {
                 console.error(e);
@@ -474,7 +496,7 @@
             const endVal = document.getElementById('skipEnd').value.trim();
 
             if (!rdKey || !startVal || !endVal) {
-                alert("Please fill all fields!");
+                Toast.warning("Please fill all fields!");
                 return;
             }
 
@@ -482,7 +504,7 @@
             const end = parseTime(endVal);
 
             if (isNaN(start) || isNaN(end) || end <= start) {
-                alert("Invalid durations!");
+                Toast.error("Invalid durations! End time must be after start time.");
                 return;
             }
 
@@ -503,17 +525,17 @@
                 });
 
                 if (res.ok) {
-                    alert("Submission successful! It will be reviewed by the community.");
+                    Toast.success("Submission successful! It will be reviewed by the community.");
                     closeSubmit();
                     // Refresh stats
                     document.getElementById('checkStatsBtn').click();
                 } else {
                     const err = await res.json();
-                    alert("Error: " + (err.error || "Submission failed"));
+                    Toast.error(err.error || "Submission failed");
                 }
             } catch (e) {
                 console.error(e);
-                alert("Network error.");
+                Toast.error("Network error. Please try again.");
             } finally {
                 this.disabled = false;
                 this.textContent = "Submit";
@@ -535,6 +557,7 @@
             this.select();
         };
     </script>
+    <script src="js/toast.js"></script>
 </body>
 
 </html>
