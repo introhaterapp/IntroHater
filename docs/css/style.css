@@ -407,27 +407,6 @@ a:focus-visible {
     border-radius: 4px;
 }
 
-/* Skip to Content Link (Accessibility) */
-.skip-to-content {
-    position: fixed;
-    top: -100px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 12px 24px;
-    background: var(--primary);
-    color: #fff;
-    border-radius: var(--radius);
-    font-weight: 600;
-    z-index: 10000;
-    transition: top 0.2s ease;
-    text-decoration: none;
-}
-
-.skip-to-content:focus {
-    top: 16px;
-    outline: none;
-}
-
 
 
 
