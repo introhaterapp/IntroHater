@@ -42,7 +42,8 @@
   <a href="https://introhater.com/catalog.html"><b>📚 Catalog</b></a> •
   <a href="https://introhater.com/api.html"><b>📖 API Docs</b></a> •
   <a href="https://introhater.com/leaderboard.html"><b>🏆 Leaderboard</b></a> •
-  <a href="https://introhater.com/community.html"><b>👥 Community</b></a>
+  <a href="https://introhater.com/contribute.html"><b>🤝 Contribute</b></a> •
+  <a href="https://introhater.com/profile.html"><b>👤 Profile</b></a>
 </p>
 
 <br/>
@@ -124,6 +125,20 @@ Users contribute skip segments, building an ever-growing library. Your contribut
 
 ### 🏆 Gamified Leaderboard
 Track your contributions, earn ranks, and compete with the community. Every segment submitted counts!
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 👤 User Profiles Dashboard
+View your personal stats, contribution breakdown, and track your achievements with 15+ earnable badges. Monitor your time saved and watch history.
+
+</td>
+<td width="50%">
+
+### 🤝 Easy Contribution Portal
+Search for any show and submit skip segments in seconds. Report issues with existing segments and help keep the database accurate.
 
 </td>
 </tr>
@@ -370,12 +385,14 @@ We welcome contributions from the community! Here's how you can help:
 
 1. **🐛 Report Bugs** — Open an issue with detailed reproduction steps
 2. **💡 Suggest Features** — Share your ideas for improvements
-3. **📝 Submit Skip Segments** — Use the Community Portal to add missing data
-4. **🔧 Code Contributions** — Fork, develop, and submit a PR
+3. **📝 Submit Skip Segments** — Use the [Contribute Portal](https://introhater.com/contribute.html) to add missing data
+4. **👤 Track Your Stats** — View your achievements and progress on your [Profile](https://introhater.com/profile.html)
+5. **🔧 Code Contributions** — Fork, develop, and submit a PR
 
 <div align="center">
 
-[![Contributing Guide](https://img.shields.io/badge/Read_Contributing_Guide-6366f1?style=for-the-badge)](docs/CONTRIBUTING.md)
+[![Contribute Skip Segments](https://img.shields.io/badge/🤝_Contribute_Segments-6366f1?style=for-the-badge)](https://introhater.com/contribute.html)
+[![Contributing Guide](https://img.shields.io/badge/Read_Contributing_Guide-22c55e?style=for-the-badge)](docs/CONTRIBUTING.md)
 
 </div>
 
