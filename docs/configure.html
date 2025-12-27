@@ -26,7 +26,15 @@
                 <img src="icon32.png" alt="Logo">
                 IntroHater
             </a>
-            <nav>
+
+            <!-- Mobile Menu Toggle -->
+            <button class="menu-toggle" aria-label="Toggle navigation menu" id="menuToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <nav id="mainNav">
                 <ul class="nav-links">
                     <li><a href="index.html">Home</a></li>
                     <li><a href="catalog.html">Catalog</a></li>
@@ -37,8 +45,7 @@
                 </ul>
             </nav>
             <div class="header-actions">
-                <a href="configure.html" class="btn btn-primary active"
-                    style="padding: 8px 16px; font-size: 0.85rem;">Install Addon</a>
+                <a href="configure.html" class="btn btn-primary btn-header-install active">Install Addon</a>
             </div>
         </div>
     </header>
@@ -65,7 +72,6 @@
                                 <a href="https://real-debrid.com/apitoken" target="_blank"
                                     class="btn btn-secondary nowrap">
                                     Get Key ↗
-                                </a>
                                 </a>
                             </div>
                             <div class="flex gap-10 mt-10">

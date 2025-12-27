@@ -244,7 +244,15 @@
                 <img src="icon32.png" alt="Logo">
                 IntroHater
             </a>
-            <nav>
+
+            <!-- Mobile Menu Toggle -->
+            <button class="menu-toggle" aria-label="Toggle navigation menu" id="menuToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <nav id="mainNav">
                 <ul class="nav-links">
                     <li><a href="index.html">Home</a></li>
                     <li><a href="catalog.html">Catalog</a></li>
@@ -255,8 +263,7 @@
                 </ul>
             </nav>
             <div class="header-actions">
-                <a href="configure.html" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Install
-                    Addon</a>
+                <a href="configure.html" class="btn btn-primary btn-header-install">Install Addon</a>
             </div>
         </div>
     </header>
@@ -426,10 +433,10 @@
                     document.getElementById('login-overlay').style.display = 'none';
                     loadProfile();
                 } else {
-                    alert("Verification failed. Please check your Real-Debrid API Key.");
+                    Toast.error("Verification failed. Please check your Real-Debrid API Key.");
                 }
             } catch (e) {
-                alert("Server error.");
+                Toast.error("Server error. Please try again.");
             } finally {
                 btn.textContent = 'View Profile';
             }
@@ -563,6 +570,42 @@
             }
         }
     </script>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-col">
+                    <a href="/" class="logo">IntroHater</a>
+                    <p class="footer-tagline">
+                        Making streaming better, one skip at a time.
+                    </p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="catalog.html">Catalog</a></li>
+                        <li><a href="leaderboard.html">Leaderboard</a></li>
+                        <li><a href="https://github.com/introhaterapp/IntroHater/releases">Changelog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Developers</h4>
+                    <ul>
+                        <li><a href="api.html">API Documentation</a></li>
+                        <li><a href="https://github.com/introhaterapp/IntroHater">GitHub</a></li>
+                        <li><a href="https://github.com/introhaterapp/IntroHater/issues">Report Issue</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 IntroHater. Open source and community powered.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/toast.js"></script>
 
 </body>
 
