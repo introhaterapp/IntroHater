@@ -53,9 +53,24 @@ app.set('trust proxy', 1);
 // Request logging (Critical Priority Rank 1)
 app.use(morgan(':remote-addr :method :url :status :response-time ms - :res[content-length]'));
 
-// CSP Disabled as per user request
+// Security middleware with CSP enabled
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdn.datatables.net"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.datatables.net"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'", "https://www.omdbapi.com", "wss:", "ws:"],
+            frameSrc: ["'none'"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            upgradeInsecureRequests: [],
+        }
+    },
+    crossOriginEmbedderPolicy: false, // Needed for external resources
 }));
 app.use(hpp());
 app.use(cors());

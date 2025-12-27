@@ -4,17 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
     <title>Intro Hater - Ultimate Stremio Skip Extension</title>
 
-    <!-- Fonts -->
+    <!-- Font Preloading -->
+    <link rel="preload"
+        href="https://fonts.gstatic.com/s/inter/v14/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfMZhrib2Bg-4.ttf"
+        as="font" type="font/ttf" crossorigin>
+
+    <!-- Fonts (Combined Request) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="stylesheet" href="css/style.css?v=3">
 
     <!-- Icons -->
     <link rel="icon" type="image/png" sizes="32x32" href="icon32.png">
@@ -31,7 +37,15 @@
                 <img src="icon32.png" alt="Logo">
                 IntroHater
             </a>
-            <nav>
+
+            <!-- Mobile Menu Toggle -->
+            <button class="menu-toggle" aria-label="Toggle navigation menu" id="menuToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <nav id="mainNav">
                 <ul class="nav-links">
                     <li><a href="/" class="active">Home</a></li>
                     <li><a href="catalog.html">Catalog</a></li>
@@ -42,7 +56,7 @@
                 </ul>
             </nav>
             <div class="header-actions">
-                <a href="configure.html" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">Install
+                <a href="configure.html" class="btn btn-primary btn-header-install">Install
                     Addon</a>
             </div>
         </div>

@@ -1,0 +1,15 @@
+# IntroHater Robots.txt
+# https://introhater.com
+
+User-agent: *
+Allow: /
+
+# Allow all crawlers to index public pages
+Sitemap: https://introhater.com/sitemap.xml
+
+# Disallow admin and API endpoints
+Disallow: /api/
+Disallow: /admin.html
+Disallow: /admin-keys.html
+Disallow: /api-keys.html
+Disallow: /swagger-ui.html

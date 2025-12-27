@@ -190,6 +190,12 @@ ul {
     box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
 }
 
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
 .btn-secondary:hover {
     background: var(--bg-elevated);
     border-color: var(--border-bright);
@@ -206,6 +212,20 @@ ul {
     background: rgba(239, 68, 68, 0.1);
     border-color: #ef4444;
     color: #ef4444;
+}
+
+/* Focus States for Accessibility */
+.btn:focus-visible,
+.form-input:focus-visible,
+.search-input:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+a:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
 }
 
 
@@ -444,6 +464,84 @@ header .container .header-actions {
 .nav-links a:hover,
 .nav-links a.active {
     color: var(--primary);
+}
+
+/* Mobile Menu Toggle */
+.menu-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    z-index: 1001;
+}
+
+.menu-toggle span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--text-main);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.menu-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.menu-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.menu-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* Header Install Button */
+.btn-header-install {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 900px) {
+    .menu-toggle {
+        display: flex;
+    }
+
+    header .container nav {
+        position: fixed;
+        top: var(--header-height);
+        left: 0;
+        right: 0;
+        background: var(--bg-dark);
+        border-bottom: 1px solid var(--border);
+        padding: 20px;
+        transform: translateY(-100%);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    header .container nav.open {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .nav-links {
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+    }
+
+    header .container .header-actions {
+        display: none;
+    }
 }
 
 /* Footer */
@@ -867,10 +965,6 @@ table.dataTable tbody td {
     color: #ff453a;
 }
 
-.badge-danger {
-    background: rgba(255, 69, 58, 0.2);
-    color: #ff453a;
-}
 
 .alert {
     padding: 16px;
@@ -1370,23 +1464,4 @@ table.dataTable tbody td {
     #episode-inputs {
         justify-content: center;
     }
-}
-
-/* Authentication Overlay */
-#login-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    /* Darker background for focus */
-    backdrop-filter: blur(8px);
-    z-index: 3000;
-    /* High z-index to sit on top of everything */
-    display: flex;
-    /* Flexbox for centering */
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
 }

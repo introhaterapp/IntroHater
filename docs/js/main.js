@@ -14,38 +14,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Mobile Menu Toggle
-    const headerEl = document.querySelector('header');
-    const menuBtn = document.createElement('button');
-    menuBtn.className = 'menu-toggle';
-    menuBtn.innerHTML = '<span></span><span></span><span></span>';
+    // Mobile Menu Toggle - use existing button from HTML
+    const menuBtn = document.getElementById('menuToggle');
+    const mainNav = document.getElementById('mainNav');
 
-    // Insert menu toggle into the container
-    const headerContainer = document.querySelector('header .container');
-    if (headerContainer) {
-        headerContainer.appendChild(menuBtn);
-    }
-
-    menuBtn.addEventListener('click', () => {
-        headerEl.classList.toggle('header-active');
-        document.body.style.overflow = headerEl.classList.contains('header-active') ? 'hidden' : '';
-    });
-
-    // Close menu when clicking links
-    document.querySelectorAll('.nav-links a').forEach(link => {
-        link.addEventListener('click', () => {
-            headerEl.classList.remove('header-active');
-            document.body.style.overflow = '';
+    if (menuBtn && mainNav) {
+        menuBtn.addEventListener('click', () => {
+            menuBtn.classList.toggle('active');
+            mainNav.classList.toggle('open');
+            document.body.style.overflow = mainNav.classList.contains('open') ? 'hidden' : '';
         });
-    });
 
-    // Close menu when clicking outside
-    document.addEventListener('click', (e) => {
-        if (headerEl.classList.contains('header-active') && !headerEl.contains(e.target) && !menuBtn.contains(e.target)) {
-            headerEl.classList.remove('header-active');
-            document.body.style.overflow = '';
-        }
-    });
+        // Close menu when clicking links
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                menuBtn.classList.remove('active');
+                mainNav.classList.remove('open');
+                document.body.style.overflow = '';
+            });
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (mainNav.classList.contains('open') && !header.contains(e.target)) {
+                menuBtn.classList.remove('active');
+                mainNav.classList.remove('open');
+                document.body.style.overflow = '';
+            }
+        });
+    }
 
     const observerOptions = {
         threshold: 0.15,

@@ -8,81 +8,103 @@
 
 ## Executive Summary
 
-The IntroHater application has undergone significant refactoring and is now well-structured with modular routes, centralized configuration, and proper error handling. This audit identifies the **remaining improvements** to elevate the codebase to production-grade quality.
+The IntroHater application has undergone significant refactoring with modular routes, centralized configuration, and proper error handling. This audit identifies **actionable improvements** ranked by priority and categorized by action type.
 
 ---
 
-## 🏆 Ranked Improvements
+## 🔴 REMOVE (Dead Code & Waste)
 
-### 🔴 Critical Priority (Security & Stability) ✅ RESOLVED
+| Rank | Item | Location | Reason |
+|:----:|:-----|:---------|:-------|
+| **1** | Dead `oracle-nosqldb` dependency | `package.json:34` | Migrated to MongoDB but Oracle NoSQL still installed (~5MB wasted) |
+| **2** | Duplicate `.badge-danger` CSS | `style.css:865-873` | Exact duplicate block |
+| **3** | Stale Auth0 packages | `package.json:21-22` | `express-oauth2-jwt-bearer` & `express-openid-connect` no longer used |
+| **4** | `manual.bak` file | `docs/manual.bak` | Backup file in production docs folder |
+| **5** | Test output files | `test_output*.txt`, root dir | Debug artifacts committed to repo |
+| **6** | `debug_hash.js` in root | Root directory | Should be in `scripts/` or `tests/debug/` |
+| **7** | Log files in repo | `server.log`, `server_err.log` | Should be gitignored, not committed |
+| **8** | `#login-overlay` CSS | `style.css:1375-1392` | Auth overlay CSS if overlay was removed |
 
-| Rank | Issue | Location | Status |
-|:----:|:------|:---------|:-------|
-| **1** | **Request Logging** | `server.js` | ✅ Fixed - Added `morgan` middleware with custom format |
-| **2** | **CSP Security** | `server.js` | ✅ Fixed - Implemented CSP nonces for `scriptSrc`, removed `unsafe-inline` |
-| **3** | **Environment Validation** | `constants.js` | ✅ Fixed - Added `validateEnv()` with updated vars for MongoDB deployment |
-
----
-
-### 🟠 High Priority (Performance & Reliability)
-
-| Rank | Issue | Location | Recommendation |
-|:----:|:------|:---------|:---------------|
-| **4** | **Inefficient `getRecentSegments`** | `skip-service.js:186-213` | Loads 100 docs, flattens all segments, then sorts in memory. Use MongoDB `$unwind` + `$sort` aggregation for O(1) query. |
-| **5** | **Large Route Files** | `api.js` (486 lines) | Split by domain: `stats.js`, `moderation.js`, `submissions.js` for better maintainability. |
-| **6** | **No Graceful Shutdown** | `server.js` | Missing `SIGTERM`/`SIGINT` handlers. In-flight requests drop on restart. Add shutdown hooks to close DB and finish requests. |
-| **7** | **Duplicate Probe Cache** | `hls-proxy.js:17-54` | Manual LRU implementation duplicates `cache-service.js`. Consolidate to single cache layer. |
+**Quick Command:**
+```bash
+npm uninstall oracle-nosqldb express-oauth2-jwt-bearer express-openid-connect auth0
+```
 
 ---
 
-### 🟡 Medium Priority (Developer Experience)
+## 🟠 FIX (Bugs & Issues)
 
-| Rank | Issue | Location | Recommendation |
-|:----:|:------|:---------|:---------------|
-| **8** | **[RESOLVED] Inconsistent Logging** | Everywhere | Mix of `console.log/error/warn`. Adopt structured logger (`pino`) with log levels for filtering. |
-| **9** | **[RESOLVED] Missing JSDoc Return Types** | Services | Functions have `@param` but no `@returns`. Add return type annotations for IDE support. |
-| **10** | **[RESOLVED] Stale `REQUIRED_ENV_VARS`** | `constants.js:67-76` | Lists Oracle/Auth0 vars from old architecture. Update to match current MongoDB deployment. |
-| **11** | **[RESOLVED] No Pre-commit Hooks** | Root | Add `husky` + `lint-staged` to enforce ESLint before commits. Prevents bad code from entering repo. |
-
----
-
-### 🟢 Low Priority (Polish)
-
-| Rank | Issue | Location | Recommendation |
-|:----:|:------|:---------|:---------------|
-| **12** | **Hardcoded Timeouts** | `hls-proxy.js:129,267` | `15000ms`, `20000ms` magic numbers. Move to `constants.js` as `PROBE_TIMEOUT_MS`. |
-| **13** | **Dead `forceSave()` Function** | `skip-service.js:534-536` | No-op function. Remove or document if kept for API compatibility. |
-| **14** | **Incomplete `cleanupDuplicates()`** | `skip-service.js:538-543` | Returns `0` with "Simplified for now" comment. Implement or remove. |
-| **15** | **Scattered Test Scripts** | `tests/` | Mix of `verify_*.js` scripts and Jest tests. Consolidate into `tests/unit/` and `tests/integration/`. |
+| Rank | Item | Location | Issue |
+|:----:|:-----|:---------|:------|
+| **1** | CSP disabled entirely | `server.js:57-59` | `contentSecurityPolicy: false` is a security risk. Re-enable with looser policy. |
+| **2** | Missing `.btn-secondary` base | `style.css` | Only `:hover` state defined at line 193, no base class styles |
+| **3** | Package version mismatch | `package.json:3` | Shows `0.0.1` but should be `2.0.0` |
+| **4** | Duplicate probe cache | `hls-proxy.js:17-54` | Manual LRU duplicates `cache-service.js` - consolidate |
+| **5** | Mobile menu missing | `index.html` | `.menu-toggle` CSS exists but no `<button>` element in HTML |
+| **6** | CSS color inconsistency | `style.css` | `--primary: #6366f1` (indigo) but `.tab-btn.active` uses cyan `rgba(56, 189, 248, ...)` |
 
 ---
 
-## 🚀 Enhancement Opportunities
+## 🟡 CHANGE (Refactoring)
 
-Beyond fixes, these features would elevate the app:
-
-| Feature | Status | Description |
-|:--------|:------:|:------------|
-| **Strict Mode** | ✅ Done | Option to reject streams without skip segments to save bandwidth. |
-| **User Profiles Dashboard** | ✅ Done | Expand `/profile.html` with detailed contribution history and badges. |
-| **Admin Dashboard GUI** | ✅ Done | Improve `/admin.html` with bulk actions and search/filter for moderation. |
-| **WebSocket Ticker** | ✅ Done | Real-time activity updates via `ws-ticker.js`. |
-| **Prometheus Metrics** | ✅ Done | `/metrics` endpoint for Grafana via `metrics.js`. |
-| **Auto Swagger Docs** | ✅ Done | JSDoc-generated OpenAPI via `swagger-config.js`. |
+| Rank | Item | Current | Suggested |
+|:----:|:-----|:--------|:----------|
+| **1** | Split `api.js` | 486 lines monolith | Break into `stats.js`, `moderation.js`, `submissions.js` |
+| **2** | Inline styles | `index.html:107-113` | Move to CSS classes |
+| **3** | Test organization | `test:api` uses raw node | Use Jest for all tests consistently |
+| **4** | Magic numbers in CSS | Hardcoded `72px`, `64px` | Use CSS variables consistently |
+| **5** | Font loading | Multiple Google Fonts requests | Combine into single optimized request |
 
 ---
 
-## ⚡ Quick Wins
+## 🟢 ADD (Missing Features)
 
-These can be implemented in under 30 minutes total:
-
-1. **Add `morgan` middleware** - 5 min
-2. **Add env validation on startup** - 10 min  
-3. **Add graceful shutdown handler** - 10 min
-4. **Remove dead code (`forceSave`, `cleanupDuplicates`)** - 5 min
+| Rank | Item | Reason |
+|:----:|:-----|:-------|
+| **1** | Re-enable CSP with nonces | Security - currently disabled entirely |
+| **2** | `.btn-secondary` base styles | Only hover state exists |
+| **3** | Hamburger menu button | CSS styles exist but no HTML element |
+| **4** | Focus states | Missing `:focus-visible` for accessibility |
+| **5** | `404.html` page | Currently returns JSON for missing routes |
+| **6** | `robots.txt` | Missing from `docs/` |
+| **7** | Font preloading | Add `<link rel="preload">` for critical fonts |
+| **8** | Dark mode meta | Add `<meta name="color-scheme" content="dark">` |
 
 ---
 
-## 🏁 Conclusion
+## ⚡ Quick Wins (5 min each)
 
-The codebase is in good shape after previous refactoring. Focus on **Rank 1-3** (logging, CSP, env validation) for immediate security/stability wins, then tackle performance optimizations in **Rank 4-7**.
+1. **Remove dead dependencies** - Uninstall Oracle/Auth0 packages
+2. **Delete duplicate CSS** - Remove lines 870-873 in `style.css`
+3. **Update package version** - `0.0.1` → `2.0.0`
+4. **Add `.btn-secondary` base** - Add background/border/color
+5. **Delete debug files** - Remove `test_output*.txt`, `debug_hash.js`, log files
+
+---
+
+## ✅ Previously Resolved
+
+| Item | Status |
+|:-----|:------:|
+| Request Logging (morgan) | ✅ |
+| Environment Validation | ✅ |
+| Graceful Shutdown | ✅ |
+| Structured Logger (pino) | ✅ |
+| JSDoc Return Types | ✅ |
+| Pre-commit Hooks (husky) | ✅ |
+| Strict Mode | ✅ |
+| User Profiles Dashboard | ✅ |
+| Admin Dashboard GUI | ✅ |
+| WebSocket Ticker | ✅ |
+| Prometheus Metrics | ✅ |
+| Auto Swagger Docs | ✅ |
+
+---
+
+## 🏁 Recommended Order of Operations
+
+1. **Remove** dead dependencies and files (low risk, immediate wins)
+2. **Fix** CSS bugs (`.btn-secondary`, duplicate rules)
+3. **Fix** security (re-enable CSP)
+4. **Add** missing HTML elements (hamburger menu)
+5. **Change** large refactors (split `api.js`)
