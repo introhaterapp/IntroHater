@@ -246,6 +246,53 @@ a:focus-visible {
     line-height: 1.1;
 }
 
+/* Tablet Breakpoint for Hero */
+@media (max-width: 1024px) {
+    .hero-title {
+        font-size: 3rem;
+    }
+}
+
+/* Utility Classes for Layout */
+.card-section {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.section-header-lg {
+    margin-bottom: 60px;
+}
+
+.section-header-lg h2 {
+    font-size: 2.25rem;
+    margin-bottom: 16px;
+}
+
+.section-header-lg p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+
+.footer-flush {
+    margin-top: 0;
+}
+
+.footer-tagline {
+    margin-top: 10px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.footer-bottom {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
 .hero-subtitle {
     font-size: 1.25rem;
     color: var(--text-muted);
@@ -337,29 +384,7 @@ a:focus-visible {
     color: var(--text-muted);
 }
 
-.hero-visual {
-    position: absolute;
-    top: 50%;
-    right: -5%;
-    transform: translateY(-50%);
-    width: 50%;
-    height: 100%;
-    z-index: 1;
-    pointer-events: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.glow-orb {
-    position: absolute;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, var(--primary-dim) 0%, transparent 70%);
-    border-radius: 50%;
-    filter: blur(50px);
-    opacity: 0.6;
-}
+/* Hero visual elements removed - not used in current HTML */
 
 /* Sections General */
 .section {
@@ -466,41 +491,7 @@ header .container .header-actions {
     color: var(--primary);
 }
 
-/* Mobile Menu Toggle */
-.menu-toggle {
-    display: none;
-    flex-direction: column;
-    justify-content: center;
-    gap: 5px;
-    width: 32px;
-    height: 32px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-    z-index: 1001;
-}
-
-.menu-toggle span {
-    display: block;
-    width: 100%;
-    height: 2px;
-    background: var(--text-main);
-    border-radius: 2px;
-    transition: all 0.3s ease;
-}
-
-.menu-toggle.active span:nth-child(1) {
-    transform: rotate(45deg) translate(5px, 5px);
-}
-
-.menu-toggle.active span:nth-child(2) {
-    opacity: 0;
-}
-
-.menu-toggle.active span:nth-child(3) {
-    transform: rotate(-45deg) translate(5px, -5px);
-}
+/* Mobile Menu Toggle - see responsive section below */
 
 /* Header Install Button */
 .btn-header-install {
@@ -938,7 +929,7 @@ table.dataTable tbody td {
     background: var(--primary-dim);
     border-color: var(--primary);
     color: var(--primary);
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.1);
+    box-shadow: 0 0 15px var(--primary-glow);
 }
 
 .user-cell {
@@ -989,23 +980,7 @@ table.dataTable tbody td {
 }
 
 /* Forms Extra */
-/* Skeleton & Loading */
-.skeleton {
-    background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-elevated) 50%, var(--bg-card) 75%);
-    background-size: 200% 100%;
-    animation: skeleton-loading 1.5s infinite;
-    border-radius: 4px;
-}
-
-@keyframes skeleton-loading {
-    0% {
-        background-position: 200% 0;
-    }
-
-    100% {
-        background-position: -200% 0;
-    }
-}
+/* Skeleton styles are defined in the responsive section below */
 
 /* Premium Tabs */
 .tabs-premium {
