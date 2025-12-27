@@ -1433,20 +1433,19 @@ table.dataTable tbody td {
     display: none;
 }
 
-.stats-bar {
-    gap: 30px !important;
-    flex-direction: column;
-}
-
 /* Mobile Ticker Adjustments */
 @media (max-width: 768px) {
-    #activity-ticker {
-        margin-top: var(--header-height-mobile);
-        padding: 10px 0;
+
+    /* Stats bar should stack vertically on mobile */
+    .stats-bar {
+        gap: 20px !important;
+        flex-direction: column;
+        align-items: center;
     }
 
-    .ticker-pill {
-        font-size: 0.7rem;
+    #activity-ticker {
+        margin-top: var(--header-height-mobile);
+        padding: 8px 0;
     }
 
     #ticker-content {
@@ -1579,63 +1578,39 @@ table.dataTable tbody td {
 
 /* Live Activity Ticker (Static Bar Below Navbar) */
 #activity-ticker {
-    margin-top: calc(var(--header-height) + 0px);
-    padding: 12px 0;
-    background: rgba(24, 24, 27, 0.6);
+    margin-top: var(--header-height);
+    padding: 10px 0;
+    background: rgba(24, 24, 27, 0.8);
     border-bottom: 1px solid var(--border);
-    text-align: center;
-    display: flex;
-    justify-content: center;
 }
 
-#activity-ticker .container {
+.ticker-inner {
     display: flex;
-    justify-content: center;
-}
-
-.ticker-pill {
-    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    /* Reduced gap */
-    padding: 6px 12px;
-    /* Reduced padding */
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    backdrop-filter: blur(4px);
-    transition: all 0.3s ease;
-}
-
-.ticker-pill:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.15);
-    transform: translateY(-1px);
+    justify-content: center;
+    gap: 10px;
+    font-size: 0.85rem;
 }
 
 .ticker-dot {
-    width: 6px;
-    /* Smaller dot */
-    height: 6px;
-    /* Smaller dot */
+    width: 8px;
+    height: 8px;
     background: #22c55e;
     border-radius: 50%;
-    box-shadow: 0 0 6px #22c55e;
+    box-shadow: 0 0 8px #22c55e;
     animation: pulse 2s infinite;
 }
 
 .ticker-label {
-    color: var(--text-main);
+    color: #22c55e;
     font-size: 0.75rem;
-    /* Smaller font */
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.05em;
 }
 
 #ticker-content {
     color: var(--text-muted);
-    font-size: 0.75rem;
-    /* Smaller font */
+    font-size: 0.85rem;
 }
 
 /* Submit Modal Specifics */
