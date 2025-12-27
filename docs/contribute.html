@@ -252,7 +252,11 @@
 
         function openSubmit(item) {
             if (!rdKey) {
-                alert("Please log in with your Real-Debrid key first (go to Configure page).");
+                if (typeof Toast !== 'undefined') {
+                    Toast.warning("Please log in with your Real-Debrid key first (go to Configure page).");
+                } else {
+                    alert("Please log in with your Real-Debrid key first (go to Configure page).");
+                }
                 return;
             }
 
@@ -337,13 +341,42 @@
             const endStr = document.getElementById('skipEnd').value.trim();
             const season = document.getElementById('seasonNum').value;
             const episode = document.getElementById('episodeNum').value;
+            const applyToSeries = document.getElementById('applySeries').checked;
 
-            if (!startStr || !endStr) { return alert("Please enter times."); }
+            // Helper function for showing messages
+            function showMessage(msg, type = 'error') {
+                if (typeof Toast !== 'undefined') {
+                    Toast[type](msg);
+                } else {
+                    alert(msg);
+                }
+            }
+
+            if (!startStr || !endStr) {
+                return showMessage("Please enter start and end times.");
+            }
 
             const start = parseTime(startStr);
             const end = parseTime(endStr);
 
-            if (isNaN(start) || isNaN(end)) return alert("Invalid numbers.");
+            if (isNaN(start) || isNaN(end)) {
+                return showMessage("Invalid time format. Use MM:SS or seconds.");
+            }
+
+            if (start >= end) {
+                return showMessage("Start time must be before end time.");
+            }
+
+            // Validate season/episode for series content (unless applying to whole series)
+            const isSeries = currentItem && (currentItem.Type === 'series' || currentItem.Type === 'episode');
+            if (isSeries && !applyToSeries) {
+                if (!season || !episode) {
+                    return showMessage("Please enter both season and episode numbers.");
+                }
+                if (parseInt(season) < 1 || parseInt(episode) < 1) {
+                    return showMessage("Season and episode must be positive numbers.");
+                }
+            }
 
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
@@ -361,19 +394,24 @@
                         start,
                         end,
                         label: 'Intro',
-                        applyToSeries: document.getElementById('applySeries').checked
+                        applyToSeries: applyToSeries
                     })
                 });
 
                 if (res.ok) {
-                    alert("Successfully submitted for moderation!");
+                    showMessage("Successfully submitted for moderation!", 'success');
                     closeSubmit();
-                    loadDashboard();
+                    // Clear form inputs for next submission
+                    document.getElementById('skipStart').value = '';
+                    document.getElementById('skipEnd').value = '';
                 } else {
                     const err = await res.json();
-                    alert(err.error || "Submission failed.");
+                    showMessage(err.error || "Submission failed.");
                 }
-            } catch (e) { alert("Network error."); }
+            } catch (e) {
+                console.error('Submission error:', e);
+                showMessage("Network error. Please try again.");
+            }
             finally {
                 btn.disabled = false;
                 btn.textContent = 'Publish Skip';
@@ -422,6 +460,7 @@
         </div>
     </footer>
 
+    <script src="js/toast.js"></script>
     <script src="js/main.js"></script>
 
 </body>
