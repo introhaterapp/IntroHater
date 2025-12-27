@@ -35,6 +35,7 @@ if (process.platform === 'win32') {
 
 // Services
 const indexerService = require('./src/services/indexer');
+const wsTicker = require('./src/services/ws-ticker');
 
 // Route Modules
 const apiRoutes = require('./src/routes/api');
@@ -129,6 +130,9 @@ const mongoService = require('./src/services/mongodb');
 function gracefulShutdown(signal, server) {
     log.info({ signal }, 'Received shutdown signal. Shutting down gracefully...');
 
+    // Close WebSocket connections
+    wsTicker.close();
+
     server.close(async () => {
         log.info('HTTP server closed');
 
@@ -162,6 +166,9 @@ if (require.main === module) {
     const server = app.listen(PORT, () => {
         log.info({ port: PORT, publicUrl: PUBLIC_URL }, 'IntroHater Lite running');
     });
+
+    // Initialize WebSocket ticker for real-time activity updates
+    wsTicker.init(server);
 
     // Register Shutdown Handlers
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM', server));
