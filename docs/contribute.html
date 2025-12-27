@@ -231,17 +231,39 @@
                         row.style.display = 'flex';
                         row.style.gap = '20px';
                         row.style.alignItems = 'center';
-                        row.style.cursor = 'pointer';
-                        row.onclick = () => openSubmit(item);
 
-                        row.innerHTML = `
-                            <img src="${item.Poster !== 'N/A' ? item.Poster : '/icon32.png'}" style="width: 50px; height: 75px; object-fit: cover; border-radius: 6px;">
-                            <div style="flex: 1">
-                                <div style="font-weight: 600; font-size: 1.1rem;">${item.Title}</div>
-                                <div style="font-size: 0.85rem; color: var(--text-muted);">${item.Year} • ${item.Type}</div>
-                            </div>
-                            <span class="btn btn-secondary" style="font-size: 0.8rem;">Contribute</span>
+                        const imgEl = document.createElement('img');
+                        imgEl.src = item.Poster !== 'N/A' ? item.Poster : '/icon32.png';
+                        imgEl.style.cssText = 'width: 50px; height: 75px; object-fit: cover; border-radius: 6px;';
+
+                        const infoEl = document.createElement('div');
+                        infoEl.style.flex = '1';
+                        infoEl.innerHTML = `
+                            <div style="font-weight: 600; font-size: 1.1rem;">${item.Title}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">${item.Year} • ${item.Type}</div>
                         `;
+
+                        const actionsEl = document.createElement('div');
+                        actionsEl.style.cssText = 'display: flex; gap: 8px;';
+
+                        const contributeBtn = document.createElement('button');
+                        contributeBtn.className = 'btn btn-secondary';
+                        contributeBtn.style.fontSize = '0.8rem';
+                        contributeBtn.textContent = 'Contribute';
+                        contributeBtn.onclick = (e) => { e.stopPropagation(); openSubmit(item); };
+
+                        const reportBtn = document.createElement('button');
+                        reportBtn.className = 'btn';
+                        reportBtn.style.cssText = 'font-size: 0.8rem; border: 1px solid #ef4444; color: #ef4444; background: transparent;';
+                        reportBtn.textContent = 'Report ⚠️';
+                        reportBtn.onclick = (e) => { e.stopPropagation(); openReportModal(item.imdbID); };
+
+                        actionsEl.appendChild(contributeBtn);
+                        actionsEl.appendChild(reportBtn);
+
+                        row.appendChild(imgEl);
+                        row.appendChild(infoEl);
+                        row.appendChild(actionsEl);
                         cont.appendChild(row);
                     });
                 } else {

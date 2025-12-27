@@ -340,13 +340,23 @@
                             info.appendChild(timeSpan);
 
                             const actions = document.createElement('div');
+                            actions.style.display = 'flex';
+                            actions.style.gap = '6px';
+
+                            const refineBtn = document.createElement('button');
+                            refineBtn.textContent = 'Refine';
+                            refineBtn.className = 'btn btn-secondary';
+                            refineBtn.style.padding = '4px 8px';
+                            refineBtn.style.fontSize = '0.7rem';
+                            refineBtn.onclick = () => openSubmitFromHistory(item.videoId, item.title, item.poster);
+
                             const reportBtn = document.createElement('button');
                             reportBtn.textContent = 'Report ⚠️';
                             reportBtn.className = 'btn';
-                            reportBtn.style.padding = '4px 8px';
-                            reportBtn.style.fontSize = '0.7rem';
+                            reportBtn.style.cssText = 'padding: 4px 8px; font-size: 0.7rem; border: 1px solid #ef4444; color: #ef4444; background: transparent;';
                             reportBtn.onclick = () => reportIssue(item.videoId, reportBtn);
 
+                            actions.appendChild(refineBtn);
                             actions.appendChild(reportBtn);
                             row.appendChild(info);
                             row.appendChild(actions);
@@ -400,6 +410,30 @@
             }
         }
 
+        // Quick report from search results
+        async function reportFromSearch(videoId) {
+            const key = document.getElementById('rdKey').value.trim();
+            if (!key) {
+                Toast.warning("Please enter your RD Key first to report issues.");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rdKey: key, videoId, reason: "Bad skip reported from search" })
+                });
+                if (res.ok) {
+                    Toast.success("Report submitted. Thank you for helping improve the database!");
+                } else {
+                    Toast.error("Failed to submit report.");
+                }
+            } catch (e) {
+                Toast.error("Network error. Please try again.");
+            }
+        }
+
         // --- Search & Submit Logic ---
         let currentSubmitItem = null;
 
@@ -428,8 +462,6 @@
                         row.style.display = 'flex';
                         row.style.gap = '15px';
                         row.style.alignItems = 'center';
-                        row.style.cursor = 'pointer';
-                        row.onclick = () => openSubmit(item);
 
                         const img = document.createElement('img');
                         img.src = item.Poster !== 'N/A' ? item.Poster : '/icon32.png';
@@ -453,14 +485,28 @@
                         details.appendChild(title);
                         details.appendChild(sub);
 
-                        const badge = document.createElement('span');
-                        badge.className = 'btn btn-secondary';
-                        badge.style.fontSize = '0.7rem';
-                        badge.textContent = 'Contribute';
+                        const actions = document.createElement('div');
+                        actions.style.display = 'flex';
+                        actions.style.gap = '6px';
+
+                        const contributeBtn = document.createElement('button');
+                        contributeBtn.className = 'btn btn-secondary';
+                        contributeBtn.style.fontSize = '0.7rem';
+                        contributeBtn.textContent = 'Contribute';
+                        contributeBtn.onclick = () => openSubmit(item);
+
+                        const reportBtn = document.createElement('button');
+                        reportBtn.className = 'btn';
+                        reportBtn.style.cssText = 'font-size: 0.7rem; border: 1px solid #ef4444; color: #ef4444; background: transparent; padding: 4px 8px;';
+                        reportBtn.textContent = 'Report';
+                        reportBtn.onclick = () => reportFromSearch(item.imdbID);
+
+                        actions.appendChild(contributeBtn);
+                        actions.appendChild(reportBtn);
 
                         row.appendChild(img);
                         row.appendChild(details);
-                        row.appendChild(badge);
+                        row.appendChild(actions);
                         resultsCont.appendChild(row);
                     });
                 } else {
@@ -486,6 +532,26 @@
         function closeSubmit() {
             document.getElementById('submit-overlay').classList.add('d-none');
             document.getElementById('submit-overlay').style.display = 'none';
+        }
+
+        function openSubmitFromHistory(videoId, title, poster) {
+            // Parse video ID to get IMDB ID and episode info
+            const parts = videoId.split(':');
+            const imdbID = parts[0];
+
+            currentSubmitItem = {
+                Title: title || videoId,
+                imdbID: videoId,
+                Year: parts.length >= 3 ? 'Refine existing' : 'Movie',
+                Poster: poster || '/icon32.png'
+            };
+
+            document.getElementById('submit-name').textContent = title || videoId;
+            document.getElementById('submit-year').textContent = `Refining skip for: ${videoId}`;
+            document.getElementById('submit-poster').src = poster || '/icon32.png';
+
+            document.getElementById('submit-overlay').classList.remove('d-none');
+            document.getElementById('submit-overlay').style.display = 'flex';
         }
 
         function parseTime(val) {
