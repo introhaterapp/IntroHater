@@ -31,40 +31,72 @@ const manifest = {
 // ==================== Stream Handler ====================
 
 async function handleStreamRequest(type, id, rdKey, baseUrl) {
+    const requestId = Date.now().toString(36); // Unique request ID for log correlation
+
     if (!rdKey) {
-        console.error("[Server] No RD Key provided.");
+        console.error(`[Stream ${requestId}] ❌ No RD Key provided`);
         return { streams: [] };
     }
 
-    console.log(`[Server] Request for ${type} ${id}`);
+    console.log(`[Stream ${requestId}] 📥 Request: ${type} ${id}`);
+    console.log(`[Stream ${requestId}] 🔑 RD Key: ${rdKey.substring(0, 8)}...`);
+
     let originalStreams = [];
     let skipSeg = null;
 
-    try {
-        const torrentioUrl = `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex,rutor,rutracker,torrent9,mejortorrent,wolfmax4k%7Csort=qualitysize%7Clanguage=korean%7Cqualityfilter=scr,cam%7Cdebridoptions=nodownloadlinks,nocatalog%7Crealdebrid=${rdKey}/stream/${type}/${id}.json`;
+    // Build Torrentio URL (this is the upstream provider that uses Real-Debrid)
+    // Flow: IntroHater → Torrentio → Real-Debrid cached streams
+    const torrentioUrl = `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex,rutor,rutracker,torrent9,mejortorrent,wolfmax4k%7Csort=qualitysize%7Clanguage=korean%7Cqualityfilter=scr,cam%7Cdebridoptions=nodownloadlinks,nocatalog%7Crealdebrid=${rdKey}/stream/${type}/${id}.json`;
 
-        const [torrentioResponse, skipResult] = await Promise.all([
-            axios.get(torrentioUrl).catch(e => {
-                console.error("Error fetching upstream:", e.message);
-                return { status: 500, data: { streams: [] } };
-            }),
-            skipService.getSkipSegment(id).catch(e => {
-                console.error("Error getting skip:", e.message);
-                return null;
-            })
-        ]);
+    // Fetch upstream with retry logic
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000;
+    let torrentioResponse = null;
+    let lastError = null;
 
-        if (torrentioResponse.status === 200 && torrentioResponse.data.streams) {
-            originalStreams = torrentioResponse.data.streams;
-            console.log(`[Server] Fetched ${originalStreams.length} streams from upstream`);
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            console.log(`[Stream ${requestId}] 🌐 Torrentio attempt ${attempt}/${MAX_RETRIES}...`);
+            const startTime = Date.now();
+
+            torrentioResponse = await axios.get(torrentioUrl, { timeout: 10000 });
+
+            const elapsed = Date.now() - startTime;
+            console.log(`[Stream ${requestId}] ✅ Torrentio responded: ${torrentioResponse.status} (${elapsed}ms)`);
+
+            if (torrentioResponse.status === 200 && torrentioResponse.data.streams) {
+                originalStreams = torrentioResponse.data.streams;
+                console.log(`[Stream ${requestId}] 📦 Fetched ${originalStreams.length} streams from Torrentio+RD`);
+                break; // Success, exit retry loop
+            }
+        } catch (e) {
+            lastError = e;
+            const status = e.response?.status || 'N/A';
+            const statusText = e.response?.statusText || e.code || 'Unknown';
+            console.error(`[Stream ${requestId}] ⚠️ Torrentio error (attempt ${attempt}): ${status} ${statusText} - ${e.message}`);
+
+            if (attempt < MAX_RETRIES) {
+                console.log(`[Stream ${requestId}] ⏳ Retrying in ${RETRY_DELAY}ms...`);
+                await new Promise(r => setTimeout(r, RETRY_DELAY));
+            }
         }
+    }
 
-        skipSeg = skipResult;
+    if (originalStreams.length === 0 && lastError) {
+        console.error(`[Stream ${requestId}] ❌ All ${MAX_RETRIES} Torrentio attempts failed`);
+        console.error(`[Stream ${requestId}] 💡 This is an upstream issue with Torrentio/Real-Debrid, not IntroHater`);
+    }
+
+    // Fetch skip segment (this is our local data)
+    try {
+        skipSeg = await skipService.getSkipSegment(id);
         if (skipSeg) {
-            console.log(`[Server] Found skip for ${id}: ${skipSeg.start}-${skipSeg.end}s`);
+            console.log(`[Stream ${requestId}] 🎯 Skip segment found: ${skipSeg.start}s - ${skipSeg.end}s (${skipSeg.end - skipSeg.start}s duration)`);
+        } else {
+            console.log(`[Stream ${requestId}] 🔍 No skip segment for this content`);
         }
     } catch (e) {
-        console.error("[Server] Stream Request Lifecycle Error:", e.message);
+        console.error(`[Stream ${requestId}] ⚠️ Skip lookup error: ${e.message}`);
     }
 
 
@@ -91,6 +123,9 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
             behaviorHints: { notWebReady: false }
         });
     });
+
+    // Summary log
+    console.log(`[Stream ${requestId}] 📊 Result: ${modifiedStreams.length} streams, skip: ${skipSeg ? 'yes' : 'no'}`);
 
     return { streams: modifiedStreams };
 }
