@@ -61,7 +61,7 @@ async function exportData() {
 
         console.log(`✅ Found ${rows.length} segments.`);
 
-        // Transform to IntroHater Lite format
+        // Transform to IntroHater format
         const exportData = {};
 
         rows.forEach(row => {

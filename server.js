@@ -164,7 +164,7 @@ if (require.main === module) {
     } catch (e) { log.error({ err: e }, 'Failed to start indexer'); }
 
     const server = app.listen(PORT, () => {
-        log.info({ port: PORT, publicUrl: PUBLIC_URL }, 'IntroHater Lite running');
+        log.info({ port: PORT, publicUrl: PUBLIC_URL }, 'IntroHater running');
     });
 
     // Initialize WebSocket ticker for real-time activity updates
