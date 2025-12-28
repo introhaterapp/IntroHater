@@ -4,7 +4,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/icon.svg">
   <source media="(prefers-color-scheme: light)" srcset="docs/icon.svg">
-  <img alt="IntroHater Logo" src="docs/icon128.png" width="120" height="120">
+  <img alt="IntroHater Logo" src="docs/icon.svg" width="120" height="120">
 </picture>
 
 # ✨ IntroHater

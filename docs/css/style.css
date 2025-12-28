@@ -651,7 +651,7 @@ header .container .header-actions {
 .logo img {
     width: 32px;
     height: 32px;
-    animation: spin-slow 10s linear infinite;
+    /* Removed spin animation - doesn't work well with text-based logos */
 }
 
 .nav-links {
