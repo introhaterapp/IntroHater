@@ -85,18 +85,6 @@
                             </p>
                         </div>
 
-                        <!-- Strict Mode Toggle -->
-                        <div class="form-group feature-box">
-                            <div class="flex items-center gap-12">
-                                <input type="checkbox" id="strictMode" class="checkbox-lg">
-                                <label for="strictMode" class="feature-box-label">
-                                    🛡️ Strict Mode
-                                </label>
-                            </div>
-                            <p class="feature-box-hint">
-                                Only show streams if skip data exists. Saves bandwidth but limits content availability.
-                            </p>
-                        </div>
 
                         <div class="mt-20">
                             <button type="submit" class="btn btn-primary w-full justify-center">
@@ -190,9 +178,8 @@
                 localStorage.setItem('introhater_rdkey', key);
                 document.getElementById('logoutBtn').classList.remove('d-none');
 
-                // Check if strict mode is enabled
-                const strictMode = document.getElementById('strictMode').checked;
-                const configValue = strictMode ? `${key}-strict` : key;
+                // Use key directly as config value
+                const configValue = key;
 
                 // Construct Stremio Install URL
                 const protocol = 'stremio:';
@@ -202,7 +189,7 @@
                 // Show result
                 document.getElementById('installLink').value = installUrl;
                 document.getElementById('installBtn').href = installUrl;
-                document.getElementById('result-section').style.display = 'block';
+                document.getElementById('result-section').classList.remove('d-none');
             };
 
             // Copy Button

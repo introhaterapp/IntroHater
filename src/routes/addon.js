@@ -30,13 +30,13 @@ const manifest = {
 
 // ==================== Stream Handler ====================
 
-async function handleStreamRequest(type, id, rdKey, baseUrl, strictMode = false) {
+async function handleStreamRequest(type, id, rdKey, baseUrl) {
     if (!rdKey) {
         console.error("[Server] No RD Key provided.");
         return { streams: [] };
     }
 
-    console.log(`[Server] Request for ${type} ${id}${strictMode ? ' (strict)' : ''}`);
+    console.log(`[Server] Request for ${type} ${id}`);
     let originalStreams = [];
     let skipSeg = null;
 
@@ -67,17 +67,7 @@ async function handleStreamRequest(type, id, rdKey, baseUrl, strictMode = false)
         console.error("[Server] Stream Request Lifecycle Error:", e.message);
     }
 
-    // STRICT MODE: If enabled and no skip segment found, return informative message
-    if (strictMode && !skipSeg) {
-        console.log(`[Server] Strict mode: No skip segment for ${id}, rejecting stream`);
-        return {
-            streams: [{
-                title: "⚠️ [IntroHater Strict] No skip data available for this content",
-                url: "",
-                behaviorHints: { notWebReady: true }
-            }]
-        };
-    }
+
 
     const modifiedStreams = [];
 
@@ -128,14 +118,7 @@ router.get(['/:config/manifest.json', '/manifest.json'], (req, res) => {
 router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (req, res) => {
     const { config, type, id } = req.params;
 
-    // Parse config: format is "RDKEY" or "RDKEY-strict"
-    let rdKey = config || process.env.RPDB_KEY;
-    let strictMode = false;
-
-    if (rdKey && rdKey.endsWith('-strict')) {
-        strictMode = true;
-        rdKey = rdKey.slice(0, -7); // Remove "-strict" suffix
-    }
+    const rdKey = config || process.env.RPDB_KEY;
 
     if (!rdKey) {
         return res.json({ streams: [{ title: "⚠️ Configuration Required. Please reinstall addon.", url: "" }] });
@@ -146,7 +129,7 @@ router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (
     const host = req.get('host');
     const baseUrl = `${protocol}://${host}`;
 
-    const result = await handleStreamRequest(type, cleanId, rdKey, baseUrl, strictMode);
+    const result = await handleStreamRequest(type, cleanId, rdKey, baseUrl);
     res.json(result);
 });
 
