@@ -15,7 +15,7 @@
         rel="stylesheet">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="css/style.css?v=4">
+    <link rel="stylesheet" href="css/style.css?v=7">
 </head>
 
 <body>
@@ -75,8 +75,8 @@
                                 </a>
                             </div>
                             <div class="flex gap-10 mt-10">
-                                <button type="button" id="checkStatsBtn" class="btn btn-secondary flex-1">Check My
-                                    Stats</button>
+                                <a href="profile.html" class="btn btn-secondary flex-1 justify-center">View My
+                                    Profile</a>
                                 <button type="button" id="logoutBtn"
                                     class="btn btn-danger-outline d-none flex-1">Logout</button>
                             </div>
@@ -222,7 +222,48 @@
                 this.select();
             };
         </script>
-        <script src="js/toast.js"></script>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-col">
+                    <a href="/" class="logo">IntroHater</a>
+                    <p class="footer-tagline">
+                        Making streaming better, one skip at a time.
+                    </p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="catalog.html">Catalog</a></li>
+                        <li><a href="leaderboard.html">Leaderboard</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Developers</h4>
+                    <ul>
+                        <li><a href="https://github.com/introhaterapp/IntroHater">GitHub</a></li>
+                        <li><a href="https://github.com/introhaterapp/IntroHater/issues">Report Issue</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="privacy.html">Privacy Policy</a></li>
+                        <li><a href="terms.html">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 IntroHater. Open source and community powered.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/toast.js"></script>
+    <script src="js/main.js"></script>
 </body>
 
 </html>
