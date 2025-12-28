@@ -34,7 +34,7 @@
 		"stremio-addon-sdk": "^1.6.10",
 		"swagger-jsdoc": "^6.2.8",
 		"uuid": "^11.1.0",
-		"ws": "^8.18.0",
+		"ws": "^8.18.3",
 		"xss": "^1.0.14"
 	},
 	"devDependencies": {

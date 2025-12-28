@@ -81,8 +81,8 @@
         }
 
         .badge-grid {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
             gap: 12px;
         }
 
@@ -376,6 +376,59 @@
         </section>
     </main>
 
+    <!-- Refine Modal -->
+    <div id="refine-overlay" class="modal"
+        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="glass-panel" style="max-width: 500px; width: 90%; padding: 30px; position: relative;">
+            <button id="closeRefineX"
+                style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
+            <h2 id="refine-title"
+                style="margin-bottom: 25px; font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem;">Refine Skip
+                Segment</h2>
+
+            <div class="submit-meta-card" style="display: flex; gap: 16px; margin-bottom: 20px; align-items: center;">
+                <div class="poster-wrapper" style="flex-shrink: 0;">
+                    <img id="refine-poster" style="width: 60px; height: 90px; object-fit: cover; border-radius: 8px;"
+                        src="" alt="">
+                    <div id="refine-poster-placeholder" class="poster-placeholder d-none"
+                        style="width: 60px; height: 90px; background: var(--bg-card); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--text-muted);">
+                        No Poster</div>
+                </div>
+                <div style="flex: 1;">
+                    <div id="refine-name" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">-</div>
+                    <div id="refine-vid" style="color: var(--text-muted); font-size: 0.85rem;">-</div>
+                </div>
+            </div>
+
+            <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">Start Time</label>
+                    <input type="text" id="refineStart" class="form-input" placeholder="e.g. 01:25 or 85">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label class="form-label">End Time</label>
+                    <input type="text" id="refineEnd" class="form-input" placeholder="e.g. 03:00 or 180">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label class="form-label">Segment Type</label>
+                <select id="refineSegmentType" class="form-input" style="cursor: pointer;">
+                    <option value="Intro">Intro</option>
+                    <option value="Outro">Outro</option>
+                    <option value="Credits">Credits</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <button id="closeRefineBtn" class="btn btn-secondary"
+                    style="flex: 1; border-radius: 12px;">Cancel</button>
+                <button id="refineSubmitBtn" class="btn btn-primary"
+                    style="flex: 1; justify-content: center; border-radius: 12px;">Submit Refinement</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let rdKey = localStorage.getItem('introhater_rdkey') || "";
 
@@ -404,7 +457,17 @@
             // Engagement Badges
             { id: 'variety', icon: '🎭', name: 'Variety', desc: 'Contribute to 5+ different shows', check: s => s.showsContributed >= 5, progress: s => Math.min(100, ((s.showsContributed || 0) / 5) * 100) },
             { id: 'binge', icon: '📺', name: 'Binge Watcher', desc: 'Watch 20+ shows with skips', check: s => (s.history?.length || 0) >= 20, progress: s => Math.min(100, ((s.history?.length || 0) / 20) * 100) },
-            { id: 'early_adopter', icon: '🚀', name: 'Early Adopter', desc: 'Joined during beta', check: s => s.joinedBeta === true, progress: () => 0 },
+            {
+                id: 'early_adopter', icon: '🚀', name: 'Early Adopter', desc: 'Joined before June 2026', check: s => {
+                    const cutoff = new Date('2026-06-06');
+                    const joined = s.lastUpdated ? new Date(s.lastUpdated) : new Date();
+                    return joined < cutoff;
+                }, progress: s => {
+                    const cutoff = new Date('2026-06-06');
+                    const joined = s.lastUpdated ? new Date(s.lastUpdated) : new Date();
+                    return joined < cutoff ? 100 : 0;
+                }
+            },
         ];
 
         // Auth Flow
@@ -572,11 +635,11 @@
                         const actionsDiv = document.createElement('div');
                         actionsDiv.style.cssText = 'display: flex; gap: 8px; align-items: center;';
 
-                        const refineBtn = document.createElement('a');
-                        refineBtn.href = `contribute.html?refine=${encodeURIComponent(item.videoId)}&title=${encodeURIComponent(item.title || '')}`;
+                        const refineBtn = document.createElement('button');
                         refineBtn.className = 'btn btn-secondary';
                         refineBtn.style.cssText = 'padding: 6px 12px; font-size: 0.75rem;';
                         refineBtn.textContent = 'Refine';
+                        refineBtn.onclick = () => openRefineModal(item.videoId, item.title || '', item.poster || '');
 
                         const reportBtn = document.createElement('button');
                         reportBtn.className = 'btn';
@@ -627,6 +690,123 @@
                 btn.textContent = "Failed";
             }
         }
+
+        // Refine Modal Logic
+        let currentRefineItem = null;
+
+        function openRefineModal(videoId, title, poster) {
+            currentRefineItem = { videoId, title, poster };
+
+            document.getElementById('refine-name').textContent = title || videoId;
+            document.getElementById('refine-vid').textContent = videoId;
+
+            const posterImg = document.getElementById('refine-poster');
+            const posterPlaceholder = document.getElementById('refine-poster-placeholder');
+
+            if (poster) {
+                posterImg.src = poster;
+                posterImg.style.display = 'block';
+                posterPlaceholder.style.display = 'none';
+            } else {
+                posterImg.style.display = 'none';
+                posterPlaceholder.style.display = 'flex';
+            }
+
+            // Clear inputs
+            document.getElementById('refineStart').value = '';
+            document.getElementById('refineEnd').value = '';
+
+            document.getElementById('refine-overlay').style.display = 'flex';
+        }
+
+        function closeRefineModal() {
+            document.getElementById('refine-overlay').style.display = 'none';
+            currentRefineItem = null;
+        }
+
+        function parseTime(v) {
+            if (v.includes(':')) {
+                const p = v.split(':').map(x => parseFloat(x));
+                return p[0] * 60 + p[1];
+            }
+            return parseFloat(v);
+        }
+
+        // Event listeners for refine modal
+        document.getElementById('closeRefineX')?.addEventListener('click', closeRefineModal);
+        document.getElementById('closeRefineBtn')?.addEventListener('click', closeRefineModal);
+        document.getElementById('refine-overlay')?.addEventListener('click', (e) => {
+            if (e.target.id === 'refine-overlay') closeRefineModal();
+        });
+
+        document.getElementById('refineSubmitBtn')?.addEventListener('click', async () => {
+            const startStr = document.getElementById('refineStart').value.trim();
+            const endStr = document.getElementById('refineEnd').value.trim();
+
+            function showMessage(msg, type = 'error') {
+                if (typeof Toast !== 'undefined') {
+                    Toast[type](msg);
+                } else {
+                    alert(msg);
+                }
+            }
+
+            if (!startStr || !endStr) {
+                return showMessage("Please enter start and end times.");
+            }
+
+            const start = parseTime(startStr);
+            const end = parseTime(endStr);
+
+            if (isNaN(start) || isNaN(end)) {
+                return showMessage("Invalid time format. Use MM:SS or seconds.");
+            }
+
+            if (start >= end) {
+                return showMessage("Start time must be before end time.");
+            }
+
+            const btn = document.getElementById('refineSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
+
+            try {
+                // Parse videoId for season/episode
+                const parts = currentRefineItem.videoId.split(':');
+                const imdbID = parts[0];
+                const season = parts[1] || null;
+                const episode = parts[2] || null;
+
+                const segmentType = document.getElementById('refineSegmentType').value;
+                const res = await fetch('/api/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        rdKey,
+                        imdbID,
+                        season,
+                        episode,
+                        start,
+                        end,
+                        label: segmentType
+                    })
+                });
+
+                if (res.ok) {
+                    showMessage("Refinement submitted for moderation!", 'success');
+                    closeRefineModal();
+                } else {
+                    const err = await res.json();
+                    showMessage(err.error || "Submission failed.");
+                }
+            } catch (e) {
+                console.error('Submission error:', e);
+                showMessage("Network error. Please try again.");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Submit Refinement';
+            }
+        });
     </script>
 
     <!-- Footer -->

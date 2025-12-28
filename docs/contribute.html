@@ -145,6 +145,15 @@
                 </div>
             </div>
 
+            <div class="form-group" style="margin-top: 15px;">
+                <label class="form-label required-label">Segment Type</label>
+                <select id="segmentType" class="form-input" style="cursor: pointer;">
+                    <option value="Intro">Intro</option>
+                    <option value="Outro">Outro</option>
+                    <option value="Credits">Credits</option>
+                </select>
+            </div>
+
             <div id="seriesOptionContainer" class="d-none" style="margin-top: 5px;">
                 <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0;">
                     <input type="checkbox" id="applySeries"
@@ -383,6 +392,7 @@
             btn.textContent = 'Publishing...';
 
             try {
+                const segmentType = document.getElementById('segmentType').value;
                 const res = await fetch('/api/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -393,7 +403,7 @@
                         episode,
                         start,
                         end,
-                        label: 'Intro',
+                        label: segmentType,
                         applyToSeries: applyToSeries
                     })
                 });
