@@ -11,7 +11,6 @@ const { getByteOffset, generateSmartManifest, getStreamDetails, getRefinedOffset
 const skipService = require('../services/skip-service');
 const userService = require('../services/user-service');
 const cacheService = require('../services/cache-service');
-const log = require('../utils/logger').hls;
 
 // ==================== Helpers ====================
 
@@ -45,9 +44,6 @@ function isSafeUrl(urlStr) {
 function isWebStremioClient(req) {
     const ua = req.get('User-Agent') || '';
 
-    // Log every request's User-Agent for debugging
-    log.info({ userAgent: ua }, 'HLS manifest request User-Agent');
-
     // Web Stremio uses these User-Agents (streaming server proxies the request)
     // These should be REDIRECTED to original stream (can't handle MKV byte-ranges)
     const webStremioIndicators = [
@@ -76,11 +72,7 @@ function isWebStremioClient(req) {
     const isNativeApp = nativeIndicators.some(indicator => ua.includes(indicator));
 
     // Redirect Web Stremio, let native apps get manifest
-    const shouldRedirect = isWebStremio && !isNativeApp;
-
-    log.info({ isWebStremio, isNativeApp, shouldRedirect, uaSnippet: ua.substring(0, 80) }, 'Client detection result');
-
-    return shouldRedirect;
+    return isWebStremio && !isNativeApp;
 }
 
 // ==================== Routes ====================
@@ -109,15 +101,20 @@ router.get('/sub/status/:videoId.vtt', async (req, res) => {
 
 // HLS Media Playlist Endpoint
 router.get('/hls/manifest.m3u8', async (req, res) => {
-    const { stream, start: startStr, end: endStr, id: videoId, user: userId } = req.query;
+    const { stream, start: startStr, end: endStr, id: videoId, user: userId, rdKey } = req.query;
+    const keyPrefix = rdKey ? rdKey.substring(0, 8) : 'NO-KEY';
+    const logPrefix = `[HLS ${keyPrefix}]`;
 
     if (!stream || !isSafeUrl(decodeURIComponent(stream))) {
+        console.log(`${logPrefix} ❌ Invalid or unsafe stream URL`);
         return res.status(400).send("Invalid or unsafe stream URL");
     }
 
+    console.log(`${logPrefix} 📥 Manifest request for ${videoId || 'unknown'}`);
+
     if (isWebStremioClient(req)) {
         const originalUrl = decodeURIComponent(stream);
-        log.info({ ua: (req.get('User-Agent') || '').substring(0, 50) }, 'Web Stremio detected, returning pass-through manifest (no skip)');
+        console.log(`${logPrefix} 🌐 Web Stremio detected - returning pass-through (no skip)`);
 
         // Return a simple pass-through manifest - just plays the whole file from start
         // No byte-range tricks, no discontinuity - just a basic VOD manifest
@@ -136,7 +133,6 @@ ${originalUrl}
     }
 
     // Authenticated Telemetry
-    const rdKey = req.query.rdKey;
     if (videoId && userId && rdKey) {
         if (!cacheService.isWatchLogged(userId, videoId)) {
             try {
@@ -146,7 +142,7 @@ ${originalUrl}
                 });
 
                 cacheService.logWatch(userId, videoId);
-                log.info({ userId: userId.substr(0, 6), videoId }, 'Play logged');
+                console.log(`${logPrefix} 📊 Play logged for ${videoId}`);
 
                 userService.addWatchHistory(userId, {
                     videoId: videoId,
@@ -158,7 +154,7 @@ ${originalUrl}
                     videoId: videoId
                 });
             } catch (e) {
-                console.warn(`[Telemetry] Auth failed for ${userId.substr(0, 6)}: ${e.message}`);
+                console.warn(`${logPrefix} ⚠️ Auth failed: ${e.message}`);
             }
         }
     }
@@ -171,26 +167,26 @@ ${originalUrl}
         // Cache Key
         const cacheKey = `${streamUrl}_${introStart}_${introEnd}`;
         if (cacheService.hasManifest(cacheKey)) {
+            console.log(`${logPrefix} 💾 Cache hit`);
             res.set('Content-Type', 'application/vnd.apple.mpegurl');
             return res.send(cacheService.getManifest(cacheKey));
         }
 
-        log.info({ introStart, introEnd }, 'Generating manifest');
+        console.log(`${logPrefix} 🎬 Generating manifest (skip: ${introStart}s - ${introEnd}s)`);
 
         // Resolve Redirects & Get Length
-        log.info({ streamUrl }, 'Probing URL');
         const details = await getStreamDetails(streamUrl);
         if (details.finalUrl !== streamUrl) {
-            log.info({ finalUrl: details.finalUrl }, 'Resolved Redirect');
+            console.log(`${logPrefix} 🔀 Redirect resolved`);
             streamUrl = details.finalUrl;
         }
         const totalLength = details.contentLength;
-        log.info({ contentLength: totalLength || 'Unknown' }, 'Content-Length');
+        console.log(`${logPrefix} 📏 Content-Length: ${totalLength ? (totalLength / 1024 / 1024).toFixed(0) + 'MB' : 'Unknown'}`);
 
         // Check for Invalid/Error Streams
         const URL_LOWER = streamUrl.toLowerCase();
         if (URL_LOWER.includes('failed_opening')) {
-            console.warn(`[HLS] Detected error stream (URL: ...${streamUrl.slice(-20)}). Bypassing proxy.`);
+            console.warn(`${logPrefix} ⚠️ Error stream detected, bypassing proxy`);
             return res.redirect(streamUrl);
         }
 
@@ -199,7 +195,7 @@ ${originalUrl}
 
         // Try Chapter Discovery if no skip segments provided
         if ((!introStart || introStart === 0) && (!introEnd || introEnd === 0)) {
-            log.info({ videoId }, 'No skip segments. Checking chapters.');
+            console.log(`${logPrefix} 🔍 No skip segments, checking chapters...`);
             const chapters = await getChapters(streamUrl);
             const skipChapter = chapters.find(c => {
                 const t = c.title.toLowerCase();
@@ -207,15 +203,15 @@ ${originalUrl}
             });
 
             if (skipChapter) {
-                log.info({ title: skipChapter.title, start: skipChapter.startTime, end: skipChapter.endTime }, 'Found intro chapter');
+                console.log(`${logPrefix} 📖 Found chapter: "${skipChapter.title}" (${skipChapter.startTime}s - ${skipChapter.endTime}s)`);
 
                 const cStart = skipChapter.startTime;
                 const cEnd = skipChapter.endTime;
 
                 if (videoId && userId) {
-                    log.info({ videoId }, "Backfilling chapter data as 'chapter-bot'");
+                    console.log(`${logPrefix} 💾 Backfilling chapter data`);
                     skipService.addSkipSegment(videoId, cStart, cEnd, "Intro", "chapter-bot")
-                        .catch(e => console.error(`[HLS] Backfill failed: ${e.message}`));
+                        .catch(e => console.error(`${logPrefix} ❌ Backfill failed: ${e.message}`));
                 }
 
                 const points = await getRefinedOffsets(streamUrl, cStart, cEnd);
@@ -230,11 +226,11 @@ ${originalUrl}
         if (!isSuccess && introStart > 0 && introEnd > introStart) {
             const points = await getRefinedOffsets(streamUrl, introStart, introEnd);
             if (points) {
-                log.info({ startOffset: points.startOffset, endOffset: points.endOffset }, 'Splicing at bytes');
+                console.log(`${logPrefix} ✂️ Splicing at bytes ${points.startOffset} - ${points.endOffset}`);
                 manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
                 isSuccess = true;
             } else {
-                console.warn("[HLS] Failed to find splice points. Falling back to simple skip.");
+                console.warn(`${logPrefix} ⚠️ Failed to find splice points, falling back`);
             }
         }
 
@@ -248,14 +244,14 @@ ${originalUrl}
                     manifest = generateSmartManifest(streamUrl, 7200, offset, totalLength, startTime);
                     isSuccess = true;
                 } else {
-                    console.warn(`[HLS] Failed to find offset for ${startTime}s. Returning non-skipping stream.`);
+                    console.warn(`${logPrefix} ⚠️ Failed to find offset for ${startTime}s`);
                 }
             }
         }
 
         // Pass-through if all failed
         if (!manifest || !isSuccess) {
-            log.info({ streamUrlShort: streamUrl.slice(-30) }, 'No valid skip points found. Generating pass-through manifest.');
+            console.log(`${logPrefix} ➡️ No valid skip points, generating pass-through`);
             manifest = generateSmartManifest(streamUrl, 7200, 0, totalLength, 0);
             isSuccess = true;
         }
@@ -267,8 +263,8 @@ ${originalUrl}
         res.send(manifest);
 
     } catch (e) {
-        console.error("Proxy Error:", e.message);
-        log.info("Fallback: Redirecting to original stream (Error-based redirect)");
+        console.error(`${logPrefix} ❌ Proxy Error: ${e.message}`);
+        console.log(`${logPrefix} 🔄 Fallback: Redirecting to original stream`);
         res.redirect(req.query.stream);
     }
 });
@@ -282,7 +278,7 @@ router.get('/vote/:action/:videoId', (req, res) => {
     const baseUrl = `${protocol}://${host}`;
 
     const userId = user || 'anonymous';
-    log.info({ userId: userId.substr(0, 6), action: action.toUpperCase(), videoId }, 'User voted');
+    console.log(`[Vote] 🗳️ User ${userId.substr(0, 6)} voted ${action.toUpperCase()} on ${videoId}`);
 
     userService.updateUserStats(userId, {
         votes: 1,
@@ -291,11 +287,11 @@ router.get('/vote/:action/:videoId', (req, res) => {
 
     if (action === 'down') {
         const originalUrl = decodeURIComponent(stream);
-        log.info({ originalUrl }, 'Redirecting to original');
+        console.log(`[Vote] ⬇️ Redirecting to original stream`);
         res.redirect(originalUrl);
     } else {
         const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${stream}&start=${start}&end=${end}`;
-        log.info({ proxyUrl }, 'Redirecting to skip');
+        console.log(`[Vote] ⬆️ Redirecting to skip stream`);
         res.redirect(proxyUrl);
     }
 });
