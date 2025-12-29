@@ -1,7 +1,4 @@
-/**
- * Swagger/OpenAPI Configuration
- * Auto-generates API documentation from JSDoc comments
- */
+
 
 const swaggerJsdoc = require('swagger-jsdoc');
 

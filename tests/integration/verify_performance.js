@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 async function testPerformance() {
-    const videoId = 'tt0388629'; // One Piece
+    const videoId = 'tt0388629'; 
     try {
         console.log(`Testing performance for ${videoId}...`);
 
@@ -20,7 +20,7 @@ async function testPerformance() {
         const duration3 = Date.now() - start3;
         console.log(`Fetch 3 (Warm/Cache): ${duration3}ms - Count: ${res3.data.length}`);
 
-        // Verify rounding
+        
         const firstSeg = res1.data[0];
         if (firstSeg) {
             console.log(`Sample Segment: ${firstSeg.start}s - ${firstSeg.end}s (Rounded: ${Number.isInteger(firstSeg.start)})`);

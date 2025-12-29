@@ -2,7 +2,7 @@ const request = require('supertest');
 const app = require('../server');
 const BASE_URL = process.env.TEST_URL;
 
-// Simple test runner
+
 let passed = 0;
 let failed = 0;
 const results = [];
@@ -52,12 +52,12 @@ function assertType(value, type, message) {
     if (typeof value !== type) throw new Error(message || `Expected ${type}, got ${typeof value}`);
 }
 
-// ============ API TESTS ============
+
 
 async function runTests() {
     console.log('\n🧪 IntroHater API Test Suite\n' + '='.repeat(40) + '\n');
 
-    // --- Ping ---
+    
     await test('GET /ping returns pong', async () => {
         const res = await getResponse('GET', '/ping');
         const text = await res.text();
@@ -65,7 +65,7 @@ async function runTests() {
         assert(text === 'pong', `Expected 'pong', got '${text}'`);
     });
 
-    // --- Stats API ---
+    
     await test('GET /api/stats returns valid stats object', async () => {
         const res = await getResponse('GET', '/api/stats');
         assert(res.ok, `Expected 200, got ${res.status}`);
@@ -77,7 +77,7 @@ async function runTests() {
         assert(data.sources !== undefined, 'sources should exist');
     });
 
-    // --- Leaderboard API ---
+    
     await test('GET /api/leaderboard returns users array', async () => {
         const res = await getResponse('GET', '/api/leaderboard');
         assert(res.ok, `Expected 200, got ${res.status}`);
@@ -90,7 +90,7 @@ async function runTests() {
         }
     });
 
-    // --- Activity API (Live Ticker) ---
+    
     await test('GET /api/activity returns array of recent segments with titles', async () => {
         const res = await getResponse('GET', '/api/activity');
         assert(res.ok, `Expected 200, got ${res.status}`);
@@ -104,7 +104,7 @@ async function runTests() {
         }
     });
 
-    // --- Catalog API ---
+    
     await test('GET /api/catalog returns valid catalog data', async () => {
         const res = await getResponse('GET', '/api/catalog?draw=1&start=0&length=5');
         assert(res.ok, `Expected 200, got ${res.status}`);
@@ -113,7 +113,7 @@ async function runTests() {
         assertType(data.recordsTotal, 'number', 'recordsTotal should be a number');
     });
 
-    // --- Segments API ---
+    
     await test('GET /api/segments/:id returns array', async () => {
         const res = await getResponse('GET', '/api/segments/tt0000000');
         assert(res.ok, `Expected 200, got ${res.status}`);
@@ -121,34 +121,34 @@ async function runTests() {
         assert(Array.isArray(data), 'response should be an array');
     });
 
-    // --- Search API ---
+    
     await test('GET /api/search returns results for valid query', async () => {
         const res = await getResponse('GET', '/api/search?q=test');
-        // May return empty if no OMDB key, but should not error
+        
         assert(res.ok, `Expected 200, got ${res.status}`);
         const data = await res.json();
         assert(data !== undefined, 'should return data');
     });
 
-    // --- Personal Stats (requires valid RD key, so we test 400 for missing key) ---
+    
     await test('POST /api/stats/personal returns 400 without rdKey', async () => {
         const res = await getResponse('POST', '/api/stats/personal', {});
         assert(res.status === 400, `Expected 400, got ${res.status}`);
     });
 
-    // --- Submit requires valid RD key, test 400 for missing fields ---
+    
     await test('POST /api/submit returns 400 without required fields', async () => {
         const res = await getResponse('POST', '/api/submit', {});
         assert(res.status === 400, `Expected 400, got ${res.status}`);
     });
 
-    // --- Report requires rdKey ---
+    
     await test('POST /api/report returns 400 without fields', async () => {
         const res = await getResponse('POST', '/api/report', {});
         assert(res.status === 400, `Expected 400, got ${res.status}`);
     });
 
-    // --- Stremio Addon Manifest ---
+    
     await test('GET /manifest.json (Stremio manifest route) returns valid addon manifest', async () => {
         const res = await getResponse('GET', '/manifest.json');
         assert(res.ok, `Expected 200, got ${res.status}`);
@@ -158,7 +158,7 @@ async function runTests() {
         assert(isStremioManifest || isPWAManifest, 'Should be either Stremio or PWA manifest');
     });
 
-    // --- Static Files ---
+    
     await test('GET / serves index.html', async () => {
         const res = await getResponse('GET', '/');
         assert(res.ok, `Expected 200, got ${res.status}`);
@@ -181,7 +181,7 @@ async function runTests() {
         assert(res.ok, `Expected 200, got ${res.status}`);
     });
 
-    // ============ SUMMARY ============
+    
     console.log('\n' + '='.repeat(40));
     console.log(`\n📊 Results: ${passed} passed, ${failed} failed`);
 

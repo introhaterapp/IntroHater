@@ -1,11 +1,8 @@
-/**
- * Catalog Service Unit Tests
- * Tests catalog operations: registerShow, getCatalogData, getCatalogStats, fetchMetadata, bakeShowSegments
- */
+
 
 const axios = require('axios');
 
-// Mock catalog repository
+
 const mockCatalogRepository = {
     ensureInit: jest.fn().mockResolvedValue(),
     findByImdbId: jest.fn(),
@@ -22,7 +19,7 @@ describe('Catalog Service', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        // Load/reload the service (static require is cached, but mocks are reset)
+        
         catalogService = require('../../src/services/catalog');
     });
 

@@ -12,7 +12,7 @@ async function testCachePersistence() {
 
         console.log("\nAdding a segment for a DIFFERENT show (should not wipe One Piece)...");
         await axios.post('http://localhost:7005/api/submit', {
-            rdKey: 'DUMMY_KEY_FOR_TEST', // This might fail if validation is strict
+            rdKey: 'DUMMY_KEY_FOR_TEST', 
             imdbID: testShow,
             start: 10,
             end: 20

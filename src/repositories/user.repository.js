@@ -17,7 +17,7 @@ class UserRepository extends BaseRepository {
                 if (this.tokensCollection) {
                     await this.tokensCollection.createIndex({ userId: 1 });
                 }
-            } catch { /* ignore initialization errors */ }
+            } catch {  }
         }
     }
 

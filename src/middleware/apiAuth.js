@@ -1,7 +1,7 @@
 const rateLimit = require('express-rate-limit');
 const apiKeyService = require('../services/apiKey');
 
-// List of globally allowed API keys for public clients
+
 const ALLOWED_PUBLIC_KEYS = {
     'introhater_mpv_client': {
         name: 'MPV Plugin Client',
@@ -10,19 +10,19 @@ const ALLOWED_PUBLIC_KEYS = {
     }
 };
 
-// API key authentication middleware
+
 const apiKeyAuth = async (req, res, next) => {
     try {
-        // Check for API key in headers
+        
         const apiKey = req.headers['x-api-key'];
 
         if (!apiKey) {
             return res.status(401).json({ error: 'API key is required' });
         }
 
-        // Check if this is a predefined public key
+        
         if (ALLOWED_PUBLIC_KEYS[apiKey]) {
-            // For predefined keys, skip database validation
+            
             req.apiKey = {
                 _id: `public_key_${apiKey}`,
                 key: apiKey,
@@ -32,7 +32,7 @@ const apiKeyAuth = async (req, res, next) => {
             return;
         }
 
-        // For all other keys, validate against the database
+        
         const startTime = Date.now();
         const keyDetails = await apiKeyService.validateApiKey(apiKey);
 
@@ -40,7 +40,7 @@ const apiKeyAuth = async (req, res, next) => {
             return res.status(401).json({ error: 'Invalid or expired API key' });
         }
 
-        // Check permissions if endpoint requires specific permissions
+        
         if (req.requiredPermissions && req.requiredPermissions.length > 0) {
             const hasPermission = req.requiredPermissions.every(permission =>
                 keyDetails.permissions.includes(permission)
@@ -51,15 +51,15 @@ const apiKeyAuth = async (req, res, next) => {
             }
         }
 
-        // Store API key info for usage tracking and rate limiting bypass
+        
         req.apiKey = keyDetails;
 
-        // Setup response listener to track metrics
+        
         const oldSend = res.send;
         res.send = function () {
             const responseTime = Date.now() - startTime;
 
-            // Track API usage asynchronously
+            
             apiKeyService.trackUsage(
                 keyDetails._id,
                 req.originalUrl,
@@ -77,7 +77,7 @@ const apiKeyAuth = async (req, res, next) => {
     }
 };
 
-// Rate limiting middleware
+
 const createRateLimiter = (options = {}) => {
     const defaultOptions = {
         windowMs: parseInt(process.env.API_RATE_WINDOW_MS) || 15 * 60 * 1000,
@@ -88,7 +88,7 @@ const createRateLimiter = (options = {}) => {
             return req.apiKey?._id?.toString() || req.ip;
         },
         skip: (req) => {
-            // Skip rate limiting for admin keys
+            
             return req.apiKey?.isAdminKey === true;
         },
         handler: (req, res) => {
@@ -101,7 +101,7 @@ const createRateLimiter = (options = {}) => {
     return rateLimit({ ...defaultOptions, ...options });
 };
 
-// Permission check middleware
+
 const requirePermission = (permissions) => {
     if (!Array.isArray(permissions)) {
         permissions = [permissions];
@@ -113,7 +113,7 @@ const requirePermission = (permissions) => {
     };
 };
 
-// Admin check middleware with email validation
+
 const validateAdminAccess = (req, res, next) => {
     try {
         if (!req.oidc || !req.oidc.isAuthenticated()) {
@@ -142,5 +142,5 @@ module.exports = {
     createRateLimiter,
     requirePermission,
     validateAdminAccess,
-    ALLOWED_PUBLIC_KEYS  // Export the allowed keys list for use elsewhere
+    ALLOWED_PUBLIC_KEYS  
 };

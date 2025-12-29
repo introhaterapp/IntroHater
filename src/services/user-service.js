@@ -1,7 +1,7 @@
 const userRepository = require('../repositories/user.repository');
 const log = require('../utils/logger').users;
 
-// Initialize
+
 let initPromise = null;
 
 async function ensureInit() {
@@ -17,27 +17,18 @@ async function ensureInit() {
     return initPromise;
 }
 
-// Trigger early
+
 ensureInit();
 
-// --- Stats Operations ---
 
-/**
- * Get user statistics
- * @param {string} userId
- * @returns {Promise<Object|null>}
- */
+
+
 async function getUserStats(userId) {
     await ensureInit();
     return await userRepository.findByUserId(userId);
 }
 
-/**
- * Add an item to user's watch history
- * @param {string} userId
- * @param {Object} item
- * @returns {Promise<Object|null>} Updated stats
- */
+
 async function addWatchHistory(userId, item) {
     await ensureInit();
     let stats = await getUserStats(userId);
@@ -47,7 +38,7 @@ async function addWatchHistory(userId, item) {
 
     if (!stats.watchHistory) stats.watchHistory = [];
 
-    // Add to history (limit to last 50 items)
+    
     const existingIndex = stats.watchHistory.findIndex(h => h.videoId === item.videoId);
     if (existingIndex > -1) {
         stats.watchHistory.splice(existingIndex, 1);
@@ -62,7 +53,7 @@ async function addWatchHistory(userId, item) {
         stats.watchHistory = stats.watchHistory.slice(0, 50);
     }
 
-    // Calculate skip duration if provided
+    
     if (item.skip && item.skip.end > item.skip.start) {
         const saved = item.skip.end - item.skip.start;
         await incrementSavedTime(userId, saved);
@@ -71,17 +62,12 @@ async function addWatchHistory(userId, item) {
     return await updateUserStats(userId, { watchHistory: stats.watchHistory });
 }
 
-/**
- * Update user statistics atomically
- * @param {string} userId
- * @param {Object} updates
- * @returns {Promise<Object|null>} Updated stats
- */
+
 async function updateUserStats(userId, updates) {
     await ensureInit();
 
     try {
-        // Handle Atomic Vote Updates
+        
         if (updates.votes && updates.videoId) {
             const videoId = updates.videoId;
             const voteVal = updates.votes;
@@ -96,7 +82,7 @@ async function updateUserStats(userId, updates) {
                 { upsert: false }
             );
 
-            // Double check user exists if not updated above (likely already voted or new user)
+            
             const exists = await userRepository.findByUserId(userId);
             if (!exists) {
                 await userRepository.updateOne(
@@ -112,7 +98,7 @@ async function updateUserStats(userId, updates) {
             delete updates.videoId;
         }
 
-        // Handle Atomic Increments (savedTime)
+        
         if (updates.savedTime && updates.isIncrement) {
             await userRepository.updateOne(
                 { userId },
@@ -126,7 +112,7 @@ async function updateUserStats(userId, updates) {
             delete updates.isIncrement;
         }
 
-        // Handle remaining updates
+        
         if (Object.keys(updates).length > 0) {
             await userRepository.updateOne(
                 { userId },
@@ -141,20 +127,13 @@ async function updateUserStats(userId, updates) {
     }
 }
 
-/**
- * Get the top contributors leaderboard
- * @param {number} limit
- * @returns {Promise<Array>}
- */
+
 async function getLeaderboard(limit = 10) {
     await ensureInit();
     return await userRepository.getLeaderboard(limit);
 }
 
-/**
- * Get global application statistics
- * @returns {Promise<Object>}
- */
+
 async function getStats() {
     await ensureInit();
     const userCount = await userRepository.countDocuments();
@@ -167,41 +146,29 @@ async function getStats() {
     return { userCount, voteCount, totalSavedTime };
 }
 
-/**
- * Record time saved for a user and globally
- * @param {string} userId
- * @param {number} duration
- * @returns {Promise<void>}
- */
+
 async function incrementSavedTime(userId, duration) {
     if (!duration || duration <= 0) return;
     await ensureInit();
 
-    // 1. Update Global Stats
+    
     await userRepository.incrementGlobalSavedTime(duration);
 
-    // 2. Update User Stats
+    
     if (userId && userId !== 'anonymous' && userId !== 'null') {
         await updateUserStats(userId, { savedTime: duration, isIncrement: true });
     }
 }
 
-// --- Token Operations ---
 
-/**
- * Get stored token for a user
- * @param {string} userId
- * @returns {Promise<Object|null>}
- */
+
+
 async function getUserToken(userId) {
     await ensureInit();
     return await userRepository.findTokenByUserId(userId);
 }
 
-/**
- * Store a new auth token for a user
- * @returns {Promise<Object>} The stored entry
- */
+
 async function storeUserToken(userId, token, timestamp, nonce) {
     await ensureInit();
     let entry = {

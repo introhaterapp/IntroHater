@@ -3,7 +3,7 @@ const { BaseRepository, LRUCache } = require('./base.repository');
 class CacheRepository extends BaseRepository {
     constructor() {
         super('caches');
-        this.cache = new LRUCache({ max: 1000, ttl: 1000 * 60 * 10 }); // 10 min TTL for MAL mappings
+        this.cache = new LRUCache({ max: 1000, ttl: 1000 * 60 * 10 }); 
         this.indicesCreated = false;
     }
 
@@ -13,7 +13,7 @@ class CacheRepository extends BaseRepository {
         try {
             await this.collection.createIndex({ key: 1 }, { unique: true });
             this.indicesCreated = true;
-        } catch { /* ignore index creation errors */ }
+        } catch {  }
     }
 
     async getCache(key) {

@@ -9,10 +9,10 @@ class MongoService {
     }
 
     async connect() {
-        // If already connected, return db
+        
         if (this.db) return this.db;
 
-        // If no URI, return null (fallback to memory/file will be handled by consumer)
+        
         if (!this.uri) {
             if (!this.warned) {
                 log.warn('No MONGODB_URI provided. Using in-memory/file storage (Ephemeral).');
@@ -27,7 +27,7 @@ class MongoService {
             this.db = this.client.db();
             const dbName = this.db.databaseName;
 
-            // List collections to verify we are in the right place
+            
             const collections = await this.db.listCollections().toArray();
             const names = collections.map(c => c.name);
 

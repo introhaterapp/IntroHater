@@ -6,16 +6,12 @@ async function ensureInit() {
     await catalogRepository.ensureInit();
 }
 
-/**
- * Fetch metadata for an IMDB ID
- * @param {string} imdbId
- * @returns {Promise<Object>} Metadata object { Title, Year, Poster }
- */
+
 async function fetchMetadata(imdbId) {
     const omdbKey = process.env.OMDB_API_KEY;
     let data = null;
 
-    // 1. Try OMDB
+    
     if (omdbKey) {
         try {
             const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${omdbKey}`);
@@ -31,7 +27,7 @@ async function fetchMetadata(imdbId) {
         }
     }
 
-    // 2. Fallback to Cinemeta
+    
     if (!data) {
         try {
             const type = imdbId.startsWith('tt') ? (await isSeries(imdbId) ? 'series' : 'movie') : 'series';
@@ -49,7 +45,7 @@ async function fetchMetadata(imdbId) {
         }
     }
 
-    // 3. Last Resort
+    
     if (!data) {
         data = {
             Title: imdbId,
@@ -61,11 +57,7 @@ async function fetchMetadata(imdbId) {
     return data;
 }
 
-/**
- * Check if an IMDB ID is a series
- * @param {string} imdbId
- * @returns {Promise<boolean>}
- */
+
 async function isSeries(imdbId) {
     try {
         const res = await axios.get(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`);
@@ -73,13 +65,7 @@ async function isSeries(imdbId) {
     } catch { return false; }
 }
 
-/**
- * Register a show in the catalog
- * @param {string} videoId
- * @param {number|null} segmentCount
- * @param {Array|null} segments
- * @returns {Promise<void>}
- */
+
 async function registerShow(videoId, segmentCount = null, segments = null) {
     const parts = String(videoId).split(':');
     const imdbId = parts[0];
@@ -95,13 +81,13 @@ async function registerShow(videoId, segmentCount = null, segments = null) {
     await ensureInit();
     let media = await catalogRepository.findByImdbId(imdbId);
 
-    // If show exists and we are just "checking" without new segments, return early
+    
     if (media && !segments) {
         const lastUpdated = new Date(media.lastUpdated).getTime();
         const now = Date.now();
         const age = now - lastUpdated;
 
-        // If updated in last 24 hours, don't even think about re-registering
+        
         if (age < 24 * 60 * 60 * 1000) return;
     }
 
@@ -146,17 +132,12 @@ async function registerShow(videoId, segmentCount = null, segments = null) {
     await catalogRepository.upsertCatalogEntry(imdbId, media);
 }
 
-/**
- * Bakes all segments for a show into its catalog entry for high-speed retrieval.
- * @param {string} imdbId
- * @param {Object} segmentsByEpisode
- * @returns {Promise<void>}
- */
+
 async function bakeShowSegments(imdbId, segmentsByEpisode) {
     await ensureInit();
     let media = await catalogRepository.findByImdbId(imdbId);
     if (!media) {
-        // Register manually if it doesn't exist
+        
         await registerShow(imdbId + ":1:1", 0);
         media = await catalogRepository.findByImdbId(imdbId);
     }
@@ -170,14 +151,14 @@ async function bakeShowSegments(imdbId, segmentsByEpisode) {
             media.episodes[epKey] = { season: s, episode: e, count: 0 };
         }
 
-        // Handle both full segment arrays and just counts
+        
         if (Array.isArray(segments)) {
             media.episodes[epKey].segments = segments;
             media.episodes[epKey].count = segments.length;
         } else if (typeof segments === 'number') {
             media.episodes[epKey].count = segments;
         } else if (typeof segments === 'object') {
-            // Handle case where we might just be updating counts
+            
             media.episodes[epKey].count = segments.count || 0;
         }
     }
@@ -187,20 +168,13 @@ async function bakeShowSegments(imdbId, segmentsByEpisode) {
     await catalogRepository.upsertCatalogEntry(imdbId, media);
 }
 
-/**
- * Get show data by IMDB ID
- * @param {string} imdbId
- * @returns {Promise<Object|null>}
- */
+
 async function getShowByImdbId(imdbId) {
     await ensureInit();
     return await catalogRepository.findByImdbId(imdbId);
 }
 
-/**
- * Get catalog data with pagination, search and sort
- * @returns {Promise<Object>} Catalog response object
- */
+
 async function getCatalogData(page = 1, limit = 1000, search = '', sort = { title: 1 }) {
     await ensureInit();
     const skip = (page - 1) * limit;
@@ -233,10 +207,7 @@ async function getCatalogData(page = 1, limit = 1000, search = '', sort = { titl
     };
 }
 
-/**
- * Get global catalog statistics
- * @returns {Promise<Object>}
- */
+
 async function getCatalogStats() {
     await ensureInit();
     const query = {
@@ -246,24 +217,20 @@ async function getCatalogStats() {
     return await catalogRepository.getCatalogStats(query);
 }
 
-/**
- * Repair/Sync catalog from source of truth
- * @param {Object} allSkips
- * @returns {Promise<void>}
- */
+
 async function repairCatalog(allSkips) {
     if (!allSkips) return;
 
     const skipKeys = Object.keys(allSkips);
     log.info({ count: skipKeys.length }, 'Running database-only catalog sync');
 
-    if (skipKeys.length < 5) { // Lower threshold for DB-only
+    if (skipKeys.length < 5) { 
         log.warn('Aborting repair: Source of truth looks suspicious');
         return;
     }
 
     let changes = 0;
-    const showMap = {}; // imdbId -> { epKey -> segments }
+    const showMap = {}; 
 
     for (const [fullId, segments] of Object.entries(allSkips)) {
         const parts = fullId.split(':');
@@ -278,7 +245,7 @@ async function repairCatalog(allSkips) {
         showMap[imdbId][epKey] = segments;
     }
 
-    // Sync in batches to not blow up memory
+    
     for (const [imdbId, episodes] of Object.entries(showMap)) {
         try {
             await bakeShowSegments(imdbId, episodes);

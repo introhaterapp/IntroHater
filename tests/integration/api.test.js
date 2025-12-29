@@ -1,8 +1,8 @@
 const request = require('supertest');
 const app = require('../../server');
 
-// Mocks
-// Mocks
+
+
 jest.mock('../../src/services/skip-service.js', () => {
     console.log('!!! MOCKING SKIP SERVICE !!!');
     return {
@@ -28,7 +28,7 @@ jest.mock('../../src/services/user-service.js', () => ({
     updateUserStats: jest.fn().mockResolvedValue({ userId: 'u1', votes: 6 })
 }));
 
-// Mock Indexer to prevent interval checks
+
 jest.mock('../../src/services/indexer.js', () => ({
     start: jest.fn(),
     runIndex: jest.fn()
@@ -39,19 +39,19 @@ jest.mock('../../src/services/catalog.js', () => ({
     repairCatalog: jest.fn()
 }));
 
-// Mock rate-limit to avoid open handles (timer)
+
 jest.mock('express-rate-limit', () => {
     return jest.fn(() => (req, res, next) => next());
 });
 
-// Mock Axios for RD checks
-jest.mock('axios'); // Required to use __mocks__/axios.js
+
+jest.mock('axios'); 
 
 const axios = require('axios');
 
 describe('API Integration', () => {
     beforeEach(() => {
-        // Reset defaults
+        
         axios.get.mockResolvedValue({ data: { id: 1 } });
     });
 
@@ -73,7 +73,7 @@ describe('API Integration', () => {
             const res = await request(app).get('/manifest.json');
             expect(res.statusCode).toEqual(200);
 
-            // Allow both Stremio and PWA manifest
+            
             const isStremio = res.body.id === 'org.introhater';
             const isPWA = res.body.name === 'IntroHater' && res.body.icons !== undefined;
             expect(isStremio || isPWA).toBe(true);
@@ -102,8 +102,8 @@ describe('API Integration', () => {
         });
 
         it('should return 401 if RD Key is invalid (Mocked Axios)', async () => {
-            // Mock DB Key check failure
-            axios.get.mockRejectedValue(new Error('Unauthorized')); // Fail the RD check
+            
+            axios.get.mockRejectedValue(new Error('Unauthorized')); 
 
             const res = await request(app).post('/api/report').send({
                 rdKey: 'bad_key', videoId: 'tt123'
@@ -112,7 +112,7 @@ describe('API Integration', () => {
         });
 
         it.skip('should succeed if key valid', async () => {
-            // Mock Success with debug log
+            
             axios.get.mockImplementation(() => {
                 console.log('!!! AXIOS MOCK EXECUTED !!!');
                 return Promise.resolve({ data: { id: 12345 } });
@@ -133,7 +133,7 @@ describe('API Integration', () => {
         });
 
         it.skip('should submit successfully with valid data', async () => {
-            // Implementation of Axios Mock that handles "real-debrid" calls AND "omdbapi" calls
+            
             axios.get.mockImplementation((url) => {
                 if (url.includes('real-debrid')) return Promise.resolve({ data: { id: 12345 } });
                 return Promise.resolve({ data: {} });

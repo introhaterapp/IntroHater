@@ -17,7 +17,7 @@ class ApiKeyService {
       this.apiKeys = await mongoService.getCollection('apiKeys');
       this.apiUsage = await mongoService.getCollection('apiUsage');
 
-      // Create indexes
+      
       await this.apiKeys.createIndex({ key: 1 }, { unique: true });
       await this.apiKeys.createIndex({ userId: 1 });
       await this.apiUsage.createIndex({ apiKeyId: 1, timestamp: 1 });
@@ -32,7 +32,7 @@ class ApiKeyService {
   async generateApiKey(userId, name, permissions = [], expiresAt = null, isAdminKey = false) {
     await this.init();
 
-    // Check if user already has an active API key
+    
     const existingKeys = await this.apiKeys.find({
       userId,
       isActive: true
@@ -42,7 +42,7 @@ class ApiKeyService {
       throw new Error('You already have an active API key. Please revoke your existing key before generating a new one.');
     }
 
-    // Generate a secure random API key
+    
     const keyLength = parseInt(process.env.API_KEY_LENGTH) || 32;
     const apiKey = crypto.randomBytes(keyLength).toString('hex');
 
@@ -55,7 +55,7 @@ class ApiKeyService {
       createdAt: new Date(),
       lastUsed: null,
       isActive: true,
-      isAdminKey // New field for unlimited access
+      isAdminKey 
     };
 
     const result = await this.apiKeys.insertOne(keyDoc);
@@ -71,12 +71,12 @@ class ApiKeyService {
       return null;
     }
 
-    // Check if key has expired
+    
     if (keyDoc.expiresAt && new Date() > new Date(keyDoc.expiresAt)) {
       return null;
     }
 
-    // Update last used timestamp
+    
     await this.apiKeys.updateOne(
       { _id: keyDoc._id },
       { $set: { lastUsed: new Date() } }
@@ -109,10 +109,10 @@ class ApiKeyService {
 
     const objectId = new ObjectId(keyId);
 
-    // Delete the API key
+    
     const result = await this.apiKeys.deleteOne({ _id: objectId });
 
-    // Also delete all associated usage data
+    
     await this.apiUsage.deleteMany({ apiKeyId: objectId });
 
     return result.deletedCount > 0;
@@ -157,7 +157,7 @@ class ApiKeyService {
   async getKeysWithUserInfo() {
     await this.init();
 
-    // Aggregate to join with user info if available
+    
     const keysWithUsers = await this.apiKeys.aggregate([
       {
         $lookup: {

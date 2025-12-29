@@ -1,7 +1,4 @@
-/**
- * API Routes
- * Handles all /api/* endpoints
- */
+
 
 const express = require('express');
 const router = express.Router();
@@ -16,37 +13,22 @@ const statsRoutes = require('./stats');
 const moderationRoutes = require('./moderation');
 const submissionsRoutes = require('./submissions');
 
-// ==================== Swagger Endpoint ====================
 
-/**
- * @swagger
- * /api/swagger.json:
- *   get:
- *     tags:
- *       - Public
- *     summary: Get OpenAPI specification
- *     description: Returns the auto-generated OpenAPI 3.0 specification
- *     responses:
- *       200:
- *         description: OpenAPI specification
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- */
+
+
 router.get('/swagger.json', (req, res) => {
     res.json(swaggerSpec);
 });
 
-// ==================== Mount Sub-Routers ====================
+
 
 router.use('/', statsRoutes);
 router.use('/', moderationRoutes);
 router.use('/', submissionsRoutes);
 
-// ==================== Remaining API Endpoints ====================
 
-// Search (Proxy to OMDB)
+
+
 router.get('/search', async (req, res) => {
     const { q } = req.query;
     const omdbKey = process.env.OMDB_API_KEY;
@@ -60,7 +42,7 @@ router.get('/search', async (req, res) => {
     }
 });
 
-// Catalog
+
 router.get('/catalog', async (req, res) => {
     try {
         log.info({ query: req.query }, "Catalog Request Query");
@@ -114,7 +96,7 @@ router.get('/catalog', async (req, res) => {
     }
 });
 
-// Get Segments
+
 router.get('/segments/:videoId', async (req, res) => {
     const list = await skipService.getSegments(req.params.videoId);
     res.json(list);

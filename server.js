@@ -1,9 +1,4 @@
-/**
- * IntroHater Server
- * 
- * This is the main entry point for the application.
- * All route handlers have been modularized into separate files.
- */
+
 
 require('dotenv').config();
 const express = require('express');
@@ -16,10 +11,10 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const log = require('./src/utils/logger').server;
 
-// Configuration
+
 const { SECURITY, SERVER, validateEnv } = require('./src/config/constants');
 
-// Configure ffmpeg/ffprobe paths
+
 const ffmpeg = require('fluent-ffmpeg');
 if (process.platform === 'win32') {
     try {
@@ -33,28 +28,28 @@ if (process.platform === 'win32') {
     ffmpeg.setFfprobePath('ffprobe');
 }
 
-// Services
+
 const indexerService = require('./src/services/indexer');
 const wsTicker = require('./src/services/ws-ticker');
 
-// Route Modules
+
 const apiRoutes = require('./src/routes/api');
 const hlsRoutes = require('./src/routes/hls');
 const addonRoutes = require('./src/routes/addon');
 
-// ==================== Express App Setup ====================
+
 
 const app = express();
 const PORT = SERVER.PORT;
 const PUBLIC_URL = SERVER.PUBLIC_URL || `http://127.0.0.1:${PORT}`;
 
-// Trust proxy for rate limiting behind reverse proxies
+
 app.set('trust proxy', 1);
 
-// Request logging (Critical Priority Rank 1)
+
 app.use(morgan(':remote-addr :method :url :status :response-time ms - :res[content-length]'));
 
-// Security middleware with CSP enabled
+
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -71,13 +66,13 @@ app.use(helmet({
             upgradeInsecureRequests: [],
         }
     },
-    crossOriginEmbedderPolicy: false, // Needed for external resources
+    crossOriginEmbedderPolicy: false, 
 }));
 app.use(hpp());
 app.use(cors());
 app.use(express.json());
 
-// Global Rate Limiter
+
 const globalLimiter = rateLimit({
     windowMs: SECURITY.RATE_LIMITS.GLOBAL.WINDOW_MS,
     max: SECURITY.RATE_LIMITS.GLOBAL.MAX_REQUESTS,
@@ -85,52 +80,52 @@ const globalLimiter = rateLimit({
 });
 app.use('/api/', globalLimiter);
 
-// ==================== Static Files ====================
 
-// Serve Website (Docs)
+
+
 app.use(express.static(path.join(__dirname, 'docs')));
 
-// ==================== Mount Route Modules ====================
 
-// API routes with versioning
-// v1 routes (preferred for new clients)
+
+
+
 app.use('/api/v1', apiRoutes);
-// Backward compatibility: keep /api working for existing clients
+
 app.use('/api', apiRoutes);
 
-// HLS routes (/hls/*, /vote/*, /sub/*)
+
 app.use('/', hlsRoutes);
 
-// Stremio Addon routes (/manifest.json, /stream/*, /configure)
+
 app.use('/', addonRoutes);
 
-// ==================== Misc Routes ====================
 
-// Auth Mock
+
+
 app.get('/me', (req, res) => res.json(null));
 
-// Health Check
+
 app.get('/ping', (req, res) => res.send('pong'));
 
-// Global Error Handler (must be after all routes)
+
 const { errorHandler, setupGlobalErrorHandlers } = require('./src/middleware/errorHandler');
 setupGlobalErrorHandlers();
 app.use(errorHandler);
 
-// 404 Handler (Last Route - after error handler)
+
 app.use((req, res) => {
     res.status(404).json({ success: false, error: "Route not found", path: req.path });
 });
 
-// ==================== Server Startup ====================
 
-// Graceful Shutdown
+
+
 const mongoService = require('./src/services/mongodb');
 
 function gracefulShutdown(signal, server) {
     log.info({ signal }, 'Received shutdown signal. Shutting down gracefully...');
 
-    // Close WebSocket connections
+    
     wsTicker.close();
 
     server.close(async () => {
@@ -147,7 +142,7 @@ function gracefulShutdown(signal, server) {
         process.exit(0);
     });
 
-    // Force exit after 10s if connections don't close
+    
     setTimeout(() => {
         log.error('Force shutdown after timeout');
         process.exit(1);
@@ -155,10 +150,10 @@ function gracefulShutdown(signal, server) {
 }
 
 if (require.main === module) {
-    // Validate environment variables on startup (Critical Priority Rank 3)
+    
     validateEnv();
 
-    // Start Indexer
+    
     try {
         indexerService.start();
     } catch (e) { log.error({ err: e }, 'Failed to start indexer'); }
@@ -167,10 +162,10 @@ if (require.main === module) {
         log.info({ port: PORT, publicUrl: PUBLIC_URL }, 'IntroHater running');
     });
 
-    // Initialize WebSocket ticker for real-time activity updates
+    
     wsTicker.init(server);
 
-    // Register Shutdown Handlers
+    
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM', server));
     process.on('SIGINT', () => gracefulShutdown('SIGINT', server));
 }

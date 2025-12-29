@@ -5,37 +5,37 @@ const SECURITY = {
     },
     RATE_LIMITS: {
         GLOBAL: {
-            WINDOW_MS: 60 * 60 * 1000, // 1 hour
+            WINDOW_MS: 60 * 60 * 1000, 
             MAX_REQUESTS: 5000
         },
         SUBMIT: {
-            WINDOW_MS: 15 * 60 * 1000, // 15 minutes
+            WINDOW_MS: 15 * 60 * 1000, 
             MAX_REQUESTS: 10
         },
         REPORT: {
-            WINDOW_MS: 15 * 60 * 1000, // 15 minutes
+            WINDOW_MS: 15 * 60 * 1000, 
             MAX_REQUESTS: 5
         },
         SUBMISSION: {
-            WINDOW_MS: 60 * 60 * 1000, // 1 hour
+            WINDOW_MS: 60 * 60 * 1000, 
             MAX_REQUESTS: 5,
-            MIN_GAP_MS: 2000 // Minimum gap between submissions
+            MIN_GAP_MS: 2000 
         },
         VOTING: {
-            WINDOW_MS: 60 * 60 * 1000, // Changed to 1 hour
+            WINDOW_MS: 60 * 60 * 1000, 
             MAX_REQUESTS: 5
         }
     },
     SHUTDOWN: {
-        FORCE_TIMEOUT_MS: 10000, // 10 seconds
-        MAINTENANCE_DELAY_MS: 60000 // 1 minute
+        FORCE_TIMEOUT_MS: 10000, 
+        MAINTENANCE_DELAY_MS: 60000 
     }
 };
 
 const SEGMENTS = {
     DURATION: {
-        MIN: 5,  // 5 seconds
-        MAX: 300 // 5 minutes
+        MIN: 5,  
+        MAX: 300 
     },
     GROUPING: {
         TIME_THRESHOLD: 10,
@@ -46,7 +46,7 @@ const SEGMENTS = {
 
 const CACHE = {
     LEADERBOARD: {
-        MAX_AGE_MS: 3600000 // 1 hour
+        MAX_AGE_MS: 3600000 
     }
 };
 
@@ -55,58 +55,55 @@ const BATCH = {
 };
 
 const SUBMISSION = {
-    CHECK_EXPIRY_MS: 24 * 60 * 60 * 1000, // 24 hours
-    UNIQUE_PER_VIDEO: true // Restrict to one submission per video per user
+    CHECK_EXPIRY_MS: 24 * 60 * 60 * 1000, 
+    UNIQUE_PER_VIDEO: true 
 };
 
 const MAINTENANCE = {
-    INTERVAL_MS: 24 * 60 * 60 * 1000, // Daily
-    STARTUP_DELAY_MS: 60 * 1000 // 1 minute after startup
+    INTERVAL_MS: 24 * 60 * 60 * 1000, 
+    STARTUP_DELAY_MS: 60 * 1000 
 };
 
-// Updated for current MongoDB deployment (Critical Priority Rank 3)
+
 const REQUIRED_ENV_VARS = [
-    'MONGODB_URI',      // MongoDB connection string
-    'TOKEN_SECRET',     // JWT Secret for user tokens
-    'ADMIN_EMAILS'      // Comma-separated admin emails
+    'MONGODB_URI',      
+    'TOKEN_SECRET',     
+    'ADMIN_EMAILS'      
 ];
 
-// Optional but recommended env vars (warnings only)
+
 const OPTIONAL_ENV_VARS = [
-    'PORT',             // Server port (default: 7005)
-    'PUBLIC_URL',       // Public URL for manifest
-    'OMDB_API_KEY',     // For movie metadata lookups
-    'ANIME_SKIP_CLIENT_ID', // For anime-skip API
+    'PORT',             
+    'PUBLIC_URL',       
+    'OMDB_API_KEY',     
+    'ANIME_SKIP_CLIENT_ID', 
 ];
 
-/**
- * Validates environment variables on startup.
- * Fails fast with clear error messages for missing required configuration.
- */
+
 function validateEnv() {
     const missing = [];
     const warnings = [];
 
-    // Check required vars
+    
     for (const varName of REQUIRED_ENV_VARS) {
         if (!process.env[varName]) {
             missing.push(varName);
         }
     }
 
-    // Check optional vars (warnings only)
+    
     for (const varName of OPTIONAL_ENV_VARS) {
         if (!process.env[varName]) {
             warnings.push(varName);
         }
     }
 
-    // Log warnings for optional vars
+    
     if (warnings.length > 0) {
         console.warn(`⚠️  Optional environment variables not set: ${warnings.join(', ')}`);
     }
 
-    // Fail fast on missing required vars
+    
     if (missing.length > 0) {
         console.error('\n❌ FATAL: Missing required environment variables:');
         missing.forEach(v => console.error(`   - ${v}`));
@@ -139,7 +136,7 @@ const SERVER = {
 
 const STATS = {
     ANISKIP_ESTIMATE: 145000,
-    REFRESH_INTERVAL_MS: 15 * 60 * 1000  // 15 minutes
+    REFRESH_INTERVAL_MS: 15 * 60 * 1000  
 };
 
 const MANIFEST = {
@@ -150,10 +147,10 @@ const MANIFEST = {
 };
 
 const PROBE = {
-    TIMEOUT_MS: 15000,           // Default ffprobe timeout
-    SPLICE_TIMEOUT_MS: 20000,    // Splice probe timeout
-    CHAPTER_TIMEOUT_MS: 10000,   // Chapter probe timeout
-    CACHE_TTL_MS: 30 * 60 * 1000 // 30 minutes cache TTL
+    TIMEOUT_MS: 15000,           
+    SPLICE_TIMEOUT_MS: 20000,    
+    CHAPTER_TIMEOUT_MS: 10000,   
+    CACHE_TTL_MS: 30 * 60 * 1000 
 };
 
 module.exports = {

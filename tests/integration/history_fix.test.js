@@ -2,8 +2,8 @@ const request = require('supertest');
 const app = require('../../server');
 const axios = require('axios');
 
-// Mocks
-// Mocks
+
+
 jest.mock('../../src/services/skip-service.js', () => ({
     getSkipSegment: jest.fn().mockResolvedValue(null),
     getAllSegments: jest.fn().mockResolvedValue({}),
@@ -28,7 +28,7 @@ jest.mock('axios');
 
 describe('Watch History Fix Integration', () => {
     it('should include rdKey in the generated proxy URL', async () => {
-        // Mock Upstream Torrentio Response
+        
         axios.get.mockResolvedValue({
             status: 200,
             data: {
@@ -54,7 +54,7 @@ describe('Watch History Fix Integration', () => {
         const proxyUrl = res.body.streams[0].url;
         console.log('Generated Proxy URL:', proxyUrl);
 
-        // Verification: The URL MUST contain the rdKey for the history logging to work
+        
         expect(proxyUrl).toContain(`rdKey=${RD_KEY}`);
     });
 });

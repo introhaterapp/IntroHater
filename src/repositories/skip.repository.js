@@ -3,7 +3,7 @@ const { BaseRepository, LRUCache } = require('./base.repository');
 class SkipRepository extends BaseRepository {
     constructor() {
         super('skips');
-        this.cache = new LRUCache({ max: 500, ttl: 1000 * 60 * 5 }); // 5 min TTL
+        this.cache = new LRUCache({ max: 500, ttl: 1000 * 60 * 5 }); 
         this.indicesCreated = false;
     }
 
@@ -29,7 +29,7 @@ class SkipRepository extends BaseRepository {
     }
 
     async findByFullIdRegex(pattern, options = 'i') {
-        // High performance regex search
+        
         return await this.find({ fullId: { $regex: pattern, $options: options } });
     }
 
@@ -51,7 +51,7 @@ class SkipRepository extends BaseRepository {
     async addSegment(fullId, segment, seriesId = null) {
         await this.ensureInit();
 
-        // Atomic update and granular invalidation
+        
         this.cache.delete(`full:${fullId}`);
         const actualSeriesId = seriesId || (fullId.includes(':') ? fullId.split(':')[0] : null);
         if (actualSeriesId) {
@@ -98,12 +98,7 @@ class SkipRepository extends BaseRepository {
         return await this.updateOne({ fullId }, { $set: { segments } });
     }
 
-    /**
-     * Get recent segments using MongoDB aggregation for efficiency.
-     * Uses $unwind + $sort to avoid loading all docs into memory.
-     * @param {number} limit - Number of recent segments to return
-     * @returns {Promise<Array>} Array of recent segment objects
-     */
+    
     async getRecentSegments(limit = 20) {
         return await this.aggregate([
             { $unwind: "$segments" },

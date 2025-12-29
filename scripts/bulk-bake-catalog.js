@@ -19,10 +19,10 @@ async function bulkBake() {
 
         let count = 0;
         for (const imdbId of imdbIds) {
-            // getSegments handles the merging and series-level logic
+            
             const segments = await skipService.getSegments(imdbId);
 
-            // To bake, we need it grouped by episode
+            
             const segmentsByEp = {};
             segments.forEach(seg => {
                 const parts = seg.videoId.split(':');

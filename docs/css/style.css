@@ -1,6 +1,6 @@
-/* Global Variables & Theme */
+
 :root {
-    /* Colors - Modern Dark Professional (Zinc & Slate) */
+    
     --bg-dark: #09090b;
     --bg-card: #18181b;
     --bg-elevated: #27272a;
@@ -17,12 +17,12 @@
     --border: rgba(255, 255, 255, 0.08);
     --border-bright: rgba(255, 255, 255, 0.15);
 
-    /* Layout */
+    
     --container-width: 1200px;
     --header-height: 72px;
     --header-height-mobile: 64px;
 
-    /* Effects */
+    
     --radius: 12px;
     --radius-sm: 6px;
     --radius-lg: 16px;
@@ -32,13 +32,13 @@
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-premium: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
-    /* Transitions */
+    
     --transition-fast: 0.15s ease;
     --transition-normal: 0.25s ease;
     --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Reset & Base Styles */
+
 * {
     margin: 0;
     padding: 0;
@@ -62,10 +62,10 @@ h4,
 h5,
 h6 {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    /* Clean headings */
+    
     font-weight: 700;
     letter-spacing: -0.025em;
-    /* Tight tracking for headings */
+    
     color: var(--text-main);
 }
 
@@ -79,7 +79,7 @@ ul {
     list-style: none;
 }
 
-/* Utility Classes */
+
 .container {
     max-width: var(--container-width);
     margin: 0 auto;
@@ -103,7 +103,7 @@ ul {
 }
 
 
-/* ==================== Utility Classes ==================== */
+
 .flex {
     display: flex;
 }
@@ -244,7 +244,7 @@ ul {
     border-top: 1px solid var(--border);
 }
 
-/* Feature Box */
+
 .feature-box {
     margin-top: 20px;
     padding: 16px;
@@ -274,7 +274,7 @@ ul {
     border-radius: 6px;
 }
 
-/* Standard Grid System */
+
 .grid-3 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -308,7 +308,7 @@ ul {
         text-align: center;
     }
 
-    /* Grid Stacking */
+    
     div[style*="grid-template-columns"] {
         grid-template-columns: 1fr !important;
         gap: 20px !important;
@@ -320,7 +320,7 @@ ul {
     }
 }
 
-/* Professional Card & Glass */
+
 .card,
 .glass-panel {
     background: rgba(24, 24, 27, 0.7);
@@ -340,7 +340,7 @@ ul {
     background: rgba(24, 24, 27, 0.85);
 }
 
-/* Buttons */
+
 .btn {
     display: inline-flex;
     align-items: center;
@@ -348,7 +348,7 @@ ul {
     gap: 8px;
     padding: 10px 20px;
     border-radius: 6px;
-    /* Standard rounded */
+    
     font-weight: 600;
     font-size: 0.95rem;
     cursor: pointer;
@@ -393,7 +393,7 @@ ul {
     color: #ef4444;
 }
 
-/* Focus States for Accessibility */
+
 .btn:focus-visible,
 .form-input:focus-visible,
 .search-input:focus-visible {
@@ -411,7 +411,7 @@ a:focus-visible {
 
 
 
-/* Hero Section */
+
 .hero-container {
     padding-top: 60px;
     padding-bottom: 40px;
@@ -425,14 +425,14 @@ a:focus-visible {
     line-height: 1.1;
 }
 
-/* Tablet Breakpoint for Hero */
+
 @media (max-width: 1024px) {
     .hero-title {
         font-size: 3rem;
     }
 }
 
-/* Utility Classes for Layout */
+
 .card-section {
     background: var(--bg-card);
     border-top: 1px solid var(--border);
@@ -508,7 +508,7 @@ a:focus-visible {
     opacity: 0.8;
 }
 
-/* Stats Bar */
+
 .stats-bar {
     margin-top: 80px;
     padding-top: 48px;
@@ -539,7 +539,7 @@ a:focus-visible {
     font-weight: 600;
 }
 
-/* Feature Grid Extras */
+
 .feature-icon {
     width: 48px;
     height: 48px;
@@ -563,9 +563,9 @@ a:focus-visible {
     color: var(--text-muted);
 }
 
-/* Hero visual elements removed - not used in current HTML */
 
-/* Sections General */
+
+
 .section {
     padding: 40px 0;
 }
@@ -576,7 +576,7 @@ a:focus-visible {
     text-align: center;
 }
 
-/* Stats */
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -612,7 +612,7 @@ header {
     width: 100%;
     height: var(--header-height);
     background: rgba(9, 9, 11, 0.8);
-    /* Dark Zinc transparent */
+    
     backdrop-filter: blur(12px);
     z-index: 1000;
     border-bottom: 1px solid var(--border);
@@ -651,7 +651,7 @@ header .container .header-actions {
 .logo img {
     width: 32px;
     height: 32px;
-    /* Removed spin animation - doesn't work well with text-based logos */
+    
 }
 
 .nav-links {
@@ -670,9 +670,9 @@ header .container .header-actions {
     color: var(--primary);
 }
 
-/* Mobile Menu Toggle - see responsive section below */
 
-/* Header Install Button */
+
+
 .btn-header-install {
     padding: 8px 16px;
     font-size: 0.85rem;
@@ -714,7 +714,7 @@ header .container .header-actions {
     }
 }
 
-/* Footer */
+
 footer {
     background: rgba(0, 0, 0, 0.3);
     padding: 40px 20px;
@@ -747,7 +747,7 @@ footer {
     color: var(--primary);
 }
 
-/* Standard Table Styles */
+
 .table-container {
     margin-top: 32px;
     border-radius: var(--radius);
@@ -801,7 +801,7 @@ tr:hover td {
     background-color: rgba(99, 102, 241, 0.04) !important;
 }
 
-/* Search & Filters */
+
 .filters-bar {
     display: flex;
     gap: 16px;
@@ -840,7 +840,7 @@ tr:hover td {
     font-weight: 500;
 }
 
-/* Animations */
+
 @keyframes spin-slow {
     from {
         transform: rotate(0deg);
@@ -908,7 +908,7 @@ tr:hover td {
     }
 }
 
-/* DataTables Customization */
+
 .dataTables_wrapper {
     margin-top: 24px;
     width: 100%;
@@ -938,7 +938,7 @@ tr:hover td {
     box-shadow: 0 0 0 2px var(--primary-dim);
 }
 
-/* Align controls */
+
 .dataTables_wrapper .dataTables_filter {
     float: right;
 }
@@ -947,14 +947,14 @@ tr:hover td {
     float: left;
 }
 
-/* Clearfix for floats */
+
 .dataTables_wrapper::after {
     content: "";
     display: table;
     clear: both;
 }
 
-/* DataTables Mobile Responsiveness */
+
 @media (max-width: 768px) {
 
     .dataTables_wrapper .dataTables_length,
@@ -993,7 +993,7 @@ tr:hover td {
     }
 }
 
-/* Ensure table container matches leaderboard */
+
 .table-container {
     background: transparent;
     border: none;
@@ -1004,9 +1004,9 @@ table.dataTable {
     width: 100% !important;
     border-collapse: collapse !important;
     white-space: normal !important;
-    /* Force text wrapping */
+    
     table-layout: auto;
-    /* Allow column sizing based on content, but constrained by wrapping */
+    
 }
 
 table.dataTable.no-footer {
@@ -1052,16 +1052,16 @@ table.dataTable tbody tr:hover>.sorting_1 {
     background-color: transparent !important;
 }
 
-/* Ensure cell content wraps but respects width */
+
 table.dataTable tbody td {
     white-space: normal !important;
     max-width: 300px;
     word-wrap: break-word;
 }
 
-/* ... */
 
-/* Catalog Specifics */
+
+
 .episode-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
@@ -1094,27 +1094,27 @@ table.dataTable tbody td {
     border-radius: 6px;
 }
 
-/* Leaderboard Specifics */
+
 .rank-1 {
     color: #f59e0b;
     text-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
 }
 
 
-/* Rank 2 (Silver) */
+
 .rank-2 {
 
     color: #94a3b8;
     text-shadow: 0 0 10px rgba(148, 163, 184, 0.3);
 }
 
-/* Slate 400 */
+
 .rank-3 {
     color: #b45309;
     text-shadow: 0 0 10px rgba(180, 83, 9, 0.3);
 }
 
-/* Amber 700 */
+
 
 .tab-container {
     display: flex;
@@ -1152,7 +1152,7 @@ table.dataTable tbody td {
     opacity: 0.9;
 }
 
-/* Badges & Alerts */
+
 .badge {
     padding: 4px 8px;
     border-radius: 6px;
@@ -1193,10 +1193,10 @@ table.dataTable tbody td {
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-/* Forms Extra */
-/* Skeleton styles are defined in the responsive section below */
 
-/* Premium Tabs */
+
+
+
 .tabs-premium {
     position: relative;
     display: flex;
@@ -1261,7 +1261,7 @@ table.dataTable tbody td {
     height: 16px;
 }
 
-/* Modals */
+
 .modal {
     display: none;
     position: fixed;
@@ -1304,7 +1304,7 @@ table.dataTable tbody td {
 
 .modal-header h3 {
     word-break: break-word;
-    /* Prevent long titles from clipping */
+    
     max-width: 90%;
     line-height: 1.3;
 }
@@ -1320,9 +1320,9 @@ table.dataTable tbody td {
     color: var(--primary);
 }
 
-/* --- Mobile Responsiveness --- */
 
-/* Mobile Menu Toggle Button */
+
+
 .menu-toggle {
     display: none;
     flex-direction: column;
@@ -1368,7 +1368,7 @@ table.dataTable tbody td {
         display: flex;
     }
 
-    /* Mobile Menu Open State - using .open class on #mainNav */
+    
     #mainNav.open {
         display: block;
         position: fixed;
@@ -1396,7 +1396,7 @@ table.dataTable tbody td {
         display: block;
     }
 
-    /* Hamburger X animation when active */
+    
     .menu-toggle.active span:nth-child(1) {
         transform: translateY(9.5px) rotate(45deg);
     }
@@ -1410,7 +1410,7 @@ table.dataTable tbody td {
     }
 }
 
-/* Hero Section Mobile */
+
 .hero {
     padding: 40px 0 40px;
     text-align: center;
@@ -1433,10 +1433,10 @@ table.dataTable tbody td {
     display: none;
 }
 
-/* Mobile Ticker Adjustments */
+
 @media (max-width: 768px) {
 
-    /* Stats bar should stack vertically on mobile */
+    
     .stats-bar {
         gap: 20px !important;
         flex-direction: column;
@@ -1456,7 +1456,7 @@ table.dataTable tbody td {
     }
 }
 
-/* Leaderboard Tabs Mobile */
+
 @media (max-width: 600px) {
     .tabs-premium {
         width: 100%;
@@ -1476,14 +1476,14 @@ table.dataTable tbody td {
         white-space: nowrap;
     }
 
-    /* Leaderboard Table Mobile */
+    
     .leaderboard-table th,
     .leaderboard-table td {
         padding: 10px 8px !important;
         font-size: 0.8rem !important;
     }
 
-    /* Hide less important columns on mobile */
+    
     .leaderboard-table th:nth-child(4),
     .leaderboard-table td:nth-child(4),
     .leaderboard-table th:nth-child(5),
@@ -1501,7 +1501,7 @@ table.dataTable tbody td {
     }
 }
 
-/* Section Mobile */
+
 .section-header h2 {
     font-size: 1.75rem !important;
 }
@@ -1514,18 +1514,18 @@ table.dataTable tbody td {
     grid-template-columns: 1fr;
 }
 
-/* Forms */
+
 .filters-bar {
     flex-direction: column;
 }
 
-/* Modal Mobile */
+
 .modal-content {
     padding: 20px;
     width: 90%;
 }
 
-/* Table Adjustments */
+
 .table-container {
     overflow-x: auto;
 }
@@ -1536,7 +1536,7 @@ table.dataTable tbody td {
     font-size: 0.85rem;
 }
 
-/* Skeleton Loading Effect */
+
 .skeleton {
     background: linear-gradient(90deg,
             rgba(255, 255, 255, 0.03) 25%,
@@ -1576,7 +1576,7 @@ table.dataTable tbody td {
     }
 }
 
-/* Live Activity Ticker (Static Bar Below Navbar) */
+
 #activity-ticker {
     margin-top: var(--header-height);
     padding: 10px 0;
@@ -1613,7 +1613,7 @@ table.dataTable tbody td {
     font-size: 0.85rem;
 }
 
-/* Submit Modal Specifics */
+
 .submit-meta-card {
     display: flex;
     gap: 20px;
@@ -1667,7 +1667,7 @@ table.dataTable tbody td {
     display: none !important;
 }
 
-/* Modal Responsiveness */
+
 @media (max-width: 600px) {
     .submit-meta-card {
         flex-direction: column;
@@ -1705,7 +1705,7 @@ table.dataTable tbody td {
     }
 }
 
-/* ==================== Toast Notifications ==================== */
+
 #toast-container {
     position: fixed;
     top: 24px;
@@ -1798,7 +1798,7 @@ table.dataTable tbody td {
     color: var(--text-main);
 }
 
-/* ==================== Button Enhancements ==================== */
+
 .btn {
     position: relative;
     overflow: hidden;
@@ -1830,7 +1830,7 @@ table.dataTable tbody td {
     }
 }
 
-/* ==================== Enhanced Card Hover ==================== */
+
 .card:hover,
 .glass-panel:hover {
     box-shadow:
@@ -1838,7 +1838,7 @@ table.dataTable tbody td {
         0 0 30px rgba(99, 102, 241, 0.08);
 }
 
-/* ==================== Leaderboard Rank Badges ==================== */
+
 .rank-badge {
     display: inline-flex;
     align-items: center;
@@ -1868,7 +1868,7 @@ table.dataTable tbody td {
     box-shadow: 0 0 12px rgba(180, 83, 9, 0.4);
 }
 
-/* ==================== Empty States ==================== */
+
 .empty-state {
     text-align: center;
     padding: 60px 20px;
@@ -1892,7 +1892,7 @@ table.dataTable tbody td {
     font-size: 0.9rem;
 }
 
-/* ==================== Modal Active State ==================== */
+
 .modal.active {
     display: flex;
 }
@@ -1901,7 +1901,7 @@ body.modal-open {
     overflow: hidden;
 }
 
-/* ==================== Legal Pages ==================== */
+
 .legal-content {
     max-width: 800px;
     margin: 0 auto;
@@ -1960,7 +1960,7 @@ body.modal-open {
     text-decoration: underline;
 }
 
-/* ==================== Profile Page ==================== */
+
 .profile-header {
     display: flex;
     align-items: center;

@@ -1,10 +1,10 @@
 const { createHash, randomBytes } = require('crypto');
 const { SECURITY } = require('../config/constants');
 
-// Cache to track used nonces with expiration
+
 const usedNonces = new Map();
 
-// Clean up expired nonces periodically (every hour)
+
 setInterval(() => {
   const now = Date.now();
   for (const [nonce, timestamp] of usedNonces.entries()) {
@@ -31,7 +31,7 @@ function generateUserToken(userId) {
 function verifyUserToken(userId, token, timestamp, nonce) {
   if (!userId || !token || !timestamp || !nonce) return false;
 
-  // Check if nonce has been used
+  
   if (usedNonces.has(nonce)) {
     return false;
   }
@@ -47,7 +47,7 @@ function verifyUserToken(userId, token, timestamp, nonce) {
 
   const isValid = token === expectedToken && tokenAge <= maxAge;
 
-  // If valid, store the nonce to prevent reuse
+  
   if (isValid) {
     usedNonces.set(nonce, Date.now());
   }

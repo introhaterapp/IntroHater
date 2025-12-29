@@ -1,7 +1,7 @@
-// Use current origin if served via http/s, fallback to production only if opening as a local file
-// API_BASE_URL is defined in main.js
 
-// async function fetchCatalog() { ... } (Removed as unused)
+
+
+
 
 async function fetchSegments(videoId) {
     try {
@@ -18,7 +18,7 @@ async function initializeCatalog() {
     const table = document.getElementById('catalogTable');
     if (!table) return;
 
-    // Initialize DataTable with server-side processing
+    
     window.jQuery('#catalogTable').DataTable({
         serverSide: true,
         ajax: {
@@ -44,7 +44,7 @@ async function initializeCatalog() {
                 }
             }
         },
-        order: [[0, 'asc']], // Sort by Title by default
+        order: [[0, 'asc']], 
         pageLength: 25,
         language: {
             emptyTable: "No entries found in the catalog.",
@@ -69,7 +69,7 @@ async function initializeCatalog() {
             },
             {
                 title: 'Segments',
-                data: 3, // Use the totalSegments count for sorting/filtering
+                data: 3, 
                 className: 'all text-right',
                 width: '140px',
                 render: function (data, type, row) {
@@ -92,15 +92,15 @@ async function initializeCatalog() {
             }
         ],
         drawCallback: function () {
-            // No longer attaching individual listeners here due to responsive rows re-rendering
+            
         }
     });
 
-    // Event Delegation for Button Clicks (Handles Buttons in Child Rows / Pagination)
+    
     window.jQuery('#catalogTable').on('click', '.episode-btn', openSegmentModal);
 }
 
-// Modal Logic
+
 const modal = document.getElementById('episodeModal');
 const closeBtn = document.getElementById('closeEpisodeModal');
 const closeBtn2 = document.getElementById('closeModalBtn');
@@ -128,18 +128,18 @@ async function openSegmentModal(event) {
     modalTitle.textContent = `Segments: ${title}`;
     grid.innerHTML = `<div style="padding: 20px;">${window.createSkeleton('text', 5)}</div>`;
 
-    // Ensure modal is visible and responsive
+    
     const modal = document.getElementById('episodeModal');
     modal.style.display = 'flex';
 
-    // Fix Layout: Override grid display so table takes full width
+    
     grid.style.display = 'block';
 
-    // Fetch details
+    
     const rawSegments = await fetchSegments(videoId);
 
-    // Display details
-    const uniqueSegments = rawSegments; // Already deduplicated and rounded on server
+    
+    const uniqueSegments = rawSegments; 
 
     modalTitle.textContent = `Segments: ${title}`;
     grid.innerHTML = '';
@@ -150,7 +150,7 @@ async function openSegmentModal(event) {
         return;
     }
 
-    // Sort: Season -> Episode -> StartTime
+    
     uniqueSegments.sort((a, b) => {
         const getSE = (vid) => {
             const parts = vid.split(':');
@@ -168,7 +168,7 @@ async function openSegmentModal(event) {
 
     const displaySegments = uniqueSegments.slice(0, 500);
 
-    // Wrapper for mobile horizontal scrolling
+    
     const tableWrapper = document.createElement('div');
     tableWrapper.style.overflowX = 'auto';
     tableWrapper.style.width = '100%';

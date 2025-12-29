@@ -4,7 +4,7 @@ const xss = require('xss');
 const { SECURITY } = require('../config/constants');
 const { verifyUserToken } = require('../utils/auth');
 
-// XSS clean function
+
 function cleanInput(input) {
     if (typeof input === 'string') {
         return xss(input);
@@ -20,7 +20,7 @@ function cleanInput(input) {
     return input;
 }
 
-// Input validation middleware
+
 const validateSegmentInput = [
     body('videoId').matches(/^tt\d+(?::\d+:\d+)?$/).withMessage('Invalid video ID format'),
     body('start').isFloat({ min: 0 }).withMessage('Invalid start time'),
@@ -34,7 +34,7 @@ const validateSegmentInput = [
 
 const validateGetSegments = [
     param('videoId').matches(/^tt\d+(?::\d+:\d+)?$/).withMessage('Invalid video ID format')
-        .customSanitizer(value => decodeURIComponent(value)) // Add URL decoding
+        .customSanitizer(value => decodeURIComponent(value)) 
 ];
 
 const validateVoteInput = [
@@ -57,7 +57,7 @@ const handleValidationErrors = (req, res, next) => {
     next();
 };
 
-// Rate limiters
+
 const limiterOptions = {
     standardHeaders: true,
     legacyHeaders: false,
@@ -89,7 +89,7 @@ const voteLimiter = rateLimit({
     message: { error: 'Too many votes. Please wait before voting again.' }
 });
 
-// Authentication middleware
+
 const authenticate = (req, res, next) => {
     const userId = req.headers['x-user-id'];
     const token = req.headers['x-user-token'];

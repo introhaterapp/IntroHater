@@ -30,8 +30,8 @@ class CatalogRepository extends BaseRepository {
         const total = await this.collection.countDocuments(query);
         const filteredTotal = search ? await this.collection.countDocuments(finalQuery) : total;
 
-        // Exclude the heavy episodes map entirely for the catalog table view
-        // This makes the list view extremely fast even with thousands of shows
+        
+        
         const items = await this.collection.find(finalQuery, {
             projection: { episodes: 0 }
         })
@@ -77,7 +77,7 @@ class CatalogRepository extends BaseRepository {
     }
 
     async upsertCatalogEntry(imdbId, entry) {
-        this.cache.delete(imdbId); // Invalidate cache
+        this.cache.delete(imdbId); 
         return await this.replaceOne({ imdbId }, { imdbId, ...entry }, { upsert: true });
     }
 }

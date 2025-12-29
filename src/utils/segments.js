@@ -45,7 +45,7 @@ function groupSimilarSegments(segments) {
 function processSegmentGroup(segments, timeThreshold) {
   if (segments.length === 0) return [];
   
-  // Handle single segment case
+  
   if (segments.length === 1) {
     const segment = segments[0];
     return [{
@@ -60,7 +60,7 @@ function processSegmentGroup(segments, timeThreshold) {
     }];
   }
   
-  // Filter segments by minimum vote threshold
+  
   segments = segments.filter(segment => (segment.votes || 0) >= SEGMENTS.GROUPING.MIN_VOTES);
   if (segments.length === 0) return [];
   
@@ -94,12 +94,12 @@ function processSegmentGroup(segments, timeThreshold) {
     const starts = group.map(s => Number(s.startTime)).sort((a, b) => a - b);
     const ends = group.map(s => Number(s.endTime)).sort((a, b) => a - b);
     
-    // Merge userVotes from all segments in the group
+    
     const mergedUserVotes = {};
     group.forEach(segment => {
       if (segment.userVotes) {
         Object.entries(segment.userVotes).forEach(([userId, vote]) => {
-          // If a user voted on multiple segments in the group, take their most recent vote
+          
           mergedUserVotes[userId] = vote;
         });
       }

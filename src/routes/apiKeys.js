@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const apiKeyService = require('../services/apiKey');
 
-// Middleware to ensure user is authenticated
+
 const requireAuth = (req, res, next) => {
     if (!req.oidc || !req.oidc.isAuthenticated()) {
         return res.status(401).json({ error: 'Authentication required' });
@@ -10,16 +10,16 @@ const requireAuth = (req, res, next) => {
     next();
 };
 
-// Middleware to check if user is an admin
+
 const requireAdmin = (req, res, next) => {
-    // Check admin emails
+    
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(email => email.trim());
     
-    // Check admin GitHub IDs
+    
     const adminGithubIds = (process.env.ADMIN_GITHUB_IDS || '').split(',').map(id => id.trim());
     const githubId = req.oidc?.user?.sub?.split('|')[1];
     
-    // User must be authenticated and either have an admin email or GitHub ID
+    
     if (!req.oidc || !req.oidc.isAuthenticated() || 
         !req.oidc.user || 
         !(adminEmails.includes(req.oidc.user.email) || adminGithubIds.includes(githubId))) {
@@ -28,10 +28,10 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
-// Apply auth check to all routes in this router
+
 router.use(requireAuth);
 
-// Get all API keys for the authenticated user
+
 router.get('/', async (req, res) => {
     try {
         const userId = req.oidc.user.sub;
@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Generate a new API key
+
 router.post('/', async (req, res) => {
     try {
         const { name, permissions } = req.body;
@@ -85,13 +85,13 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Revoke an API key
+
 router.delete('/:id', async (req, res) => {
     try {
         const userId = req.oidc.user.sub;
         const keyId = req.params.id;
         
-        // First get the key to verify ownership
+        
         const keys = await apiKeyService.getKeysByUser(userId);
         const keyBelongsToUser = keys.some(key => key._id.toString() === keyId);
         
@@ -111,17 +111,17 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-// ADMIN ENDPOINTS
 
-// Get all API keys (admin only)
+
+
 router.get('/admin/all', requireAdmin, async (req, res) => {
     try {
         const keys = await apiKeyService.getKeysWithUserInfo();
-        // Return in the format expected by admin-keys.html
+        
         res.json({ 
             keys: keys.map(key => ({
                 ...key,
-                _id: key._id, // Ensure _id is included for revoke functionality
+                _id: key._id, 
                 userName: key.userName || key.userEmail || key.userId,
                 lastUsed: key.lastUsed || null
             }))
@@ -132,7 +132,7 @@ router.get('/admin/all', requireAdmin, async (req, res) => {
     }
 });
 
-// Get usage stats for all keys (admin only)
+
 router.get('/admin/usage', requireAdmin, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
@@ -144,7 +144,7 @@ router.get('/admin/usage', requireAdmin, async (req, res) => {
     }
 });
 
-// Admin revoke any key
+
 router.delete('/admin/:id', requireAdmin, async (req, res) => {
     try {
         const keyId = req.params.id;

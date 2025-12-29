@@ -21,16 +21,16 @@ const config = {
     },
     session: {
         rolling: true,
-        rollingDuration: 24 * 60 * 60, // 24 hours in seconds
-        absoluteDuration: 7 * 24 * 60 * 60, // 7 days in seconds
+        rollingDuration: 24 * 60 * 60, 
+        absoluteDuration: 7 * 24 * 60 * 60, 
         cookie: {
             domain: process.env.COOKIE_DOMAIN || 'introhater.com',
             secure: true,
             sameSite: 'Lax',
-            transient: false // Allow the cookie to persist between browser sessions
+            transient: false 
         }
     },
-    // Enable federated logout but don't duplicate auth0Logout
+    
     idpLogout: true
 };
 

@@ -1,7 +1,4 @@
-/**
- * WebSocket Activity Ticker Service
- * Real-time broadcasting of new skip segment additions
- */
+
 
 const WebSocket = require('ws');
 const metrics = require('./metrics');
@@ -10,10 +7,7 @@ const log = require('../utils/logger').ws;
 let wss = null;
 let clients = new Set();
 
-/**
- * Initialize WebSocket server attached to HTTP server
- * @param {http.Server} server - The HTTP server instance
- */
+
 function init(server) {
     wss = new WebSocket.Server({ server, path: '/ws/ticker' });
 
@@ -22,14 +16,14 @@ function init(server) {
         metrics.incActiveConnections();
         log.info({ total: clients.size }, 'Client connected');
 
-        // Send welcome message with current connection count
+        
         ws.send(JSON.stringify({
             type: 'connected',
             message: 'Connected to IntroHater Live Ticker',
             clients: clients.size
         }));
 
-        // Heartbeat to keep connection alive
+        
         ws.isAlive = true;
         ws.on('pong', () => { ws.isAlive = true; });
 
@@ -46,7 +40,7 @@ function init(server) {
         });
     });
 
-    // Heartbeat interval to detect dead connections
+    
     const heartbeatInterval = setInterval(() => {
         wss.clients.forEach((ws) => {
             if (ws.isAlive === false) {
@@ -56,7 +50,7 @@ function init(server) {
             ws.isAlive = false;
             ws.ping();
         });
-    }, 30000); // 30 second heartbeat
+    }, 30000); 
 
     wss.on('close', () => {
         clearInterval(heartbeatInterval);
@@ -66,14 +60,7 @@ function init(server) {
     return wss;
 }
 
-/**
- * Broadcast a new segment addition to all connected clients
- * @param {Object} segment - The segment data to broadcast
- * @param {string} segment.videoId - e.g., "tt1234567:1:3"
- * @param {string} segment.title - Show title
- * @param {string} segment.episode - e.g., "S1E3"
- * @param {string} segment.label - e.g., "Intro", "Outro"
- */
+
 function broadcast(segment) {
     if (!wss) return;
 
@@ -105,16 +92,12 @@ function broadcast(segment) {
     }
 }
 
-/**
- * Get current connection count
- */
+
 function getConnectionCount() {
     return clients.size;
 }
 
-/**
- * Gracefully close all connections
- */
+
 function close() {
     if (wss) {
         wss.clients.forEach((client) => {

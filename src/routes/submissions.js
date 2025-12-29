@@ -1,7 +1,4 @@
-/**
- * Submissions Routes
- * Handles /api/submit, /api/report, /api/track endpoints
- */
+
 
 const express = require('express');
 const router = express.Router();
@@ -12,7 +9,7 @@ const userService = require('../services/user-service');
 const { requireRdAuth } = require('../middleware/rdAuth');
 const { generateUserToken, verifyUserToken } = require('../utils/auth');
 
-// Report Issue
+
 router.post('/report', requireRdAuth, async (req, res) => {
     const { videoId, reason, segmentIndex } = req.body;
     if (!videoId) return res.status(400).json({ success: false, error: "Video ID required" });
@@ -26,7 +23,7 @@ router.post('/report', requireRdAuth, async (req, res) => {
     res.json({ success: true, message: "Issue reported. Thank you!" });
 });
 
-// Submit Segment
+
 router.post('/submit', requireRdAuth, async (req, res) => {
     const { imdbID, season, episode, start, end, label, applyToSeries } = req.body;
     if (!imdbID || start === undefined || end === undefined) {
@@ -52,7 +49,7 @@ router.post('/submit', requireRdAuth, async (req, res) => {
     res.json({ success: true, segment: newSeg });
 });
 
-// Generate Extension Token
+
 router.post('/generate-token', async (req, res) => {
     const { userId, rdKey } = req.body;
     const apiKey = req.headers['x-api-key'];
@@ -77,7 +74,7 @@ router.post('/generate-token', async (req, res) => {
     res.json(tokenData);
 });
 
-// Track Skip (From Extension)
+
 router.post('/track/skip', async (req, res) => {
     const { userId, token, duration } = req.body;
 

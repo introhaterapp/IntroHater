@@ -1,12 +1,9 @@
-/**
- * Toast Notification System
- * A sleek, professional toast notification system to replace alert() calls
- */
+
 
 (function () {
     'use strict';
 
-    // Create toast container if it doesn't exist
+    
     function getContainer() {
         let container = document.getElementById('toast-container');
         if (!container) {
@@ -17,7 +14,7 @@
         return container;
     }
 
-    // Toast types with icons
+    
     const ICONS = {
         success: '✓',
         error: '✕',
@@ -25,12 +22,7 @@
         info: 'ℹ'
     };
 
-    /**
-     * Show a toast notification
-     * @param {string} message - The message to display
-     * @param {string} type - 'success' | 'error' | 'warning' | 'info'
-     * @param {number} duration - Duration in ms (default 3000)
-     */
+    
     function showToast(message, type = 'info', duration = 3000) {
         const container = getContainer();
 
@@ -55,12 +47,12 @@
         toast.appendChild(closeBtn);
         container.appendChild(toast);
 
-        // Trigger animation
+        
         requestAnimationFrame(() => {
             toast.classList.add('toast-visible');
         });
 
-        // Auto remove
+        
         if (duration > 0) {
             setTimeout(() => removeToast(toast), duration);
         }
@@ -78,7 +70,7 @@
         }, 300);
     }
 
-    // Expose globally
+    
     window.Toast = {
         success: (msg, dur) => showToast(msg, 'success', dur),
         error: (msg, dur) => showToast(msg, 'error', dur),

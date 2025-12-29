@@ -1,7 +1,4 @@
-/**
- * Stremio Addon Routes
- * Handles manifest and stream handler endpoints
- */
+
 
 const express = require('express');
 const router = express.Router();
@@ -12,7 +9,7 @@ const skipService = require('../services/skip-service');
 const { generateUserId } = require('../middleware/rdAuth');
 const { MANIFEST } = require('../config/constants');
 
-// ==================== Manifest ====================
+
 
 const manifest = {
     id: MANIFEST.ID,
@@ -28,10 +25,10 @@ const manifest = {
     }
 };
 
-// ==================== Stream Handler ====================
+
 
 async function handleStreamRequest(type, id, rdKey, baseUrl) {
-    const requestId = Date.now().toString(36); // Unique request ID for log correlation
+    const requestId = Date.now().toString(36); 
 
     if (!rdKey) {
         console.error(`[Stream ${requestId}] ❌ No RD Key provided`);
@@ -44,11 +41,11 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
     let originalStreams = [];
     let skipSeg = null;
 
-    // Build Torrentio URL (this is the upstream provider that uses Real-Debrid)
-    // Flow: IntroHater → Torrentio → Real-Debrid cached streams
+    
+    
     const torrentioUrl = `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex,rutor,rutracker,torrent9,mejortorrent,wolfmax4k%7Csort=qualitysize%7Clanguage=korean%7Cqualityfilter=scr,cam%7Cdebridoptions=nodownloadlinks,nocatalog%7Crealdebrid=${rdKey}/stream/${type}/${id}.json`;
 
-    // Fetch upstream with retry logic
+    
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 1000;
     let torrentioResponse = null;
@@ -67,7 +64,7 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
             if (torrentioResponse.status === 200 && torrentioResponse.data.streams) {
                 originalStreams = torrentioResponse.data.streams;
                 console.log(`[Stream ${requestId}] 📦 Fetched ${originalStreams.length} streams from Torrentio+RD`);
-                break; // Success, exit retry loop
+                break; 
             }
         } catch (e) {
             lastError = e;
@@ -87,7 +84,7 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
         console.error(`[Stream ${requestId}] 💡 This is an upstream issue with Torrentio/Real-Debrid, not IntroHater`);
     }
 
-    // Fetch skip segment (this is our local data)
+    
     try {
         skipSeg = await skipService.getSkipSegment(id);
         if (skipSeg) {
@@ -124,20 +121,20 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
         });
     });
 
-    // Summary log
+    
     console.log(`[Stream ${requestId}] 📊 Result: ${modifiedStreams.length} streams, skip: ${skipSeg ? 'yes' : 'no'}`);
 
     return { streams: modifiedStreams };
 }
 
-// ==================== Routes ====================
 
-// Configure page
+
+
 router.get(['/configure', '/:config/configure'], (req, res) => {
     res.sendFile(path.join(__dirname, '../../docs', 'configure.html'));
 });
 
-// Manifest
+
 router.get(['/:config/manifest.json', '/manifest.json'], (req, res) => {
     const config = req.params.config;
     const manifestClone = { ...manifest };
@@ -149,7 +146,7 @@ router.get(['/:config/manifest.json', '/manifest.json'], (req, res) => {
     res.json(manifestClone);
 });
 
-// Stream Handler
+
 router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (req, res) => {
     const { config, type, id } = req.params;
 

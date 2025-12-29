@@ -5,8 +5,8 @@ class BaseRepository {
     constructor(collectionName) {
         this.collectionName = collectionName;
         this.collection = null;
-        // Repository-level cache with TTL using lru-cache npm package
-        this.cache = new LRUCache({ max: 500, ttl: 1000 * 60 * 5 }); // 5 min TTL
+        
+        this.cache = new LRUCache({ max: 500, ttl: 1000 * 60 * 5 }); 
     }
 
     async ensureInit() {

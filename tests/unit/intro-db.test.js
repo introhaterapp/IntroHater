@@ -1,6 +1,6 @@
 jest.mock('axios');
 
-// Mock external dependencies
+
 jest.mock('../../src/repositories/skip.repository', () => ({
     ensureInit: jest.fn().mockResolvedValue(),
     findOne: jest.fn().mockResolvedValue(null),

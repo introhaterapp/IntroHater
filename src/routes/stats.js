@@ -1,7 +1,4 @@
-/**
- * Stats Routes
- * Handles /api/leaderboard, /api/activity, /api/stats endpoints
- */
+
 
 const express = require('express');
 const router = express.Router();
@@ -13,7 +10,7 @@ const cacheService = require('../services/cache-service');
 const { requireRdAuth } = require('../middleware/rdAuth');
 const { STATS } = require('../config/constants');
 
-// ==================== Stats Management ====================
+
 
 let globalStats = {
     users: 0,
@@ -73,24 +70,13 @@ async function refreshGlobalStats() {
     }
 }
 
-// Initial refresh and then every 15 minutes
+
 refreshGlobalStats();
 setInterval(refreshGlobalStats, STATS.REFRESH_INTERVAL_MS);
 
-// ==================== Endpoints ====================
 
-/**
- * @swagger
- * /api/leaderboard:
- *   get:
- *     tags:
- *       - Public
- *     summary: Get user leaderboard
- *     description: Returns top 100 contributors ranked by segments and votes
- *     responses:
- *       200:
- *         description: Leaderboard data
- */
+
+
 router.get('/leaderboard', async (req, res) => {
     const board = await userService.getLeaderboard(100);
     res.json({
@@ -105,15 +91,7 @@ router.get('/leaderboard', async (req, res) => {
     });
 });
 
-/**
- * @swagger
- * /api/activity:
- *   get:
- *     tags:
- *       - Public
- *     summary: Get recent activity
- *     description: Returns the 20 most recent segment additions for the live ticker
- */
+
 router.get('/activity', async (req, res) => {
     try {
         const recent = await skipService.getRecentSegments(50);
@@ -135,7 +113,7 @@ router.get('/activity', async (req, res) => {
                         title = show.title;
                         cacheService.setMetadata(imdbId, { Title: show.title });
                     }
-                } catch { /* ignore catalog fetch errors */ }
+                } catch {  }
             }
 
             let episodeInfo = null;
@@ -166,12 +144,12 @@ router.get('/activity', async (req, res) => {
     }
 });
 
-// Global Stats
+
 router.get('/stats', (req, res) => {
     res.json(globalStats);
 });
 
-// Personal Stats
+
 router.post('/stats/personal', requireRdAuth, async (req, res) => {
     try {
         const userId = req.userId;
@@ -202,7 +180,7 @@ router.post('/stats/personal', requireRdAuth, async (req, res) => {
                             poster = data.Poster;
                             cacheService.setMetadata(imdbId, data);
                         }
-                    } catch { /* ignore metadata fetch errors */ }
+                    } catch {  }
                 }
 
                 return {

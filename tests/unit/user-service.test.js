@@ -1,4 +1,4 @@
-// Hoisted mocks - must be before requiring the repositories
+
 jest.mock('../../src/repositories/user.repository', () => ({
     ensureInit: jest.fn().mockResolvedValue(),
     findByUserId: jest.fn().mockResolvedValue(null),

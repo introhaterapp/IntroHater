@@ -1,22 +1,22 @@
 const { spawn } = require('child_process');
-const axios = require('axios'); // Requires axios
+const axios = require('axios'); 
 const { PROBE } = require('../config/constants');
 const log = require('../utils/logger').hls;
 let ffprobePath = 'ffprobe';
 
-// We rely on 'ffprobe' being in the PATH (Docker/Linux or System install)
-// Static binaries are handled by the caller (server.js) if necessary
-// But default to 'ffprobe' string
+
+
+
 try {
     if (process.platform === 'win32') {
         ffprobePath = require('ffprobe-static').path;
     }
-} catch { /* ignore optional ffprobe-static */ }
+} catch {  }
 
 const { getCachedProbe, setCachedProbe } = require('./cache-service');
 
 
-// SSRF Protection (Duplicate of server logic for modularity)
+
 function isSafeUrl(urlStr) {
     try {
         const url = new URL(urlStr);
@@ -28,9 +28,7 @@ function isSafeUrl(urlStr) {
     } catch { return false; }
 }
 
-/**
- * Follows redirects to get the final direct URL and Contents-Length
- */
+
 async function getStreamDetails(url) {
     if (!isSafeUrl(url)) return { finalUrl: url, contentLength: null };
     try {
@@ -39,9 +37,9 @@ async function getStreamDetails(url) {
             validateStatus: (status) => status >= 200 && status < 400
         });
 
-        // If axios followed redirects, response.request.res.responseUrl is final
-        // In newer axios, request.res.responseUrl might be available
-        // But headers are what we care about.
+        
+        
+        
 
         return {
             finalUrl: response.request.res ? response.request.res.responseUrl : url,
@@ -53,10 +51,7 @@ async function getStreamDetails(url) {
     }
 }
 
-/**
- * Probes a remote stream to find the byte offset for a given timestamp.
- * Uses 'read_intervals' which works on direct links.
- */
+
 async function getByteOffset(url, startTime) {
     const cacheKey = `byte:${url}:${startTime}`;
     const cached = getCachedProbe(cacheKey);
@@ -66,10 +61,10 @@ async function getByteOffset(url, startTime) {
     }
 
     return new Promise((resolve) => {
-        // Arguments for ffprobe with read_intervals
-        // We ensure we read significantly PAST the start time to find a keyframe
-        // Increased to 60s to handle sparse keyframes
-        // Optimized: Reduced interval to +10s
+        
+        
+        
+        
         const args = [
             '-read_intervals', `${startTime}%+10`,
             '-select_streams', 'v:0',
@@ -112,20 +107,20 @@ async function getByteOffset(url, startTime) {
                     return resolve(0);
                 }
 
-                // Check first packet
+                
                 const firstPkt = data.packets[0];
                 const firstPts = parseFloat(firstPkt.pts_time);
                 log.info({ firstPts, pos: firstPkt.pos }, 'First packet found');
 
-                // If the first packet is WAY off (e.g. 0 when we asked for 90), seeking failed
+                
                 if (firstPts < (startTime - 20)) {
                     log.warn({ startTime, firstPts }, 'Seek failed? Requested time significantly different from first packet.');
-                    // If we are somewhat close (e.g. 70s for 90s), we might accept it? 
-                    // No, 20s drift is too much.
+                    
+                    
                     return resolve(0);
                 }
 
-                // Find the first packet >= startTime
+                
                 const packet = data.packets.find(p => parseFloat(p.pts_time) >= startTime);
 
                 if (packet && packet.pos) {
@@ -134,8 +129,8 @@ async function getByteOffset(url, startTime) {
                     setCachedProbe(cacheKey, pos);
                     resolve(pos);
                 } else if (firstPkt.pos) {
-                    // Fallback: If we couldn't find exact >= start, but we have *something* close (e.g. 88s for 90s)
-                    // We take the closest one we have.
+                    
+                    
                     log.info({ firstPts }, 'Exact >= seek failed, using closest packet');
                     const pos = parseInt(firstPkt.pos);
                     setCachedProbe(cacheKey, pos);
@@ -151,24 +146,18 @@ async function getByteOffset(url, startTime) {
     });
 }
 
-/**
- * Generates an HLS playlist (m3u8) that plays a remote file starting from a specific byte offset.
- * @param {string} videoUrl - The original remote video URL.
- * @param {number} duration - Total duration of the video (optional, but good for EXTINF).
- * @param {number} byteOffset - The start byte offset.
- * @returns {string} - The m3u8 content.
- */
-function generateSmartManifest(videoUrl, duration, byteOffset, totalLength) {
-    // Strategy: Use a "Fake Splice" to bypass player 'EXT-X-START' issues.
-    // We send the file Header (0-1MB) to initialize the decoder, 
-    // then jump (Splice) to the content at byteOffset.
 
-    // Header Size: 1MB (Safe for MKV attachments/fonts, typically < 1s of video)
+function generateSmartManifest(videoUrl, duration, byteOffset, totalLength) {
+    
+    
+    
+
+    
     const headerSize = 1000000;
 
-    // If the skip is impossibly short, just play normal? No, we trust the offset.
-    // If byteOffset < headerSize, we might duplicate data, but that's fine (just a slight loop).
-    // Better to ensure we don't request negative ranges.
+    
+    
+    
 
     const len2 = totalLength ? (totalLength - byteOffset) : 99999999999;
 
@@ -194,10 +183,7 @@ ${videoUrl}
     return m3u8;
 }
 
-/**
- * Probes two timestamps (Intro Start & Intro End) in one go.
- * Returns precise byte offsets for both.
- */
+
 async function getRefinedOffsets(url, startSec, endSec) {
     const cacheKey = `refined:${url}:${startSec}:${endSec}`;
     const cached = getCachedProbe(cacheKey);
@@ -207,9 +193,9 @@ async function getRefinedOffsets(url, startSec, endSec) {
     }
 
     return new Promise((resolve) => {
-        // We probe both intervals in one command to save overhead
-        // ffprobe read_intervals syntax: start%+duration,start2%+duration
-        // Optimized: Reduced interval to +10s, added analyzeduration/probesize limits
+        
+        
+        
         const interval = `${startSec}%+10,${endSec}%+10`;
 
         const args = [
@@ -217,8 +203,8 @@ async function getRefinedOffsets(url, startSec, endSec) {
             '-select_streams', 'v:0',
             '-show_entries', 'packet=pos,pts_time',
             '-show_packets',
-            '-analyzeduration', '10000000', // 10MB limit
-            '-probesize', '10000000',       // 10MB limit
+            '-analyzeduration', '10000000', 
+            '-probesize', '10000000',       
             '-v', 'error',
             '-of', 'json',
             url
@@ -250,16 +236,16 @@ async function getRefinedOffsets(url, startSec, endSec) {
                 const data = JSON.parse(stdout);
                 if (!data.packets || data.packets.length === 0) return resolve(null);
 
-                // Helper to find closest packet to target
+                
                 const findPacket = (target) => {
-                    // Try to find one >= target
+                    
                     let p = data.packets.find(pkt => parseFloat(pkt.pts_time) >= target);
-                    // Or ANY packet close to it?
+                    
                     if (!p) {
-                        // Fallback to last packet if we are close?
-                        // Filter packets around target
+                        
+                        
                         const candidates = data.packets.filter(pkt => Math.abs(parseFloat(pkt.pts_time) - target) < 10);
-                        if (candidates.length > 0) p = candidates[0]; // Just take first close one
+                        if (candidates.length > 0) p = candidates[0]; 
                     }
                     return p;
                 };
@@ -289,9 +275,7 @@ async function getRefinedOffsets(url, startSec, endSec) {
     });
 }
 
-/**
- * Extracts chapters from a remote video file using ffprobe.
- */
+
 async function getChapters(url) {
     return new Promise((resolve) => {
         const args = [
@@ -344,10 +328,10 @@ async function getChapters(url) {
 }
 
 function generateSpliceManifest(videoUrl, duration, startOffset, endOffset, totalLength) {
-    // Segment 1: 0 to startOffset
-    // Segment 2: endOffset to End
+    
+    
 
-    const len1 = startOffset; // From 0 to startOffset
+    const len1 = startOffset; 
     const len2 = totalLength ? (totalLength - endOffset) : 99999999999;
 
     return `#EXTM3U

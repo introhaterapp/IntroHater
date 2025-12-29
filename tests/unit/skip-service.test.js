@@ -1,4 +1,4 @@
-// Hoisted mocks - must be before requiring the repositories
+
 jest.mock('axios');
 jest.mock('../../src/repositories/skip.repository', () => ({
     ensureInit: jest.fn().mockResolvedValue(),
@@ -61,7 +61,7 @@ describe('Skip Service', () => {
             skipService = await loadService();
             skipRepository.findByFullId.mockResolvedValue(null);
 
-            // Mock axios globally for this test
+            
             const axiosMock = require('axios');
             axiosMock.get.mockImplementation((url) => {
                 if (url.includes('cinemeta')) {
