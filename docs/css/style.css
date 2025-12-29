@@ -1,6 +1,5 @@
-
 :root {
-    
+
     --bg-dark: #09090b;
     --bg-card: #18181b;
     --bg-elevated: #27272a;
@@ -17,12 +16,12 @@
     --border: rgba(255, 255, 255, 0.08);
     --border-bright: rgba(255, 255, 255, 0.15);
 
-    
+
     --container-width: 1200px;
     --header-height: 72px;
     --header-height-mobile: 64px;
 
-    
+
     --radius: 12px;
     --radius-sm: 6px;
     --radius-lg: 16px;
@@ -32,7 +31,7 @@
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-premium: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
-    
+
     --transition-fast: 0.15s ease;
     --transition-normal: 0.25s ease;
     --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -62,10 +61,10 @@ h4,
 h5,
 h6 {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    
+
     font-weight: 700;
     letter-spacing: -0.025em;
-    
+
     color: var(--text-main);
 }
 
@@ -279,11 +278,44 @@ ul {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
+    justify-items: center;
+}
+
+.grid-3 .card {
+    aspect-ratio: 1 / 1;
+    max-width: 280px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+}
+
+.grid-3 .card .feature-icon {
+    width: 64px;
+    height: 64px;
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
+
+.grid-3 .card h3 {
+    margin-bottom: 12px;
+}
+
+.grid-3 .card p {
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 @media (max-width: 900px) {
     .grid-3 {
         grid-template-columns: 1fr;
+    }
+
+    .grid-3 .card {
+        max-width: 320px;
     }
 }
 
@@ -308,7 +340,7 @@ ul {
         text-align: center;
     }
 
-    
+
     div[style*="grid-template-columns"] {
         grid-template-columns: 1fr !important;
         gap: 20px !important;
@@ -348,7 +380,7 @@ ul {
     gap: 8px;
     padding: 10px 20px;
     border-radius: 6px;
-    
+
     font-weight: 600;
     font-size: 0.95rem;
     cursor: pointer;
@@ -612,7 +644,7 @@ header {
     width: 100%;
     height: var(--header-height);
     background: rgba(9, 9, 11, 0.8);
-    
+
     backdrop-filter: blur(12px);
     z-index: 1000;
     border-bottom: 1px solid var(--border);
@@ -651,7 +683,7 @@ header .container .header-actions {
 .logo img {
     width: 32px;
     height: 32px;
-    
+
 }
 
 .nav-links {
@@ -1004,9 +1036,9 @@ table.dataTable {
     width: 100% !important;
     border-collapse: collapse !important;
     white-space: normal !important;
-    
+
     table-layout: auto;
-    
+
 }
 
 table.dataTable.no-footer {
@@ -1304,7 +1336,7 @@ table.dataTable tbody td {
 
 .modal-header h3 {
     word-break: break-word;
-    
+
     max-width: 90%;
     line-height: 1.3;
 }
@@ -1368,7 +1400,7 @@ table.dataTable tbody td {
         display: flex;
     }
 
-    
+
     #mainNav.open {
         display: block;
         position: fixed;
@@ -1396,7 +1428,7 @@ table.dataTable tbody td {
         display: block;
     }
 
-    
+
     .menu-toggle.active span:nth-child(1) {
         transform: translateY(9.5px) rotate(45deg);
     }
@@ -1436,7 +1468,7 @@ table.dataTable tbody td {
 
 @media (max-width: 768px) {
 
-    
+
     .stats-bar {
         gap: 20px !important;
         flex-direction: column;
@@ -1476,14 +1508,14 @@ table.dataTable tbody td {
         white-space: nowrap;
     }
 
-    
+
     .leaderboard-table th,
     .leaderboard-table td {
         padding: 10px 8px !important;
         font-size: 0.8rem !important;
     }
 
-    
+
     .leaderboard-table th:nth-child(4),
     .leaderboard-table td:nth-child(4),
     .leaderboard-table th:nth-child(5),
