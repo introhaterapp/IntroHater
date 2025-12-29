@@ -46,6 +46,7 @@ class IndexerService {
 
         try {
             await this.indexAnimeSkipCatalog(state);
+            await this.indexIntroDBCatalog(); // Proactively scrape IntroDB for catalog shows
         } catch (e) {
             log.error({ err: e.message }, 'Cycle failed');
         } finally {
@@ -198,6 +199,35 @@ class IndexerService {
                 running = false;
             }
         }
+    }
+
+    async indexIntroDBCatalog() {
+        log.info('Starting IntroDB catalog indexing...');
+        const { media: catalog } = await catalogService.getCatalogData(1, 10000, '', { totalSegments: 1 });
+        const shows = Object.keys(catalog);
+        log.info({ count: shows.length }, 'Checking shows for IntroDB updates');
+
+        for (const imdbId of shows) {
+            try {
+                // For each show, we try to fetch segments for season 1, episode 1-30 as a start
+                // or just check the first few episodes if it's already indexed to see if we can find more.
+                // A better approach is to check episodes we already have in catalog and see if they have segments.
+                const meta = catalog[imdbId];
+                if (!meta || !meta.episodes) continue;
+
+                for (const epKey of Object.keys(meta.episodes)) {
+                    const [s, e] = epKey.split(':').map(Number);
+                    if (!meta.episodes[epKey].segments || meta.episodes[epKey].count === 0) {
+                        // On-demand fetch which also saves to DB
+                        await skipService.getSkipSegment(`${imdbId}:${s}:${e}`);
+                        await new Promise(r => setTimeout(r, 500)); // Rate limit buffer
+                    }
+                }
+            } catch (err) {
+                log.error({ imdbId, err: err.message }, 'IntroDB show index failed');
+            }
+        }
+        log.info('IntroDB indexing complete');
     }
 }
 

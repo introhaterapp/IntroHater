@@ -2,7 +2,7 @@ const skipRepository = require('../repositories/skip.repository');
 const cacheRepository = require('../repositories/cache.repository');
 const axios = require('axios');
 const catalogService = require('./catalog');
-const { ANIME_SKIP } = require('../config/constants');
+const { ANIME_SKIP, INTRO_DB } = require('../config/constants');
 const log = require('../utils/logger').skip;
 
 // Initialize
@@ -41,11 +41,19 @@ async function getSegments(fullId) {
     const cleanId = String(fullId).trim();
     let segments = [];
 
-    // Parse ID (e.g. tt123456:1:1)
+    // Parse ID (e.g. tt123456:1:1 or kitsu:12345:1)
     const parts = cleanId.split(':');
-    const imdbId = parts[0];
-    const isSeriesRequest = parts.length < 3;
-    const epKey = !isSeriesRequest ? `${parts[1]}:${parts[2]}` : null;
+    let imdbId, epKey, isSeriesRequest;
+
+    if (cleanId.startsWith('kitsu:')) {
+        imdbId = parts.slice(0, 2).join(':'); // kitsu:12345
+        isSeriesRequest = parts.length < 3;
+        epKey = !isSeriesRequest ? parts[2] : null; // episode number
+    } else {
+        imdbId = parts[0]; // tt12345
+        isSeriesRequest = parts.length < 3;
+        epKey = !isSeriesRequest ? `${parts[1]}:${parts[2]}` : null; // season:episode
+    }
 
     try {
         // 1. Try to fetch from Catalog first (Denormalized/Fast RAM Cache)
@@ -197,7 +205,14 @@ async function getRecentSegments(limit = 20) {
 // --- External API Integrations ---
 
 async function getMalId(imdbId) {
-    const cached = await cacheRepository.getCache(`mal:${imdbId}`);
+    const cleanId = String(imdbId).trim();
+
+    // Handle Kitsu IDs
+    if (cleanId.startsWith('kitsu:')) {
+        return await getMalIdFromKitsu(cleanId);
+    }
+
+    const cached = await cacheRepository.getCache(`mal:${cleanId}`);
     if (cached) return cached;
 
     try {
@@ -217,6 +232,46 @@ async function getMalId(imdbId) {
     } catch (e) {
         log.error({ imdbId, err: e.message }, 'MAL ID mapping failed');
     }
+    return null;
+}
+
+async function getMalIdFromKitsu(kitsuId) {
+    const cached = await cacheRepository.getCache(`mal:${kitsuId}`);
+    if (cached) return cached;
+
+    const idOnly = kitsuId.split(':')[1];
+    if (!idOnly) return null;
+
+    try {
+        log.info({ kitsuId }, 'Fetching MAL mapping from Kitsu API');
+        const url = `https://kitsu.io/api/edge/anime/${idOnly}/mappings?filter[external_site]=myanimelist/anime`;
+        const res = await axios.get(url, { headers: { 'Accept': 'application/vnd.api+json' } });
+
+        const malMapping = res.data?.data?.[0];
+        if (malMapping?.attributes?.externalId) {
+            const malId = malMapping.attributes.externalId;
+            log.info({ kitsuId, malId }, 'Found MAL ID via Kitsu mapping');
+            await cacheRepository.setCache(`mal:${kitsuId}`, malId);
+            return malId;
+        }
+
+        // Fallback: Search by name if mapping missing
+        const metaRes = await axios.get(`https://v3-cinemeta.strem.io/meta/anime/${kitsuId}.json`);
+        const name = metaRes.data?.meta?.name;
+        if (name) {
+            log.info({ name }, 'Searching MAL ID by anime name');
+            const jikanRes = await axios.get(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(name)}&type=tv&limit=1`);
+            if (jikanRes.data?.data?.[0]?.mal_id) {
+                const malId = jikanRes.data.data[0].mal_id;
+                await cacheRepository.setCache(`mal:${kitsuId}`, malId);
+                return malId;
+            }
+        }
+    } catch (e) {
+        log.error({ kitsuId, err: e.message }, 'Kitsu mapping failed');
+    }
+
+    await cacheRepository.setCache(`mal:${kitsuId}`, null);
     return null;
 }
 
@@ -333,6 +388,44 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
     return null;
 }
 
+async function fetchIntroDB(imdbId, season, episode) {
+    const cacheKey = `introdb:${imdbId}:${season}:${episode}`;
+    const cached = await cacheRepository.getCache(cacheKey);
+    if (cached !== null && cached !== undefined) return cached;
+
+    try {
+        const url = `${INTRO_DB.BASE_URL}/intro?imdb_id=${imdbId}&season=${season}&episode=${episode}`;
+        const res = await axios.get(url);
+        if (res.data && (res.data.intro || res.data.outro)) {
+            const segments = [];
+            if (res.data.intro) {
+                segments.push({
+                    start: res.data.intro.start,
+                    end: res.data.intro.end,
+                    label: 'Intro',
+                    source: 'introdb'
+                });
+            }
+            if (res.data.outro) {
+                segments.push({
+                    start: res.data.outro.start,
+                    end: res.data.outro.end,
+                    label: 'Outro',
+                    source: 'introdb'
+                });
+            }
+
+            if (segments.length > 0) {
+                await cacheRepository.setCache(cacheKey, segments);
+                return segments;
+            }
+        }
+    } catch { /* ignore introdb errors */ }
+
+    await cacheRepository.setCache(cacheKey, null);
+    return null;
+}
+
 // --- Main Segment Request Handler ---
 
 async function getSkipSegment(fullId) {
@@ -352,9 +445,35 @@ async function getSkipSegment(fullId) {
     // 2. Parsed ID Check for Third-Party Fallbacks
     const parts = fullId.split(':');
     if (parts.length >= 3) {
-        const imdbId = parts[0];
-        const episode = parseInt(parts[2]);
+        let imdbId, season, episode;
 
+        if (fullId.startsWith('kitsu:')) {
+            imdbId = parts.slice(0, 2).join(':'); // kitsu:12345
+            season = 1;
+            episode = parseInt(parts[2]);
+        } else {
+            imdbId = parts[0];
+            season = parseInt(parts[1]);
+            episode = parseInt(parts[2]);
+        }
+
+        // A. Try IntroDB first (Direct IMDB support)
+        if (imdbId.startsWith('tt')) {
+            const introDbSegments = await fetchIntroDB(imdbId, season, episode);
+            if (introDbSegments) {
+                const intro = introDbSegments.find(s => s.label === 'Intro');
+                if (intro) {
+                    log.info({ fullId, start: intro.start, end: intro.end }, 'Found IntroDB');
+                    // Add all found segments to DB
+                    for (const s of introDbSegments) {
+                        addSkipSegment(fullId, s.start, s.end, s.label, 'introdb').catch(() => { });
+                    }
+                    return intro;
+                }
+            }
+        }
+
+        // B. Try Anime-specific fallbacks
         const malId = await getMalId(imdbId);
         if (malId) {
             const aniSkip = await fetchAniskip(malId, episode);
@@ -380,7 +499,7 @@ async function getSkipSegment(fullId) {
 
 async function addSkipSegment(fullId, start, end, label = "Intro", userId = "anonymous", applyToSeries = false) {
     await ensureInit();
-    const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot'];
+    const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot', 'introdb']; // Added introdb
     const isTrusted = TRUSTED_SOURCES.includes(userId);
 
     if (typeof start !== 'number' || typeof end !== 'number' || start < 0 || end <= start) {

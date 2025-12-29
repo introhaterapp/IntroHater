@@ -128,6 +128,10 @@ const ANIME_SKIP = {
     BASE_URL: 'https://api.anime-skip.com/graphql'
 };
 
+const INTRO_DB = {
+    BASE_URL: 'https://api.introdb.app'
+};
+
 const SERVER = {
     PORT: process.env.PORT || 7005,
     PUBLIC_URL: process.env.PUBLIC_URL
@@ -164,6 +168,7 @@ module.exports = {
     validateEnv,
     OMDB,
     ANIME_SKIP,
+    INTRO_DB,
     SERVER,
     STATS,
     MANIFEST,

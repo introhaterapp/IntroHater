@@ -84,6 +84,54 @@ describe('Skip Service', () => {
             const result = await skipService.getSkipSegment('tt99999:1:1');
             expect(result).toEqual({ start: 100, end: 200, label: 'Intro', source: 'aniskip' });
         });
+
+        it('should use IntroDB fallback if available', async () => {
+            skipService = await loadService();
+            skipRepository.findByFullId.mockResolvedValue(null);
+
+            const axiosMock = require('axios');
+            axiosMock.get.mockImplementation((url) => {
+                if (url.includes('api.introdb.app/intro')) {
+                    return Promise.resolve({
+                        data: {
+                            intro: { start: 5, end: 85 }
+                        }
+                    });
+                }
+                return Promise.reject(new Error('not found'));
+            });
+
+            const result = await skipService.getSkipSegment('tt77777:1:1');
+            expect(result).toEqual({ start: 5, end: 85, label: 'Intro', source: 'introdb' });
+        });
+
+        it('should correctly map Kitsu ID to MAL and fetch skips', async () => {
+            skipService = await loadService();
+            skipRepository.findByFullId.mockResolvedValue(null);
+
+            const axiosMock = require('axios');
+            axiosMock.get.mockImplementation((url) => {
+                if (url.includes('kitsu.io/api/edge/anime/123/mappings')) {
+                    return Promise.resolve({
+                        data: {
+                            data: [{ attributes: { externalId: '456' } }]
+                        }
+                    });
+                }
+                if (url.includes('api.aniskip.com/v2/skip-times/456/1')) {
+                    return Promise.resolve({
+                        data: {
+                            found: true,
+                            results: [{ skipType: 'op', interval: { startTime: 10, endTime: 90 } }]
+                        }
+                    });
+                }
+                return Promise.reject(new Error('not found'));
+            });
+
+            const result = await skipService.getSkipSegment('kitsu:123:1');
+            expect(result).toEqual({ start: 10, end: 90, label: 'Intro', source: 'aniskip' });
+        });
     });
 
     describe('getSegments', () => {

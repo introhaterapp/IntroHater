@@ -186,17 +186,15 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
                 if (offset > 0) {
                     manifest = generateSmartManifest(streamUrl, 7200, offset, totalLength, startTime);
                     isSuccess = true;
-                } else {
-                    console.warn(`[HLS] Failed to find offset for ${startTime}s. Returning non-skipping stream.`);
                 }
             }
         }
 
-        // Pass-through if all failed
+        // Final Fallback: Direct Redirect if no skip/chapter/offset found
+        // This ensures unlisted shows play directly without HLS proxy overhead/compatibility issues
         if (!manifest || !isSuccess) {
-            log.info({ streamUrlShort: streamUrl.slice(-30) }, 'No valid skip points found. Generating pass-through manifest.');
-            manifest = generateSmartManifest(streamUrl, 7200, 0, totalLength, 0);
-            isSuccess = true;
+            log.info({ videoId, streamUrlShort: streamUrl.slice(-30) }, 'No skip points found. Redirecting to original stream.');
+            return res.redirect(req.query.stream);
         }
 
         // Cache the manifest
