@@ -156,7 +156,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
 
                 const points = await getRefinedOffsets(streamUrl, cStart, cEnd);
                 if (points) {
-                    manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
+                    manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength, cStart, cEnd);
                     isSuccess = true;
                 }
             }
@@ -168,10 +168,10 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
             const points = await getRefinedOffsets(streamUrl, introStart, introEnd);
             if (points && points.startOffset >= 0 && points.endOffset > points.startOffset) {
                 log.info({ startOffset: points.startOffset, endOffset: points.endOffset, totalLength }, 'Splicing at bytes');
-                manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
+                manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength, introStart, introEnd);
                 isSuccess = true;
             } else {
-                
+
                 log.info({ introStart, introEnd, videoId }, 'Splice probe failed. Redirecting to original stream.');
                 return res.redirect(req.query.stream);
             }

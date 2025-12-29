@@ -1,5 +1,5 @@
 const { spawn } = require('child_process');
-const axios = require('axios'); 
+const axios = require('axios');
 const { PROBE } = require('../config/constants');
 const log = require('../utils/logger').hls;
 let ffprobePath = 'ffprobe';
@@ -11,7 +11,7 @@ try {
     if (process.platform === 'win32') {
         ffprobePath = require('ffprobe-static').path;
     }
-} catch {  }
+} catch { }
 
 const { getCachedProbe, setCachedProbe } = require('./cache-service');
 
@@ -37,9 +37,9 @@ async function getStreamDetails(url) {
             validateStatus: (status) => status >= 200 && status < 400
         });
 
-        
-        
-        
+
+
+
 
         return {
             finalUrl: response.request.res ? response.request.res.responseUrl : url,
@@ -61,10 +61,10 @@ async function getByteOffset(url, startTime) {
     }
 
     return new Promise((resolve) => {
-        
-        
-        
-        
+
+
+
+
         const args = [
             '-read_intervals', `${startTime}%+10`,
             '-select_streams', 'v:0',
@@ -107,20 +107,20 @@ async function getByteOffset(url, startTime) {
                     return resolve(0);
                 }
 
-                
+
                 const firstPkt = data.packets[0];
                 const firstPts = parseFloat(firstPkt.pts_time);
                 log.info({ firstPts, pos: firstPkt.pos }, 'First packet found');
 
-                
+
                 if (firstPts < (startTime - 20)) {
                     log.warn({ startTime, firstPts }, 'Seek failed? Requested time significantly different from first packet.');
-                    
-                    
+
+
                     return resolve(0);
                 }
 
-                
+
                 const packet = data.packets.find(p => parseFloat(p.pts_time) >= startTime);
 
                 if (packet && packet.pos) {
@@ -129,8 +129,8 @@ async function getByteOffset(url, startTime) {
                     setCachedProbe(cacheKey, pos);
                     resolve(pos);
                 } else if (firstPkt.pos) {
-                    
-                    
+
+
                     log.info({ firstPts }, 'Exact >= seek failed, using closest packet');
                     const pos = parseInt(firstPkt.pos);
                     setCachedProbe(cacheKey, pos);
@@ -148,16 +148,16 @@ async function getByteOffset(url, startTime) {
 
 
 function generateSmartManifest(videoUrl, duration, byteOffset, totalLength) {
-    
-    
-    
 
-    
+
+
+
+
     const headerSize = 1000000;
 
-    
-    
-    
+
+
+
 
     const len2 = totalLength ? (totalLength - byteOffset) : 99999999999;
 
@@ -193,9 +193,9 @@ async function getRefinedOffsets(url, startSec, endSec) {
     }
 
     return new Promise((resolve) => {
-        
-        
-        
+
+
+
         const interval = `${startSec}%+10,${endSec}%+10`;
 
         const args = [
@@ -203,8 +203,8 @@ async function getRefinedOffsets(url, startSec, endSec) {
             '-select_streams', 'v:0',
             '-show_entries', 'packet=pos,pts_time',
             '-show_packets',
-            '-analyzeduration', '10000000', 
-            '-probesize', '10000000',       
+            '-analyzeduration', '10000000',
+            '-probesize', '10000000',
             '-v', 'error',
             '-of', 'json',
             url
@@ -236,16 +236,16 @@ async function getRefinedOffsets(url, startSec, endSec) {
                 const data = JSON.parse(stdout);
                 if (!data.packets || data.packets.length === 0) return resolve(null);
 
-                
+
                 const findPacket = (target) => {
-                    
+
                     let p = data.packets.find(pkt => parseFloat(pkt.pts_time) >= target);
-                    
+
                     if (!p) {
-                        
-                        
+
+
                         const candidates = data.packets.filter(pkt => Math.abs(parseFloat(pkt.pts_time) - target) < 10);
-                        if (candidates.length > 0) p = candidates[0]; 
+                        if (candidates.length > 0) p = candidates[0];
                     }
                     return p;
                 };
@@ -327,27 +327,28 @@ async function getChapters(url) {
     });
 }
 
-function generateSpliceManifest(videoUrl, duration, startOffset, endOffset, totalLength) {
-    
-    
+function generateSpliceManifest(videoUrl, duration, startOffset, endOffset, totalLength, introStart, introEnd) {
 
-    const len1 = startOffset; 
+    const len1 = startOffset;
     const len2 = totalLength ? (totalLength - endOffset) : 99999999999;
+
+    const dur1 = Math.max(1, Math.ceil(introStart || 1));
+    const dur2 = Math.max(1, Math.ceil((duration || 7200) - (introEnd || 0)));
 
     return `#EXTM3U
 #EXT-X-VERSION:4
-#EXT-X-TARGETDURATION:7200
+#EXT-X-TARGETDURATION:${Math.max(dur1, dur2)}
 #EXT-X-MEDIA-SEQUENCE:0
 #EXT-X-PLAYLIST-TYPE:VOD
 #EXT-X-ALLOW-CACHE:YES
 
-#EXTINF:100,
+#EXTINF:${dur1},
 #EXT-X-BYTERANGE:${len1}@0
 ${videoUrl}
 
 #EXT-X-DISCONTINUITY
 
-#EXTINF:7100,
+#EXTINF:${dur2},
 #EXT-X-BYTERANGE:${len2}@${endOffset}
 ${videoUrl}
 
