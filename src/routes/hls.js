@@ -42,6 +42,17 @@ function isSafeUrl(urlStr) {
     }
 }
 
+function isWebStremioClient(req) {
+    const ua = req.get('User-Agent') || '';
+    const isNativeApp = ua.includes('Electron') ||
+        ua.includes('Stremio') ||
+        ua.includes('ExoPlayer') ||
+        ua.includes('AppleCoreMedia') ||
+        ua.includes('libmpv') ||
+        ua.includes('VLC');
+    return !isNativeApp && ua.length > 0;
+}
+
 // ==================== Routes ====================
 
 // VTT Subtitle Status
@@ -72,6 +83,12 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
 
     if (!stream || !isSafeUrl(decodeURIComponent(stream))) {
         return res.status(400).send("Invalid or unsafe stream URL");
+    }
+
+    if (isWebStremioClient(req)) {
+        const originalUrl = decodeURIComponent(stream);
+        log.info({ ua: (req.get('User-Agent') || '').substring(0, 50) }, 'Web client detected, redirecting to original stream (HLS.js cannot decode MKV byte-ranges)');
+        return res.redirect(originalUrl);
     }
 
     // Authenticated Telemetry
