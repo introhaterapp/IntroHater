@@ -165,10 +165,11 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
             }
         }
 
-        // Get Offsets if we have start and end times
-        if (!isSuccess && introStart > 0 && introEnd > introStart) {
+        // Get Offsets if we have start and end times (intro can start at 0)
+        if (!isSuccess && introStart >= 0 && introEnd > introStart) {
+            log.info({ introStart, introEnd }, 'Attempting splice manifest');
             const points = await getRefinedOffsets(streamUrl, introStart, introEnd);
-            if (points && points.startOffset > 0 && points.endOffset > points.startOffset) {
+            if (points && points.startOffset >= 0 && points.endOffset > points.startOffset) {
                 log.info({ startOffset: points.startOffset, endOffset: points.endOffset, totalLength }, 'Splicing at bytes');
                 manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
                 isSuccess = true;
