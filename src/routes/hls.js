@@ -163,16 +163,28 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
         }
 
 
-        if (!isSuccess && introStart >= 0 && introEnd > introStart) {
-            log.info({ introStart, introEnd }, 'Attempting splice manifest');
+        // SPLICE: Only when there's content BEFORE the intro (introStart > 0)
+        if (!isSuccess && introStart > 0 && introEnd > introStart) {
+            log.info({ introStart, introEnd }, 'Attempting splice manifest (content before intro)');
             const points = await getRefinedOffsets(streamUrl, introStart, introEnd);
             if (points && points.startOffset >= 0 && points.endOffset > points.startOffset) {
                 log.info({ startOffset: points.startOffset, endOffset: points.endOffset, totalLength }, 'Splicing at bytes');
                 manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength, introStart, introEnd);
                 isSuccess = true;
             } else {
+                log.info({ introStart, introEnd, videoId }, 'Splice probe failed. Falling back to simple skip.');
+            }
+        }
 
-                log.info({ introStart, introEnd, videoId }, 'Splice probe failed. Redirecting to original stream.');
+        // SIMPLE SKIP: When intro starts at 0, just start playback at introEnd
+        if (!isSuccess && introStart === 0 && introEnd > 0) {
+            log.info({ introEnd }, 'Intro at start of video. Using simple skip to jump to introEnd.');
+            const offset = await getByteOffset(streamUrl, introEnd);
+            if (offset > 0) {
+                manifest = generateSmartManifest(streamUrl, 7200, offset, totalLength, introEnd);
+                isSuccess = true;
+            } else {
+                log.info({ introEnd, videoId }, 'Simple skip probe failed. Redirecting to original stream.');
                 return res.redirect(req.query.stream);
             }
         }
