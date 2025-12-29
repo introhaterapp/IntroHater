@@ -41,39 +41,34 @@ function isSafeUrl(urlStr) {
     }
 }
 
-function isWebStremioClient(req) {
-    const ua = req.get('User-Agent') || '';
-
-    // Web Stremio uses these User-Agents (streaming server proxies the request)
-    // These should be REDIRECTED to original stream (can't handle MKV byte-ranges)
-    const webStremioIndicators = [
-        'Lavf/',              // FFmpeg/libavformat - Web Stremio streaming server
-        'node-fetch'          // Node.js fetch - Web Stremio streaming server
-    ];
-
-    const isWebStremio = webStremioIndicators.some(indicator => ua.includes(indicator));
-
-    // Native app indicators (should get HLS manifest with skip)
-    const nativeIndicators = [
-        'Electron',           // Desktop Stremio
-        'ExoPlayer',          // Android native player
-        'AppleCoreMedia',     // iOS/tvOS native
-        'KSPlayer',           // iOS Stremio player
-        'libmpv',             // MPV player (Desktop Stremio)
-        'VLC',                // VLC player
-        'okhttp',             // Android HTTP client
-        'Dalvik',             // Android runtime (Android TV, phones)
-        'stagefright',        // Android media framework
-        'MediaPlayer',        // Generic media player
-        'Kodi',               // Kodi media center
-        'GStreamer'           // GStreamer framework
-    ];
-
-    const isNativeApp = nativeIndicators.some(indicator => ua.includes(indicator));
-
-    // Redirect Web Stremio, let native apps get manifest
-    return isWebStremio && !isNativeApp;
-}
+/*
+ * WEB STREMIO LIMITATION
+ * ======================
+ * Web Stremio (browser-based) cannot play our HLS manifests. This is a fundamental
+ * limitation that cannot be fixed without server-side transcoding.
+ * 
+ * Root cause: Our manifests use byte-range requests on MKV files. Web Stremio's
+ * streaming server (Lavf/FFmpeg) fetches these, but the browser's HLS.js player
+ * cannot decode MKV containers - it only supports MPEG-TS and fMP4 segments.
+ * 
+ * Attempted fixes that did NOT work:
+ * - 302 redirect to original stream URL
+ * - Pass-through manifest without byte-ranges
+ * - Removing EXT-X-DISCONTINUITY tags
+ * - Increasing header size
+ * 
+ * The only real fix would be server-side remuxing (MKV → MPEG-TS), which would
+ * require significant CPU/bandwidth resources and is not viable for this project.
+ * 
+ * Affected platforms:
+ * - Web Stremio (web.stremio.com, app.strem.io) - User-Agent: Lavf/, node-fetch
+ * 
+ * Working platforms:
+ * - Desktop Stremio (libmpv, Electron)
+ * - iOS Stremio (KSPlayer, AppleCoreMedia)
+ * - Android/Android TV (Dalvik, ExoPlayer)
+ * - VLC, Kodi, and other native players
+ */
 
 // ==================== Routes ====================
 
@@ -111,26 +106,6 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
     }
 
     console.log(`${logPrefix} 📥 Manifest request for ${videoId || 'unknown'}`);
-
-    if (isWebStremioClient(req)) {
-        const originalUrl = decodeURIComponent(stream);
-        console.log(`${logPrefix} 🌐 Web Stremio detected - returning pass-through (no skip)`);
-
-        // Return a simple pass-through manifest - just plays the whole file from start
-        // No byte-range tricks, no discontinuity - just a basic VOD manifest
-        const passThrough = `#EXTM3U
-#EXT-X-VERSION:3
-#EXT-X-TARGETDURATION:7200
-#EXT-X-PLAYLIST-TYPE:VOD
-
-#EXTINF:7200,
-${originalUrl}
-
-#EXT-X-ENDLIST`;
-
-        res.set('Content-Type', 'application/vnd.apple.mpegurl');
-        return res.send(passThrough);
-    }
 
     // Authenticated Telemetry
     if (videoId && userId && rdKey) {
