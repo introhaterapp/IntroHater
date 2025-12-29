@@ -153,28 +153,18 @@ function generateSmartManifest(videoUrl, duration, byteOffset, totalLength) {
 
 
 
-    const headerSize = 1000000;
-
-
-
-
 
     const len2 = totalLength ? (totalLength - byteOffset) : 99999999999;
+    const remainingDuration = Math.ceil((duration || 7200));
 
     let m3u8 = `#EXTM3U
 #EXT-X-VERSION:4
-#EXT-X-TARGETDURATION:${Math.ceil(duration || 7200)}
+#EXT-X-TARGETDURATION:${remainingDuration}
 #EXT-X-MEDIA-SEQUENCE:0
 #EXT-X-PLAYLIST-TYPE:VOD
 #EXT-X-ALLOW-CACHE:YES
 
-#EXTINF:1,
-#EXT-X-BYTERANGE:${headerSize}@0
-${videoUrl}
-
-#EXT-X-DISCONTINUITY
-
-#EXTINF:${Math.ceil(duration || 7200)},
+#EXTINF:${remainingDuration},
 #EXT-X-BYTERANGE:${len2}@${byteOffset}
 ${videoUrl}
 
