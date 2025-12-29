@@ -16,8 +16,8 @@ describe('HLS Proxy', () => {
             const m3u8 = hlsProxy.generateSmartManifest('http://video.mp4', 3600, 1000, 5000, 0);
 
             expect(m3u8).toContain('#EXT-X-TARGETDURATION:3600');
-            expect(m3u8).toContain('#EXT-X-BYTERANGE:1000000@0'); 
-            expect(m3u8).toContain('#EXT-X-BYTERANGE:4000@1000'); 
+            expect(m3u8).toContain('#EXT-X-BYTERANGE:5000000@0');
+            expect(m3u8).toContain('#EXT-X-BYTERANGE:4000@1000');
             expect(m3u8).toContain('http://video.mp4');
         });
     });
@@ -37,7 +37,7 @@ describe('HLS Proxy', () => {
             axios.head.mockRejectedValue(new Error('Network Error'));
 
             const details = await hlsProxy.getStreamDetails('http://orig.mp4');
-            
+
             expect(details).toEqual({ finalUrl: 'http://orig.mp4', contentLength: null });
         });
     });
@@ -51,7 +51,7 @@ describe('HLS Proxy', () => {
 
             const promise = hlsProxy.getChapters('http://vid.mp4');
 
-            
+
             const mockOutput = JSON.stringify({
                 chapters: [
                     { start_time: "0.0", end_time: "90.0", tags: { title: "Intro" } },

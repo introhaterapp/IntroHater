@@ -160,30 +160,29 @@ async function getByteOffset(url, startTime) {
  */
 function generateSmartManifest(videoUrl, duration, byteOffset, totalLength) {
     // Strategy: Use a "Fake Splice" to bypass player 'EXT-X-START' issues.
-    // We send the file Header (0-1MB) to initialize the decoder, 
-    // then jump (Splice) to the content at byteOffset.
+    // We send the file Header to initialize the decoder, 
+    // then jump to the content at byteOffset.
 
-    // Header Size: 1MB (Safe for MKV attachments/fonts, typically < 1s of video)
-    const headerSize = 1000000;
+    // Header Size: 5MB (increased from 1MB for better decoder initialization)
+    // Some MKV files have larger headers with fonts/attachments
+    const headerSize = 5000000;
 
-    // If the skip is impossibly short, just play normal? No, we trust the offset.
-    // If byteOffset < headerSize, we might duplicate data, but that's fine (just a slight loop).
-    // Better to ensure we don't request negative ranges.
-
+    // If byteOffset < headerSize, we might duplicate data, but that's fine.
     const len2 = totalLength ? (totalLength - byteOffset) : 99999999999;
 
+    // Note: Removed EXT-X-DISCONTINUITY - causes issues with ExoPlayer/HLS.js
+    // Added EXT-X-INDEPENDENT-SEGMENTS for better seeking
     let m3u8 = `#EXTM3U
 #EXT-X-VERSION:4
 #EXT-X-TARGETDURATION:${Math.ceil(duration || 7200)}
 #EXT-X-MEDIA-SEQUENCE:0
 #EXT-X-PLAYLIST-TYPE:VOD
 #EXT-X-ALLOW-CACHE:YES
+#EXT-X-INDEPENDENT-SEGMENTS
 
 #EXTINF:1,
 #EXT-X-BYTERANGE:${headerSize}@0
 ${videoUrl}
-
-#EXT-X-DISCONTINUITY
 
 #EXTINF:${Math.ceil(duration || 7200)},
 #EXT-X-BYTERANGE:${len2}@${byteOffset}
@@ -344,24 +343,25 @@ async function getChapters(url) {
 }
 
 function generateSpliceManifest(videoUrl, duration, startOffset, endOffset, totalLength) {
-    // Segment 1: 0 to startOffset
-    // Segment 2: endOffset to End
+    // Segment 1: 0 to startOffset (before intro)
+    // Segment 2: endOffset to End (after intro)
 
-    const len1 = startOffset; // From 0 to startOffset
+    const len1 = startOffset;
     const len2 = totalLength ? (totalLength - endOffset) : 99999999999;
 
+    // Note: Removed EXT-X-DISCONTINUITY - causes issues with ExoPlayer/HLS.js
+    // Added EXT-X-INDEPENDENT-SEGMENTS for better seeking
     return `#EXTM3U
 #EXT-X-VERSION:4
 #EXT-X-TARGETDURATION:7200
 #EXT-X-MEDIA-SEQUENCE:0
 #EXT-X-PLAYLIST-TYPE:VOD
 #EXT-X-ALLOW-CACHE:YES
+#EXT-X-INDEPENDENT-SEGMENTS
 
 #EXTINF:100,
 #EXT-X-BYTERANGE:${len1}@0
 ${videoUrl}
-
-#EXT-X-DISCONTINUITY
 
 #EXTINF:7100,
 #EXT-X-BYTERANGE:${len2}@${endOffset}
