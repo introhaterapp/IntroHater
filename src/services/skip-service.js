@@ -395,32 +395,28 @@ async function fetchIntroDB(imdbId, season, episode) {
 
     try {
         const url = `${INTRO_DB.BASE_URL}/intro?imdb_id=${imdbId}&season=${season}&episode=${episode}`;
+        log.info({ url }, 'Fetching from IntroDB');
         const res = await axios.get(url);
-        if (res.data && (res.data.intro || res.data.outro)) {
-            const segments = [];
-            if (res.data.intro) {
-                segments.push({
-                    start: res.data.intro.start,
-                    end: res.data.intro.end,
-                    label: 'Intro',
-                    source: 'introdb'
-                });
-            }
-            if (res.data.outro) {
-                segments.push({
-                    start: res.data.outro.start,
-                    end: res.data.outro.end,
-                    label: 'Outro',
-                    source: 'introdb'
-                });
-            }
 
-            if (segments.length > 0) {
-                await cacheRepository.setCache(cacheKey, segments);
-                return segments;
-            }
+        // IntroDB returns start_sec and end_sec (already in seconds)
+        if (res.data && res.data.start_sec != null && res.data.end_sec != null) {
+            const segments = [{
+                start: res.data.start_sec,
+                end: res.data.end_sec,
+                label: 'Intro',
+                source: 'introdb'
+            }];
+
+            log.info({ imdbId, season, episode, start: segments[0].start, end: segments[0].end }, 'IntroDB hit');
+            await cacheRepository.setCache(cacheKey, segments);
+            return segments;
         }
-    } catch { /* ignore introdb errors */ }
+    } catch (e) {
+        // Only log if it's not a 404 (expected for missing episodes)
+        if (e.response?.status !== 404) {
+            log.error({ imdbId, season, episode, err: e.message }, 'IntroDB fetch failed');
+        }
+    }
 
     await cacheRepository.setCache(cacheKey, null);
     return null;

@@ -138,6 +138,13 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
 
         // Try Chapter Discovery if no skip segments provided
         if ((!introStart || introStart === 0) && (!introEnd || introEnd === 0)) {
+            // Check if we already know this has no skips (cached redirect)
+            const noSkipKey = `noskip:${videoId}`;
+            if (cacheService.hasManifest(noSkipKey)) {
+                log.info({ videoId }, 'Cached no-skip. Redirecting.');
+                return res.redirect(req.query.stream);
+            }
+
             log.info({ videoId }, 'No skip segments. Checking chapters.');
             const chapters = await getChapters(streamUrl);
             const skipChapter = chapters.find(c => {
@@ -194,6 +201,8 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
         // This ensures unlisted shows play directly without HLS proxy overhead/compatibility issues
         if (!manifest || !isSuccess) {
             log.info({ videoId, streamUrlShort: streamUrl.slice(-30) }, 'No skip points found. Redirecting to original stream.');
+            // Cache that this video has no skips so we don't re-probe on every request
+            cacheService.setManifest(`noskip:${videoId}`, 'redirect');
             return res.redirect(req.query.stream);
         }
 

@@ -94,7 +94,15 @@ describe('Skip Service', () => {
                 if (url.includes('api.introdb.app/intro')) {
                     return Promise.resolve({
                         data: {
-                            intro: { start: 5, end: 85 }
+                            imdb_id: 'tt77777',
+                            season: 1,
+                            episode: 1,
+                            start_sec: 5,
+                            end_sec: 85,
+                            start_ms: 5000,
+                            end_ms: 85000,
+                            confidence: 1,
+                            submission_count: 1
                         }
                     });
                 }
