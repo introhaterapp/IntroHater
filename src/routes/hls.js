@@ -44,13 +44,24 @@ function isSafeUrl(urlStr) {
 
 function isWebStremioClient(req) {
     const ua = req.get('User-Agent') || '';
+
+    // Log every request's User-Agent for debugging
+    log.info({ userAgent: ua }, 'HLS manifest request User-Agent');
+
+    // Desktop Stremio uses Electron - this is the most reliable indicator
+    // ExoPlayer = Android native, AppleCoreMedia = iOS native
+    // "Stremio" alone might appear in Web client too, so we don't rely on it
     const isNativeApp = ua.includes('Electron') ||
-        ua.includes('Stremio') ||
         ua.includes('ExoPlayer') ||
         ua.includes('AppleCoreMedia') ||
         ua.includes('libmpv') ||
-        ua.includes('VLC');
-    return !isNativeApp && ua.length > 0;
+        ua.includes('VLC') ||
+        ua.includes('okhttp'); // Android HTTP client
+
+    const isWeb = !isNativeApp && ua.length > 0;
+    log.info({ isNativeApp, isWeb, uaSnippet: ua.substring(0, 80) }, 'Client detection result');
+
+    return isWeb;
 }
 
 // ==================== Routes ====================
