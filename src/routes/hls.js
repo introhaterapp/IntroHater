@@ -48,20 +48,39 @@ function isWebStremioClient(req) {
     // Log every request's User-Agent for debugging
     log.info({ userAgent: ua }, 'HLS manifest request User-Agent');
 
-    // Desktop Stremio uses Electron - this is the most reliable indicator
-    // ExoPlayer = Android native, AppleCoreMedia = iOS native
-    // "Stremio" alone might appear in Web client too, so we don't rely on it
-    const isNativeApp = ua.includes('Electron') ||
-        ua.includes('ExoPlayer') ||
-        ua.includes('AppleCoreMedia') ||
-        ua.includes('libmpv') ||
-        ua.includes('VLC') ||
-        ua.includes('okhttp'); // Android HTTP client
+    // Web Stremio uses these User-Agents (streaming server proxies the request)
+    // These should be REDIRECTED to original stream (can't handle MKV byte-ranges)
+    const webStremioIndicators = [
+        'Lavf/',              // FFmpeg/libavformat - Web Stremio streaming server
+        'node-fetch'          // Node.js fetch - Web Stremio streaming server
+    ];
 
-    const isWeb = !isNativeApp && ua.length > 0;
-    log.info({ isNativeApp, isWeb, uaSnippet: ua.substring(0, 80) }, 'Client detection result');
+    const isWebStremio = webStremioIndicators.some(indicator => ua.includes(indicator));
 
-    return isWeb;
+    // Native app indicators (should get HLS manifest with skip)
+    const nativeIndicators = [
+        'Electron',           // Desktop Stremio
+        'ExoPlayer',          // Android native player
+        'AppleCoreMedia',     // iOS/tvOS native
+        'KSPlayer',           // iOS Stremio player
+        'libmpv',             // MPV player (Desktop Stremio)
+        'VLC',                // VLC player
+        'okhttp',             // Android HTTP client
+        'Dalvik',             // Android runtime (Android TV, phones)
+        'stagefright',        // Android media framework
+        'MediaPlayer',        // Generic media player
+        'Kodi',               // Kodi media center
+        'GStreamer'           // GStreamer framework
+    ];
+
+    const isNativeApp = nativeIndicators.some(indicator => ua.includes(indicator));
+
+    // Redirect Web Stremio, let native apps get manifest
+    const shouldRedirect = isWebStremio && !isNativeApp;
+
+    log.info({ isWebStremio, isNativeApp, shouldRedirect, uaSnippet: ua.substring(0, 80) }, 'Client detection result');
+
+    return shouldRedirect;
 }
 
 // ==================== Routes ====================
