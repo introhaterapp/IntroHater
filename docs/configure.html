@@ -155,28 +155,21 @@
         </section>
 
         <script>
-            // Provider Configuration
-            const PROVIDERS = {
-                realdebrid: { name: 'Real-Debrid', keyUrl: 'https://real-debrid.com/apitoken' },
-                torbox: { name: 'TorBox', keyUrl: 'https://torbox.app/settings' },
-                premiumize: { name: 'Premiumize', keyUrl: 'https://www.premiumize.me/account' },
-                alldebrid: { name: 'AllDebrid', keyUrl: 'https://alldebrid.com/apikeys/' }
-            };
-
             // Update Get Key link when provider changes
             document.getElementById('provider').onchange = function () {
                 const provider = this.value;
-                const keyUrl = PROVIDERS[provider]?.keyUrl || PROVIDERS.realdebrid.keyUrl;
+                const keyUrl = DEBRID_PROVIDERS[provider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
                 document.getElementById('getKeyLink').href = keyUrl;
             };
 
             // Persistence Logic - load saved config on page load
             (function () {
-                const savedProvider = localStorage.getItem('introhater_provider') || 'realdebrid';
-                const savedKey = localStorage.getItem('introhater_debridkey');
+                const config = getDebridConfig();
+                const savedProvider = config.provider || 'realdebrid';
+                const savedKey = config.debridKey;
 
                 document.getElementById('provider').value = savedProvider;
-                document.getElementById('getKeyLink').href = PROVIDERS[savedProvider]?.keyUrl || PROVIDERS.realdebrid.keyUrl;
+                document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[savedProvider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
 
                 if (savedKey) {
                     document.getElementById('debridKey').value = savedKey;
@@ -190,10 +183,10 @@
                     // Check if it's provider:key format
                     if (potentialConfig.includes(':')) {
                         const [provider, key] = potentialConfig.split(':');
-                        if (PROVIDERS[provider] && key) {
+                        if (DEBRID_PROVIDERS[provider] && key) {
                             document.getElementById('provider').value = provider;
                             document.getElementById('debridKey').value = key;
-                            document.getElementById('getKeyLink').href = PROVIDERS[provider].keyUrl;
+                            document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[provider].keyUrl;
                         }
                     } else if (potentialConfig.length > 5) {
                         // Legacy format: just the key (assume realdebrid)
@@ -204,8 +197,7 @@
 
             // Logout
             document.getElementById('logoutBtn').onclick = function () {
-                localStorage.removeItem('introhater_provider');
-                localStorage.removeItem('introhater_debridkey');
+                clearDebridConfig();
                 location.reload();
             };
 
@@ -217,8 +209,7 @@
                 if (!key) return;
 
                 // Save to localStorage
-                localStorage.setItem('introhater_provider', provider);
-                localStorage.setItem('introhater_debridkey', key);
+                setDebridConfig(provider, key);
                 document.getElementById('logoutBtn').classList.remove('d-none');
 
                 // Build config value: "provider:key"

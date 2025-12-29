@@ -7,7 +7,7 @@ const skipService = require('../services/skip-service');
 const catalogService = require('../services/catalog');
 const userService = require('../services/user-service');
 const cacheService = require('../services/cache-service');
-const { requireRdAuth } = require('../middleware/rdAuth');
+const { requireDebridAuth: requireRdAuth } = require('../middleware/debridAuth');
 const { STATS } = require('../config/constants');
 
 
@@ -113,7 +113,7 @@ router.get('/activity', async (req, res) => {
                         title = show.title;
                         cacheService.setMetadata(imdbId, { Title: show.title });
                     }
-                } catch {  }
+                } catch { }
             }
 
             let episodeInfo = null;
@@ -180,7 +180,7 @@ router.post('/stats/personal', requireRdAuth, async (req, res) => {
                             poster = data.Poster;
                             cacheService.setMetadata(imdbId, data);
                         }
-                    } catch {  }
+                    } catch { }
                 }
 
                 return {

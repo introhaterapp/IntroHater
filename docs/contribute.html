@@ -71,8 +71,8 @@
                     <span style="font-size: 1.5rem;">🔑</span>
                     <div style="flex: 1;">
                         <div style="font-weight: 600; color: #fbbf24;">Login Required</div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted);">You need to be logged in with your
-                            Real-Debrid key to contribute or report issues.</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">You need to be logged in with a
+                            supported Debrid API key to contribute or report issues.</div>
                     </div>
                     <a href="configure.html" class="btn btn-primary" style="white-space: nowrap;">Configure</a>
                 </div>
@@ -179,7 +179,7 @@
     </div>
 
     <script>
-        let rdKey = localStorage.getItem('introhater_rdkey') || "";
+        const { provider, debridKey } = getDebridConfig();
         let currentItem = null;
 
         // --- Event Listeners (Fix for CSP) ---
@@ -187,7 +187,7 @@
         document.getElementById('closeSubmitBtn')?.addEventListener('click', closeSubmit);
 
         // Show login banner if not logged in
-        if (!rdKey) {
+        if (!debridKey) {
             const banner = document.getElementById('login-banner');
             if (banner) {
                 banner.classList.remove('d-none');
@@ -260,11 +260,11 @@
         }
 
         function openSubmit(item) {
-            if (!rdKey) {
+            if (!debridKey) {
                 if (typeof Toast !== 'undefined') {
-                    Toast.warning("Please log in with your Real-Debrid key first (go to Configure page).");
+                    Toast.warning("Please log in with a Debrid API key first (go to Configure page).");
                 } else {
-                    alert("Please log in with your Real-Debrid key first (go to Configure page).");
+                    alert("Please log in with a Debrid API key first (go to Configure page).");
                 }
                 return;
             }
@@ -397,7 +397,9 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        rdKey,
+                        provider,
+                        debridKey,
+                        rdKey: debridKey, // Compat
                         imdbID: currentItem.imdbID,
                         season,
                         episode,

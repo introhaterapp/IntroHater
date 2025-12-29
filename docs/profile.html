@@ -29,16 +29,28 @@
                 style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
             <div class="text-center" style="margin-bottom: 30px;">
                 <h2 class="text-gradient" style="font-size: 2rem;">My Profile</h2>
-                <p style="color: var(--text-muted); margin-top: 10px;">Paste your Real-Debrid API key to view your
+                <p style="color: var(--text-muted); margin-top: 10px;">Select your provider and paste your API key to
+                    view your
                     profile.</p>
             </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label class="form-label" for="authProvider">Debrid Provider</label>
+                <select id="authProvider" class="form-input">
+                    <option value="realdebrid">Real-Debrid</option>
+                    <option value="torbox">TorBox</option>
+                    <option value="premiumize">Premiumize</option>
+                    <option value="alldebrid">AllDebrid</option>
+                </select>
+            </div>
             <div class="form-group">
-                <input type="text" id="authKey" class="form-input" placeholder="Real-Debrid Private Token (F4...)">
+                <label class="form-label" id="authKeyLabel">API Key</label>
+                <input type="text" id="authKey" class="form-input" placeholder="Paste your key here">
             </div>
             <button id="enterBtn" class="btn btn-primary"
                 style="width: 100%; justify-content: center; margin-top: 10px;">View Profile</button>
             <p style="text-align: center; margin-top: 20px; font-size: 0.85rem;">
-                <a href="https://real-debrid.com/apitoken" target="_blank" style="color: var(--primary);">Get your key
+                <a id="getAuthKeyLink" href="https://real-debrid.com/apitoken" target="_blank"
+                    style="color: var(--primary);">Get your key
                     here ↗</a>
             </p>
         </div>
@@ -236,7 +248,7 @@
     </div>
 
     <script>
-        let rdKey = localStorage.getItem('introhater_rdkey') || "";
+        let { provider, debridKey } = getDebridConfig();
 
         // Badge definitions - Expanded with 15 badges
         const BADGES = [
@@ -278,13 +290,20 @@
         ];
 
         // Auth Flow
-        if (rdKey) {
+        if (debridKey) {
             document.getElementById('login-overlay').style.display = 'none';
             loadProfile();
         }
 
+        // Provider Change Helper
+        document.getElementById('authProvider').onchange = function () {
+            const p = this.value;
+            document.getElementById('getAuthKeyLink').href = DEBRID_PROVIDERS[p]?.keyUrl || '#';
+        };
+
         document.getElementById('enterBtn').onclick = async () => {
             const key = document.getElementById('authKey').value.trim();
+            const prov = document.getElementById('authProvider').value;
             if (!key) return;
 
             const btn = document.getElementById('enterBtn');
@@ -294,16 +313,22 @@
                 const res = await fetch('/api/stats/personal', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rdKey: key })
+                    body: JSON.stringify({
+                        provider: prov,
+                        debridKey: key,
+                        rdKey: key // Compat
+                    })
                 });
 
                 if (res.ok) {
-                    rdKey = key;
-                    localStorage.setItem('introhater_rdkey', key);
+                    debridKey = key;
+                    provider = prov;
+                    setDebridConfig(prov, key);
                     document.getElementById('login-overlay').style.display = 'none';
                     loadProfile();
                 } else {
-                    Toast.error("Verification failed. Please check your Real-Debrid API Key.");
+                    const err = await res.json();
+                    Toast.error(err.error || "Verification failed. Please check your API Key.");
                 }
             } catch (e) {
                 Toast.error("Server error. Please try again.");
@@ -313,7 +338,7 @@
         };
 
         document.getElementById('logoutBtn').addEventListener('click', () => {
-            localStorage.removeItem('introhater_rdkey');
+            clearDebridConfig();
             location.reload();
         });
 
@@ -335,7 +360,11 @@
                 const res = await fetch('/api/stats/personal', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rdKey })
+                    body: JSON.stringify({
+                        provider,
+                        debridKey,
+                        rdKey: debridKey // Compat
+                    })
                 });
                 const data = await res.json();
 
@@ -481,7 +510,13 @@
                 const res = await fetch('/api/report', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rdKey, videoId, reason: "Manual report from profile" })
+                    body: JSON.stringify({
+                        provider,
+                        debridKey,
+                        rdKey: debridKey, // Compat
+                        videoId,
+                        reason: "Manual report from profile"
+                    })
                 });
                 if (res.ok) {
                     btn.textContent = "Reported ✅";
@@ -589,7 +624,9 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        rdKey,
+                        provider,
+                        debridKey,
+                        rdKey: debridKey, // Compat
                         imdbID,
                         season,
                         episode,

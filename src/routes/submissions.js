@@ -6,7 +6,7 @@ const axios = require('axios');
 
 const skipService = require('../services/skip-service');
 const userService = require('../services/user-service');
-const { requireRdAuth } = require('../middleware/rdAuth');
+const { requireDebridAuth: requireRdAuth } = require('../middleware/debridAuth');
 const { generateUserToken, verifyUserToken } = require('../utils/auth');
 
 

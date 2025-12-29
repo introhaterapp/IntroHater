@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     const header = document.querySelector('header');
 
     window.addEventListener('scroll', () => {
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    
+
     const menuBtn = document.getElementById('menuToggle');
     const mainNav = document.getElementById('mainNav');
 
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.style.overflow = mainNav.classList.contains('open') ? 'hidden' : '';
         });
 
-        
+
         document.querySelectorAll('.nav-links a').forEach(link => {
             link.addEventListener('click', () => {
                 menuBtn.classList.remove('active');
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        
+
         document.addEventListener('click', (e) => {
             if (mainNav.classList.contains('open') && !header.contains(e.target)) {
                 menuBtn.classList.remove('active');
@@ -52,8 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry, index) => {
             if (entry.isIntersecting) {
-                
-                
+
+
                 setTimeout(() => {
                     entry.target.classList.add('animate-active');
                 }, index * 100);
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         observer.observe(el);
     });
 
-    
+
     fetchStats();
 });
 
@@ -79,7 +79,7 @@ async function fetchStats() {
         if (!res.ok) return;
         const data = await res.json();
 
-        
+
         const animateCount = (id, targetValue, duration = 1500, suffix = '') => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -91,12 +91,12 @@ async function fetchStats() {
                 const elapsed = currentTime - startTime;
                 const progress = Math.min(elapsed / duration, 1);
 
-                
+
                 const easeProgress = 1 - Math.pow(1 - progress, 3);
                 const currentValue = Math.floor(easeProgress * (targetValue - startValue) + startValue);
 
                 let displayValue = currentValue;
-                
+
                 if (currentValue >= 1000000) displayValue = (currentValue / 1000000).toFixed(1) + 'M';
                 else if (currentValue >= 10000) displayValue = (currentValue / 1000).toFixed(0) + 'k';
                 else if (currentValue >= 1000) displayValue = (currentValue / 1000).toFixed(1) + 'k';
@@ -106,7 +106,7 @@ async function fetchStats() {
                 if (progress < 1) {
                     requestAnimationFrame(update);
                 } else {
-                    
+
                     let finalDisplay = targetValue;
                     if (targetValue >= 1000000) finalDisplay = (targetValue / 1000000).toFixed(1) + 'M';
                     else if (targetValue >= 10000) finalDisplay = (targetValue / 1000).toFixed(0) + 'k';
@@ -123,7 +123,7 @@ async function fetchStats() {
         animateCount('stat-skips', data.skips || 0);
         animateCount('stat-episodes', data.episodeCount || 0);
 
-        
+
         const savedSec = data.savedTime || 0;
         let targetValue = 0;
         let suffix = 's';
@@ -133,7 +133,7 @@ async function fetchStats() {
         else if (savedSec >= 60) { targetValue = savedSec / 60; suffix = 'm'; }
         else { targetValue = savedSec; suffix = 's'; }
 
-        
+
         const animateTime = (id, target, suff) => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -186,7 +186,7 @@ async function initTicker() {
     let wsRetries = 0;
     const maxRetries = 5;
 
-    
+
     const rotate = () => {
         if (tickerData.length === 0) return;
 
@@ -205,20 +205,20 @@ async function initTicker() {
         currentIndex = (currentIndex + 1) % tickerData.length;
     };
 
-    
-    const addItem = (item) => {
-        
-        tickerData = [item, ...tickerData].slice(0, 20);
-        currentIndex = 0; 
 
-        
+    const addItem = (item) => {
+
+        tickerData = [item, ...tickerData].slice(0, 20);
+        currentIndex = 0;
+
+
         el.style.transform = 'scale(1.05)';
         setTimeout(() => {
             el.style.transform = 'scale(1)';
         }, 300);
     };
 
-    
+
     const connectWebSocket = () => {
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${wsProtocol}//${window.location.host}/ws/ticker`;
@@ -236,7 +236,7 @@ async function initTicker() {
                     const msg = JSON.parse(event.data);
                     if (msg.type === 'new_segment' && msg.data) {
                         addItem(msg.data);
-                        rotate(); 
+                        rotate();
                     }
                 } catch (e) {
                     console.warn('[Ticker] Message parse error:', e);
@@ -246,7 +246,7 @@ async function initTicker() {
             ws.onclose = () => {
                 console.log('[Ticker] WebSocket closed');
                 ws = null;
-                
+
                 if (wsRetries < maxRetries) {
                     wsRetries++;
                     setTimeout(connectWebSocket, Math.min(1000 * Math.pow(2, wsRetries), 30000));
@@ -261,7 +261,7 @@ async function initTicker() {
         }
     };
 
-    
+
     try {
         const res = await fetch(`${API_BASE_URL}/api/activity`);
         const data = await res.json();
@@ -275,9 +275,51 @@ async function initTicker() {
         console.warn("[Ticker] Initial fetch failed:", e);
     }
 
-    
+
     if (typeof WebSocket !== 'undefined') {
         connectWebSocket();
     }
 }
 
+
+// --- Debrid Configuration ---
+const DEBRID_PROVIDERS = {
+    realdebrid: { name: 'Real-Debrid', keyUrl: 'https://real-debrid.com/apitoken' },
+    torbox: { name: 'TorBox', keyUrl: 'https://torbox.app/settings' },
+    premiumize: { name: 'Premiumize', keyUrl: 'https://www.premiumize.me/account' },
+    alldebrid: { name: 'AllDebrid', keyUrl: 'https://alldebrid.com/apikeys/' }
+};
+
+function getDebridConfig() {
+    let provider = localStorage.getItem('introhater_provider');
+    let debridKey = localStorage.getItem('introhater_debridkey');
+
+    // Migration logic for old rdKey format
+    if (!debridKey) {
+        const oldKey = localStorage.getItem('introhater_rdkey');
+        if (oldKey) {
+            provider = 'realdebrid';
+            debridKey = oldKey;
+            localStorage.setItem('introhater_provider', 'realdebrid');
+            localStorage.setItem('introhater_debridkey', oldKey);
+        }
+    }
+
+    return { provider, debridKey };
+}
+
+function setDebridConfig(provider, debridKey) {
+    localStorage.setItem('introhater_provider', provider);
+    localStorage.setItem('introhater_debridkey', debridKey);
+}
+
+function clearDebridConfig() {
+    localStorage.removeItem('introhater_provider');
+    localStorage.removeItem('introhater_debridkey');
+    localStorage.removeItem('introhater_rdkey'); // Clear legacy key too
+}
+
+window.DEBRID_PROVIDERS = DEBRID_PROVIDERS;
+window.getDebridConfig = getDebridConfig;
+window.setDebridConfig = setDebridConfig;
+window.clearDebridConfig = clearDebridConfig;
