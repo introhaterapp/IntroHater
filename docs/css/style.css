@@ -1542,10 +1542,6 @@ table.dataTable tbody td {
     padding: 60px 0;
 }
 
-.grid-3 {
-    grid-template-columns: 1fr;
-}
-
 
 .filters-bar {
     flex-direction: column;
