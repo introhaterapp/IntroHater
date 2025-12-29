@@ -79,4 +79,46 @@ router.post('/admin/resolve-bulk', async (req, res) => {
     res.json({ success: true, count });
 });
 
+// --- IntroDB Indexer Admin Endpoints ---
+const indexerService = require('../services/indexer');
+
+// Admin: Get IntroDB Indexer Status
+router.post('/admin/indexer/status', async (req, res) => {
+    const { password } = req.body;
+    if (password !== ADMIN_PASS) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+        const state = await indexerService.getIntroDBState();
+        res.json(state);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: Trigger IntroDB Indexer
+router.post('/admin/indexer/trigger', async (req, res) => {
+    const { password } = req.body;
+    if (password !== ADMIN_PASS) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+        const result = await indexerService.triggerIntroDBIndex();
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: Reset IntroDB Indexer State
+router.post('/admin/indexer/reset', async (req, res) => {
+    const { password } = req.body;
+    if (password !== ADMIN_PASS) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+        const result = await indexerService.resetIntroDBState();
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;

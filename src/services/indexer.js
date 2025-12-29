@@ -201,33 +201,282 @@ class IndexerService {
         }
     }
 
+    /**
+     * Scrapes external TV catalogs (Cinemeta) and checks each show/episode against IntroDB.
+     * This runs independently from your own catalog, discovering new shows from popular lists.
+     * Progress is tracked so we can resume where we left off.
+     */
     async indexIntroDBCatalog() {
-        log.info('Starting IntroDB catalog indexing...');
-        const { media: catalog } = await catalogService.getCatalogData(1, 10000, '', { totalSegments: 1 });
-        const shows = Object.keys(catalog);
-        log.info({ count: shows.length }, 'Checking shows for IntroDB updates');
+        log.info('Starting IntroDB external catalog scrape...');
 
-        for (const imdbId of shows) {
-            try {
-                // For each show, we try to fetch segments for season 1, episode 1-30 as a start
-                // or just check the first few episodes if it's already indexed to see if we can find more.
-                // A better approach is to check episodes we already have in catalog and see if they have segments.
-                const meta = catalog[imdbId];
-                if (!meta || !meta.episodes) continue;
+        const INTRODB_STATE_KEY = 'indexer:introdb_state';
+        const MAX_SHOWS_PER_RUN = 50; // Process 50 shows per run to avoid timeout
 
-                for (const epKey of Object.keys(meta.episodes)) {
-                    const [s, e] = epKey.split(':').map(Number);
-                    if (!meta.episodes[epKey].segments || meta.episodes[epKey].count === 0) {
-                        // On-demand fetch which also saves to DB
-                        await skipService.getSkipSegment(`${imdbId}:${s}:${e}`);
-                        await new Promise(r => setTimeout(r, 500)); // Rate limit buffer
+        // Load state with statistics
+        let state = await cacheRepository.getCache(INTRODB_STATE_KEY) || {
+            showIndex: 0,
+            checkedShows: [], // IMDb IDs we've fully processed
+            lastRun: null,
+            // Statistics (cumulative)
+            stats: {
+                totalSegmentsImported: 0,
+                totalEpisodesChecked: 0,
+                showsWithData: 0,
+                lastCycleSegments: 0,
+                startedAt: new Date().toISOString()
+            }
+        };
+
+        // Ensure stats object exists for older states
+        if (!state.stats) {
+            state.stats = {
+                totalSegmentsImported: 0,
+                totalEpisodesChecked: 0,
+                showsWithData: 0,
+                lastCycleSegments: 0,
+                startedAt: new Date().toISOString()
+            };
+        }
+
+        // Reset cycle stats
+        state.stats.lastCycleSegments = 0;
+
+        try {
+            // Fetch popular TV shows from multiple Cinemeta catalogs
+            // Including genre-specific catalogs for broader coverage
+            const catalogs = [
+                // Main catalogs
+                'https://v3-cinemeta.strem.io/catalog/series/top.json',
+                'https://v3-cinemeta.strem.io/catalog/series/year.json',
+                // Genre-specific for broader coverage
+                'https://v3-cinemeta.strem.io/catalog/series/top/genre=Drama.json',
+                'https://v3-cinemeta.strem.io/catalog/series/top/genre=Comedy.json',
+                'https://v3-cinemeta.strem.io/catalog/series/top/genre=Action.json',
+                'https://v3-cinemeta.strem.io/catalog/series/top/genre=Thriller.json',
+                'https://v3-cinemeta.strem.io/catalog/series/top/genre=Sci-Fi.json',
+                'https://v3-cinemeta.strem.io/catalog/series/top/genre=Crime.json',
+                'https://v3-cinemeta.strem.io/catalog/series/top/genre=Horror.json',
+                'https://v3-cinemeta.strem.io/catalog/series/top/genre=Animation.json',
+                'https://v3-cinemeta.strem.io/catalog/series/top/genre=Fantasy.json',
+                'https://v3-cinemeta.strem.io/catalog/series/top/genre=Mystery.json',
+                // IMDB Top 250 TV
+                'https://v3-cinemeta.strem.io/catalog/series/imdbRating.json'
+            ];
+
+            let allShows = [];
+
+            for (const catalogUrl of catalogs) {
+                // Fetch multiple pages from each catalog (100 shows per page)
+                for (let skip = 0; skip < 500; skip += 100) {
+                    try {
+                        const paginatedUrl = catalogUrl.replace('.json', `/skip=${skip}.json`);
+                        const res = await axios.get(paginatedUrl, { timeout: 10000 });
+                        const metas = res.data?.metas || [];
+
+                        if (metas.length === 0) break; // No more results
+
+                        for (const meta of metas) {
+                            if (meta.id && meta.id.startsWith('tt') && !allShows.includes(meta.id)) {
+                                allShows.push(meta.id);
+                            }
+                        }
+
+                        // Small delay between pagination requests
+                        await new Promise(r => setTimeout(r, 100));
+                    } catch (e) {
+                        // Log only once per catalog, not per page
+                        if (skip === 0) {
+                            log.warn({ catalog: catalogUrl, err: e.message }, 'Failed to fetch catalog');
+                        }
+                        break; // Stop pagination on error
                     }
                 }
-            } catch (err) {
-                log.error({ imdbId, err: err.message }, 'IntroDB show index failed');
             }
+
+            log.info({ totalShows: allShows.length, alreadyChecked: state.checkedShows.length }, 'Found shows to check against IntroDB');
+
+            // Filter out already-checked shows
+            const uncheckedShows = allShows.filter(id => !state.checkedShows.includes(id));
+
+            if (uncheckedShows.length === 0) {
+                log.info('All known shows have been checked. Resetting state for next cycle.');
+                await cacheRepository.setCache(INTRODB_STATE_KEY, {
+                    showIndex: 0,
+                    checkedShows: [],
+                    lastRun: new Date().toISOString()
+                });
+                return;
+            }
+
+            // Process a batch of shows
+            const showsToProcess = uncheckedShows.slice(0, MAX_SHOWS_PER_RUN);
+            let totalFound = 0;
+
+            for (const imdbId of showsToProcess) {
+                try {
+                    log.info({ imdbId }, 'Checking show against IntroDB');
+
+                    // Get episode metadata from Cinemeta
+                    let showMeta = null;
+                    try {
+                        const metaRes = await axios.get(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`, { timeout: 10000 });
+                        showMeta = metaRes.data?.meta;
+                    } catch (e) {
+                        log.warn({ imdbId, err: e.message }, 'Failed to fetch show metadata');
+                    }
+
+                    // Determine seasons/episodes to check
+                    let episodesToCheck = [];
+
+                    if (showMeta && showMeta.videos && showMeta.videos.length > 0) {
+                        // Use actual episode list from Cinemeta
+                        for (const video of showMeta.videos) {
+                            if (video.season && video.episode) {
+                                episodesToCheck.push({ s: video.season, e: video.episode });
+                            }
+                        }
+                    } else {
+                        // Fallback: Generate a reasonable range (S1-S5, E1-E20)
+                        for (let s = 1; s <= 5; s++) {
+                            for (let e = 1; e <= 20; e++) {
+                                episodesToCheck.push({ s, e });
+                            }
+                        }
+                    }
+
+                    // Check each episode against IntroDB
+                    let foundForShow = 0;
+                    let consecutiveMisses = 0;
+                    let episodesCheckedForShow = 0;
+
+                    for (const ep of episodesToCheck) {
+                        try {
+                            const fullId = `${imdbId}:${ep.s}:${ep.e}`;
+                            const result = await skipService.getSkipSegment(fullId);
+                            episodesCheckedForShow++;
+
+                            if (result && result.source === 'introdb') {
+                                foundForShow++;
+                                totalFound++;
+                                state.stats.totalSegmentsImported++;
+                                state.stats.lastCycleSegments++;
+                                consecutiveMisses = 0;
+                                log.info({ fullId, start: result.start, end: result.end }, 'Found IntroDB segment');
+                            } else {
+                                consecutiveMisses++;
+                            }
+
+                            // Early exit if too many consecutive misses for this season
+                            if (consecutiveMisses >= 5) {
+                                // Skip remaining episodes of this season
+                                break;
+                            }
+
+                            // Rate limit: 200ms between requests
+                            await new Promise(r => setTimeout(r, 200));
+
+                        } catch (epErr) {
+                            log.error({ imdbId, season: ep.s, episode: ep.e, err: epErr.message }, 'Episode check failed');
+                        }
+                    }
+
+                    // Update cumulative episode count
+                    state.stats.totalEpisodesChecked += episodesCheckedForShow;
+
+                    if (foundForShow > 0) {
+                        log.info({ imdbId, count: foundForShow }, 'Imported IntroDB segments for show');
+                        state.stats.showsWithData++;
+                        // Register show in catalog
+                        await catalogService.registerShow(imdbId);
+                    }
+
+                    // Mark show as checked
+                    state.checkedShows.push(imdbId);
+
+                } catch (showErr) {
+                    log.error({ imdbId, err: showErr.message }, 'Show processing failed');
+                    // Still mark as checked to avoid infinite retry
+                    state.checkedShows.push(imdbId);
+                }
+
+                // Save state periodically
+                await cacheRepository.setCache(INTRODB_STATE_KEY, {
+                    ...state,
+                    lastRun: new Date().toISOString()
+                });
+
+                // Throttle between shows
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            log.info({ processedShows: showsToProcess.length, totalFound }, 'IntroDB batch complete');
+
+        } catch (e) {
+            log.error({ err: e.message }, 'IntroDB catalog scrape failed');
         }
+
         log.info('IntroDB indexing complete');
+    }
+
+    /**
+     * Get current IntroDB indexer state for admin dashboard
+     */
+    async getIntroDBState() {
+        const INTRODB_STATE_KEY = 'indexer:introdb_state';
+        const state = await cacheRepository.getCache(INTRODB_STATE_KEY) || {
+            showIndex: 0,
+            checkedShows: [],
+            lastRun: null,
+            stats: {
+                totalSegmentsImported: 0,
+                totalEpisodesChecked: 0,
+                showsWithData: 0,
+                lastCycleSegments: 0,
+                startedAt: null
+            }
+        };
+        return {
+            checkedShowsCount: state.checkedShows.length,
+            lastRun: state.lastRun,
+            isRunning: this.isRunning,
+            recentlyChecked: state.checkedShows.slice(-10), // Last 10 checked shows
+            stats: state.stats || {
+                totalSegmentsImported: 0,
+                totalEpisodesChecked: 0,
+                showsWithData: 0,
+                lastCycleSegments: 0,
+                startedAt: null
+            }
+        };
+    }
+
+    /**
+     * Manually trigger IntroDB indexing (admin only)
+     */
+    async triggerIntroDBIndex() {
+        if (this.isRunning) {
+            return { success: false, message: 'Indexer is already running' };
+        }
+
+        // Run in background
+        this.indexIntroDBCatalog().catch(e => {
+            log.error({ err: e.message }, 'Manual IntroDB trigger failed');
+        });
+
+        return { success: true, message: 'IntroDB indexing started' };
+    }
+
+    /**
+     * Reset IntroDB indexer state (admin only)
+     */
+    async resetIntroDBState() {
+        const INTRODB_STATE_KEY = 'indexer:introdb_state';
+        await cacheRepository.setCache(INTRODB_STATE_KEY, {
+            showIndex: 0,
+            checkedShows: [],
+            lastRun: null
+        });
+        return { success: true, message: 'IntroDB state reset' };
     }
 }
 

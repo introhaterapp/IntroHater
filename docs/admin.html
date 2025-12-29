@@ -168,6 +168,67 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- IntroDB Indexer Section -->
+                    <div class="glass-panel" style="margin-top: 30px; padding: 24px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0;">🔄 IntroDB Indexer</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <button id="indexerStatusBtn" class="btn btn-secondary"
+                                    style="font-size: 0.85rem;">Refresh Status</button>
+                                <button id="triggerIndexerBtn" class="btn btn-primary" style="font-size: 0.85rem;">Run
+                                    Indexer</button>
+                                <button id="resetIndexerBtn" class="btn btn-secondary"
+                                    style="font-size: 0.85rem; background: #ef4444; border-color: #ef4444;">Reset
+                                    Progress</button>
+                            </div>
+                        </div>
+
+                        <div id="indexer-stats"
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                            <div
+                                style="text-align: center; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                                <div style="font-size: 2rem; font-weight: 700; color: var(--primary);"
+                                    id="stat-segments">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Segments Imported</div>
+                            </div>
+                            <div
+                                style="text-align: center; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                                <div style="font-size: 2rem; font-weight: 700; color: #22c55e;" id="stat-episodes">0
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Episodes Checked</div>
+                            </div>
+                            <div
+                                style="text-align: center; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                                <div style="font-size: 2rem; font-weight: 700; color: #f59e0b;" id="stat-shows">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Shows Processed</div>
+                            </div>
+                            <div
+                                style="text-align: center; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                                <div style="font-size: 2rem; font-weight: 700; color: #8b5cf6;" id="stat-with-data">0
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Shows with Data</div>
+                            </div>
+                        </div>
+
+                        <div
+                            style="margin-top: 16px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+                                <span>Status: <span id="indexer-status" style="color: #22c55e;">Idle</span></span>
+                                <span>Last Cycle: <span id="stat-cycle">0</span> segments</span>
+                                <span>Last Run: <span id="stat-lastrun">Never</span></span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 16px;">
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Recently
+                                Checked Shows:</div>
+                            <div id="recent-shows"
+                                style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.75rem;"></div>
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -395,6 +456,131 @@
                 alert("Error during bulk action");
             }
         }
+
+        // ========== IntroDB Indexer Functions ==========
+
+        document.getElementById('indexerStatusBtn').addEventListener('click', loadIndexerStatus);
+        document.getElementById('triggerIndexerBtn').addEventListener('click', triggerIndexer);
+        document.getElementById('resetIndexerBtn').addEventListener('click', resetIndexer);
+
+        async function loadIndexerStatus() {
+            const btn = document.getElementById('indexerStatusBtn');
+            btn.textContent = '...';
+
+            try {
+                const res = await fetch('/api/admin/indexer/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPass })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+
+                    // Update stats
+                    document.getElementById('stat-segments').textContent = (data.stats?.totalSegmentsImported || 0).toLocaleString();
+                    document.getElementById('stat-episodes').textContent = (data.stats?.totalEpisodesChecked || 0).toLocaleString();
+                    document.getElementById('stat-shows').textContent = (data.checkedShowsCount || 0).toLocaleString();
+                    document.getElementById('stat-with-data').textContent = (data.stats?.showsWithData || 0).toLocaleString();
+                    document.getElementById('stat-cycle').textContent = data.stats?.lastCycleSegments || 0;
+
+                    // Update status
+                    const statusEl = document.getElementById('indexer-status');
+                    if (data.isRunning) {
+                        statusEl.textContent = 'Running...';
+                        statusEl.style.color = '#f59e0b';
+                    } else {
+                        statusEl.textContent = 'Idle';
+                        statusEl.style.color = '#22c55e';
+                    }
+
+                    // Update last run
+                    if (data.lastRun) {
+                        const date = new Date(data.lastRun);
+                        document.getElementById('stat-lastrun').textContent = date.toLocaleString();
+                    }
+
+                    // Update recent shows
+                    const recentContainer = document.getElementById('recent-shows');
+                    recentContainer.innerHTML = '';
+                    if (data.recentlyChecked && data.recentlyChecked.length > 0) {
+                        data.recentlyChecked.forEach(id => {
+                            const chip = document.createElement('span');
+                            chip.style.cssText = 'background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; color: #ccc;';
+                            chip.textContent = id;
+                            recentContainer.appendChild(chip);
+                        });
+                    } else {
+                        recentContainer.innerHTML = '<span style="color: #666;">No shows checked yet</span>';
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load indexer status:', e);
+            } finally {
+                btn.textContent = 'Refresh Status';
+            }
+        }
+
+        async function triggerIndexer() {
+            if (!confirm('Start IntroDB indexer? This will process 50 shows in the background.')) return;
+
+            const btn = document.getElementById('triggerIndexerBtn');
+            btn.textContent = 'Starting...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/admin/indexer/trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPass })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(data.message);
+                    loadIndexerStatus();
+                } else {
+                    const err = await res.json();
+                    alert('Failed: ' + (err.message || err.error));
+                }
+            } catch (e) {
+                console.error('Failed to trigger indexer:', e);
+                alert('Error triggering indexer');
+            } finally {
+                btn.textContent = 'Run Indexer';
+                btn.disabled = false;
+            }
+        }
+
+        async function resetIndexer() {
+            if (!confirm('Reset indexer progress? This will clear all checked shows and start over from scratch.')) return;
+
+            try {
+                const res = await fetch('/api/admin/indexer/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPass })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(data.message);
+                    loadIndexerStatus();
+                } else {
+                    alert('Failed to reset indexer');
+                }
+            } catch (e) {
+                console.error('Failed to reset indexer:', e);
+                alert('Error resetting indexer');
+            }
+        }
+
+        // Load indexer status after login
+        const originalLoadQueue = loadQueue;
+        loadQueue = async function () {
+            await originalLoadQueue.call(this);
+            loadIndexerStatus();
+        };
     </script>
 </body>
 
