@@ -7,14 +7,14 @@
     <title>Configure IntroHater</title>
     <link rel="icon" type="image/svg+xml" href="icon.svg">
 
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
 
-    
+
     <link rel="stylesheet" href="css/style.css?v=7">
 </head>
 
@@ -27,7 +27,7 @@
                 IntroHater
             </a>
 
-            
+
             <button class="menu-toggle" aria-label="Toggle navigation menu" id="menuToggle">
                 <span></span>
                 <span></span>
@@ -57,7 +57,7 @@
                 <div class="header-content text-center" style="margin-bottom: 40px;">
                     <h1 class="text-gradient" style="font-size: 2.5rem; margin-bottom: 16px;">Configure Addon</h1>
                     <p class="hero-subtitle">
-                        To skip intros, IntroHater needs permission to access your Real-Debrid streams.
+                        To skip intros, IntroHater needs your debrid service API key.
                     </p>
                 </div>
 
@@ -65,11 +65,21 @@
 
                     <form id="config-form">
                         <div class="form-group">
-                            <label class="form-label" for="rdKey">Real-Debrid API Key</label>
+                            <label class="form-label" for="provider">Debrid Provider</label>
+                            <select id="provider" class="form-input" style="margin-bottom: 16px;">
+                                <option value="realdebrid">Real-Debrid</option>
+                                <option value="torbox">TorBox</option>
+                                <option value="premiumize">Premiumize</option>
+                                <option value="alldebrid">AllDebrid</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="debridKey">API Key</label>
                             <div class="flex gap-10 mb-8">
-                                <input type="text" id="rdKey" class="form-input"
-                                    placeholder="Paste your key here (e.g. F4...)" required>
-                                <a href="https://real-debrid.com/apitoken" target="_blank"
+                                <input type="text" id="debridKey" class="form-input" placeholder="Paste your key here"
+                                    required>
+                                <a id="getKeyLink" href="https://real-debrid.com/apitoken" target="_blank"
                                     class="btn btn-secondary nowrap">
                                     Get Key ↗
                                 </a>
@@ -81,7 +91,7 @@
                                     class="btn btn-danger-outline d-none flex-1">Logout</button>
                             </div>
                             <p class="text-sm mt-15" style="color: var(--text-muted);">
-                                We need the <strong>Private Token</strong> to stream links via Torrentio.
+                                We need your <strong>API Key</strong> to fetch streams via Torrentio.
                             </p>
                         </div>
 
@@ -93,7 +103,8 @@
                         </div>
                     </form>
 
-                    
+
+
                     <div id="result-section" class="d-none mt-30 pt-30 border-top">
 
                         <div class="form-group">
@@ -126,7 +137,7 @@
 
                 </div>
 
-                
+
                 <div class="mt-24 pt-24 text-center border-top">
                     <p style="color: var(--text-muted); font-size: 0.9rem;">
                         <a href="profile.html" style="color: var(--primary);">My Profile</a> ·
@@ -134,7 +145,7 @@
                         <a href="leaderboard.html" style="color: var(--primary);">Leaderboard</a>
                     </p>
                     <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 12px;">
-                        Don't have Real-Debrid? This addon requires it to proxy streams.
+                        Supports Real-Debrid, TorBox, Premiumize, and AllDebrid.
                     </p>
                 </div>
 
@@ -144,42 +155,74 @@
         </section>
 
         <script>
-            // Persistence Logic - load saved key on page load
+            // Provider Configuration
+            const PROVIDERS = {
+                realdebrid: { name: 'Real-Debrid', keyUrl: 'https://real-debrid.com/apitoken' },
+                torbox: { name: 'TorBox', keyUrl: 'https://torbox.app/settings' },
+                premiumize: { name: 'Premiumize', keyUrl: 'https://www.premiumize.me/account' },
+                alldebrid: { name: 'AllDebrid', keyUrl: 'https://alldebrid.com/apikeys/' }
+            };
+
+            // Update Get Key link when provider changes
+            document.getElementById('provider').onchange = function () {
+                const provider = this.value;
+                const keyUrl = PROVIDERS[provider]?.keyUrl || PROVIDERS.realdebrid.keyUrl;
+                document.getElementById('getKeyLink').href = keyUrl;
+            };
+
+            // Persistence Logic - load saved config on page load
             (function () {
-                const savedKey = localStorage.getItem('introhater_rdkey');
+                const savedProvider = localStorage.getItem('introhater_provider') || 'realdebrid';
+                const savedKey = localStorage.getItem('introhater_debridkey');
+
+                document.getElementById('provider').value = savedProvider;
+                document.getElementById('getKeyLink').href = PROVIDERS[savedProvider]?.keyUrl || PROVIDERS.realdebrid.keyUrl;
+
                 if (savedKey) {
-                    document.getElementById('rdKey').value = savedKey;
+                    document.getElementById('debridKey').value = savedKey;
                     document.getElementById('logoutBtn').classList.remove('d-none');
                 }
 
                 // Path-based auto-fill (Stremio redirect fallback)
                 const parts = window.location.pathname.split('/').filter(p => p);
                 if (parts.length >= 2 && parts[parts.length - 1] === 'configure') {
-                    const potentialKey = parts[0];
-                    if (potentialKey.length > 5) {
-                        document.getElementById('rdKey').value = potentialKey;
+                    const potentialConfig = parts[0];
+                    // Check if it's provider:key format
+                    if (potentialConfig.includes(':')) {
+                        const [provider, key] = potentialConfig.split(':');
+                        if (PROVIDERS[provider] && key) {
+                            document.getElementById('provider').value = provider;
+                            document.getElementById('debridKey').value = key;
+                            document.getElementById('getKeyLink').href = PROVIDERS[provider].keyUrl;
+                        }
+                    } else if (potentialConfig.length > 5) {
+                        // Legacy format: just the key (assume realdebrid)
+                        document.getElementById('debridKey').value = potentialConfig;
                     }
                 }
             })();
 
             // Logout
             document.getElementById('logoutBtn').onclick = function () {
-                localStorage.removeItem('introhater_rdkey');
+                localStorage.removeItem('introhater_provider');
+                localStorage.removeItem('introhater_debridkey');
                 location.reload();
             };
 
             // Generate Install Link Form
             document.getElementById('config-form').onsubmit = function (e) {
                 e.preventDefault();
-                const key = document.getElementById('rdKey').value.trim();
+                const provider = document.getElementById('provider').value;
+                const key = document.getElementById('debridKey').value.trim();
                 if (!key) return;
 
-                // Save key to localStorage
-                localStorage.setItem('introhater_rdkey', key);
+                // Save to localStorage
+                localStorage.setItem('introhater_provider', provider);
+                localStorage.setItem('introhater_debridkey', key);
                 document.getElementById('logoutBtn').classList.remove('d-none');
 
-                // Use key directly as config value
-                const configValue = key;
+                // Build config value: "provider:key"
+                const configValue = `${provider}:${key}`;
 
                 // Construct Stremio Install URL
                 const protocol = 'stremio:';
@@ -211,7 +254,7 @@
         </script>
     </main>
 
-    
+
     <footer>
         <div class="container">
             <div class="footer-content">

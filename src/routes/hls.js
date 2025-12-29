@@ -171,7 +171,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
                 manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
                 isSuccess = true;
             } else {
-                // Probe failed - redirect immediately to avoid broken playback
+                
                 log.info({ introStart, introEnd, videoId }, 'Splice probe failed. Redirecting to original stream.');
                 return res.redirect(req.query.stream);
             }

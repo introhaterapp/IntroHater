@@ -6,10 +6,8 @@ const path = require('path');
 const axios = require('axios');
 
 const skipService = require('../services/skip-service');
-const { generateUserId } = require('../middleware/rdAuth');
+const { generateUserId, parseConfig, buildTorrentioUrl, getProvider } = require('../middleware/debridAuth');
 const { MANIFEST } = require('../config/constants');
-
-
 
 const manifest = {
     id: MANIFEST.ID,
@@ -25,27 +23,28 @@ const manifest = {
     }
 };
 
+async function handleStreamRequest(type, id, config, baseUrl) {
+    const requestId = Date.now().toString(36);
 
+    
+    const { provider, key: debridKey } = parseConfig(config);
+    const providerConfig = getProvider(provider);
+    const providerName = providerConfig?.shortName || 'Debrid';
 
-async function handleStreamRequest(type, id, rdKey, baseUrl) {
-    const requestId = Date.now().toString(36); 
-
-    if (!rdKey) {
-        console.error(`[Stream ${requestId}] ❌ No RD Key provided`);
+    if (!debridKey) {
+        console.error(`[Stream ${requestId}] ❌ No debrid key provided`);
         return { streams: [] };
     }
 
     console.log(`[Stream ${requestId}] 📥 Request: ${type} ${id}`);
-    console.log(`[Stream ${requestId}] 🔑 RD Key: ${rdKey.substring(0, 8)}...`);
+    console.log(`[Stream ${requestId}] 🔑 ${providerName} Key: ${debridKey.substring(0, 8)}...`);
 
     let originalStreams = [];
     let skipSeg = null;
 
     
-    
-    const torrentioUrl = `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex,rutor,rutracker,torrent9,mejortorrent,wolfmax4k%7Csort=qualitysize%7Clanguage=korean%7Cqualityfilter=scr,cam%7Cdebridoptions=nodownloadlinks,nocatalog%7Crealdebrid=${rdKey}/stream/${type}/${id}.json`;
+    const torrentioUrl = buildTorrentioUrl(provider, debridKey, type, id);
 
-    
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 1000;
     let torrentioResponse = null;
@@ -63,8 +62,8 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
 
             if (torrentioResponse.status === 200 && torrentioResponse.data.streams) {
                 originalStreams = torrentioResponse.data.streams;
-                console.log(`[Stream ${requestId}] 📦 Fetched ${originalStreams.length} streams from Torrentio+RD`);
-                break; 
+                console.log(`[Stream ${requestId}] 📦 Fetched ${originalStreams.length} streams from Torrentio+${providerName}`);
+                break;
             }
         } catch (e) {
             lastError = e;
@@ -81,10 +80,9 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
 
     if (originalStreams.length === 0 && lastError) {
         console.error(`[Stream ${requestId}] ❌ All ${MAX_RETRIES} Torrentio attempts failed`);
-        console.error(`[Stream ${requestId}] 💡 This is an upstream issue with Torrentio/Real-Debrid, not IntroHater`);
+        console.error(`[Stream ${requestId}] 💡 This is an upstream issue with Torrentio/${providerConfig?.name || 'debrid'}, not IntroHater`);
     }
 
-    
     try {
         skipSeg = await skipService.getSkipSegment(id);
         if (skipSeg) {
@@ -96,20 +94,19 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
         console.error(`[Stream ${requestId}] ⚠️ Skip lookup error: ${e.message}`);
     }
 
-
-
     const modifiedStreams = [];
+    const userId = generateUserId(debridKey);
 
     originalStreams.forEach((stream) => {
         if (!stream.url) return;
 
         const encodedUrl = encodeURIComponent(stream.url);
-        const userId = generateUserId(rdKey);
 
         const start = skipSeg ? skipSeg.start : 0;
         const end = skipSeg ? skipSeg.end : 0;
 
-        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&rdKey=${rdKey}`;
+        
+        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&rdKey=${debridKey}`;
 
         const indicator = skipSeg ? "🚀" : "🔍";
 
@@ -121,19 +118,14 @@ async function handleStreamRequest(type, id, rdKey, baseUrl) {
         });
     });
 
-    
     console.log(`[Stream ${requestId}] 📊 Result: ${modifiedStreams.length} streams, skip: ${skipSeg ? 'yes' : 'no'}`);
 
     return { streams: modifiedStreams };
 }
 
-
-
-
 router.get(['/configure', '/:config/configure'], (req, res) => {
     res.sendFile(path.join(__dirname, '../../docs', 'configure.html'));
 });
-
 
 router.get(['/:config/manifest.json', '/manifest.json'], (req, res) => {
     const config = req.params.config;
@@ -146,13 +138,13 @@ router.get(['/:config/manifest.json', '/manifest.json'], (req, res) => {
     res.json(manifestClone);
 });
 
-
 router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (req, res) => {
     const { config, type, id } = req.params;
 
-    const rdKey = config || process.env.RPDB_KEY;
+    
+    const fullConfig = config || process.env.RPDB_KEY;
 
-    if (!rdKey) {
+    if (!fullConfig) {
         return res.json({ streams: [{ title: "⚠️ Configuration Required. Please reinstall addon.", url: "" }] });
     }
 
@@ -161,7 +153,7 @@ router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (
     const host = req.get('host');
     const baseUrl = `${protocol}://${host}`;
 
-    const result = await handleStreamRequest(type, cleanId, rdKey, baseUrl);
+    const result = await handleStreamRequest(type, cleanId, fullConfig, baseUrl);
     res.json(result);
 });
 
