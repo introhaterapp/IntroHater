@@ -117,8 +117,22 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
 
     if (isWebStremioClient(req)) {
         const originalUrl = decodeURIComponent(stream);
-        log.info({ ua: (req.get('User-Agent') || '').substring(0, 50) }, 'Web client detected, redirecting to original stream (HLS.js cannot decode MKV byte-ranges)');
-        return res.redirect(originalUrl);
+        log.info({ ua: (req.get('User-Agent') || '').substring(0, 50) }, 'Web Stremio detected, returning pass-through manifest (no skip)');
+
+        // Return a simple pass-through manifest - just plays the whole file from start
+        // No byte-range tricks, no discontinuity - just a basic VOD manifest
+        const passThrough = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:7200
+#EXT-X-PLAYLIST-TYPE:VOD
+
+#EXTINF:7200,
+${originalUrl}
+
+#EXT-X-ENDLIST`;
+
+        res.set('Content-Type', 'application/vnd.apple.mpegurl');
+        return res.send(passThrough);
     }
 
     // Authenticated Telemetry
