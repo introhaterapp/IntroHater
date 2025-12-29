@@ -7,14 +7,14 @@
     <title>IntroHater - My Profile</title>
     <link rel="icon" type="image/svg+xml" href="icon.svg">
 
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
 
-    
+
     <link rel="stylesheet" href="css/style.css?v=7">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
@@ -22,7 +22,7 @@
 
 <body>
 
-    
+
     <div id="login-overlay">
         <div class="glass-panel" style="max-width: 450px; width: 100%; padding: 40px; position: relative;">
             <button id="closeOverlayBtn" class="modal-close"
@@ -51,7 +51,7 @@
                 IntroHater
             </a>
 
-            
+
             <button class="menu-toggle" aria-label="Toggle navigation menu" id="menuToggle">
                 <span></span>
                 <span></span>
@@ -78,7 +78,7 @@
         <section class="section">
             <div class="container" style="padding-top: 100px; max-width: 900px;">
 
-                
+
                 <div id="profile-content" style="display: none;">
                     <div class="profile-header">
                         <div class="profile-avatar" id="avatar">?</div>
@@ -92,7 +92,7 @@
                         </button>
                     </div>
 
-                    
+
                     <div class="stat-grid">
                         <div class="stat-card">
                             <div class="value" id="statSegments">0</div>
@@ -112,7 +112,7 @@
                         </div>
                     </div>
 
-                    
+
                     <div class="glass-panel" style="padding: 24px; margin-bottom: 24px;">
                         <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 16px;">📊 Contribution
                             Breakdown</h3>
@@ -160,20 +160,20 @@
                         </div>
                     </div>
 
-                    
+
                     <div class="glass-panel" style="padding: 24px; margin-bottom: 24px;">
                         <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 16px;">🏆 Achievements</h3>
                         <div class="badge-grid" id="badgeGrid">
-                            
+
                         </div>
                     </div>
 
-                    
+
                     <div class="glass-panel" style="padding: 24px;">
                         <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 16px;">📜 Recent Activity
                         </h3>
                         <div id="history-list" style="display: flex; flex-direction: column; gap: 12px;">
-                            
+
                         </div>
                     </div>
                 </div>
@@ -182,7 +182,7 @@
         </section>
     </main>
 
-    
+
     <div id="refine-overlay" class="modal"
         style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
         <div class="glass-panel" style="max-width: 500px; width: 90%; padding: 30px; position: relative;">
@@ -600,7 +600,7 @@
                 });
 
                 if (res.ok) {
-                    showMessage("Refinement submitted for moderation!", 'success');
+                    showMessage("Thanks for your contribution! 🎉 An admin will review it shortly.", 'success');
                     closeRefineModal();
                 } else {
                     const err = await res.json();
@@ -616,7 +616,7 @@
         });
     </script>
 
-    
+
     <footer>
         <div class="container">
             <div class="footer-content">
