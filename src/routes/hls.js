@@ -1,4 +1,7 @@
-
+/**
+ * HLS Routes
+ * Handles HLS proxy, voting, and subtitle endpoints
+ */
 
 const express = require('express');
 const router = express.Router();
@@ -10,16 +13,16 @@ const userService = require('../services/user-service');
 const cacheService = require('../services/cache-service');
 const log = require('../utils/logger').hls;
 
+// ==================== Helpers ====================
 
-
-
+// Helper: Format Seconds to VTT Time (HH:MM:SS.mmm)
 function toVTTTime(seconds) {
     const date = new Date(0);
     date.setMilliseconds(seconds * 1000);
     return date.toISOString().substr(11, 12);
 }
 
-
+// SSRF Protection: Block internal/private IP ranges
 function isSafeUrl(urlStr) {
     try {
         const url = new URL(urlStr);
@@ -39,9 +42,9 @@ function isSafeUrl(urlStr) {
     }
 }
 
+// ==================== Routes ====================
 
-
-
+// VTT Subtitle Status
 router.get('/sub/status/:videoId.vtt', async (req, res) => {
     const vid = req.params.videoId;
     const segments = await skipService.getSegments(vid) || [];
@@ -63,7 +66,7 @@ router.get('/sub/status/:videoId.vtt', async (req, res) => {
     res.send(vtt);
 });
 
-
+// HLS Media Playlist Endpoint
 router.get('/hls/manifest.m3u8', async (req, res) => {
     const { stream, start: startStr, end: endStr, id: videoId, user: userId } = req.query;
 
@@ -71,7 +74,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
         return res.status(400).send("Invalid or unsafe stream URL");
     }
 
-
+    // Authenticated Telemetry
     const rdKey = req.query.rdKey;
     if (videoId && userId && rdKey) {
         if (!cacheService.isWatchLogged(userId, videoId)) {
@@ -104,7 +107,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
         const introStart = parseFloat(startStr) || 0;
         const introEnd = parseFloat(endStr) || 0;
 
-
+        // Cache Key
         const cacheKey = `${streamUrl}_${introStart}_${introEnd}`;
         if (cacheService.hasManifest(cacheKey)) {
             res.set('Content-Type', 'application/vnd.apple.mpegurl');
@@ -113,7 +116,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
 
         log.info({ introStart, introEnd }, 'Generating manifest');
 
-
+        // Resolve Redirects & Get Length
         log.info({ streamUrl }, 'Probing URL');
         const details = await getStreamDetails(streamUrl);
         if (details.finalUrl !== streamUrl) {
@@ -123,7 +126,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
         const totalLength = details.contentLength;
         log.info({ contentLength: totalLength || 'Unknown' }, 'Content-Length');
 
-
+        // Check for Invalid/Error Streams
         const URL_LOWER = streamUrl.toLowerCase();
         if (URL_LOWER.includes('failed_opening')) {
             console.warn(`[HLS] Detected error stream (URL: ...${streamUrl.slice(-20)}). Bypassing proxy.`);
@@ -133,7 +136,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
         let manifest = "";
         let isSuccess = false;
 
-
+        // Try Chapter Discovery if no skip segments provided
         if ((!introStart || introStart === 0) && (!introEnd || introEnd === 0)) {
             log.info({ videoId }, 'No skip segments. Checking chapters.');
             const chapters = await getChapters(streamUrl);
@@ -156,40 +159,25 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
 
                 const points = await getRefinedOffsets(streamUrl, cStart, cEnd);
                 if (points) {
-                    manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength, cStart, cEnd);
+                    manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
                     isSuccess = true;
                 }
             }
         }
 
-
-        // SPLICE: Only when there's content BEFORE the intro (introStart > 0)
+        // Get Offsets if we have start and end times
         if (!isSuccess && introStart > 0 && introEnd > introStart) {
-            log.info({ introStart, introEnd }, 'Attempting splice manifest (content before intro)');
             const points = await getRefinedOffsets(streamUrl, introStart, introEnd);
-            if (points && points.startOffset >= 0 && points.endOffset > points.startOffset) {
-                log.info({ startOffset: points.startOffset, endOffset: points.endOffset, totalLength }, 'Splicing at bytes');
-                manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength, introStart, introEnd);
+            if (points) {
+                log.info({ startOffset: points.startOffset, endOffset: points.endOffset }, 'Splicing at bytes');
+                manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
                 isSuccess = true;
             } else {
-                log.info({ introStart, introEnd, videoId }, 'Splice probe failed. Falling back to simple skip.');
+                console.warn("[HLS] Failed to find splice points. Falling back to simple skip.");
             }
         }
 
-        // SIMPLE SKIP: When intro starts at 0, just start playback at introEnd
-        if (!isSuccess && introStart === 0 && introEnd > 0) {
-            log.info({ introEnd }, 'Intro at start of video. Using simple skip to jump to introEnd.');
-            const offset = await getByteOffset(streamUrl, introEnd);
-            if (offset > 0) {
-                manifest = generateSmartManifest(streamUrl, 7200, offset, totalLength, introEnd);
-                isSuccess = true;
-            } else {
-                log.info({ introEnd, videoId }, 'Simple skip probe failed. Redirecting to original stream.');
-                return res.redirect(req.query.stream);
-            }
-        }
-
-
+        // Fallback or Simple Skip
         if (!manifest) {
             const startTime = introEnd || introStart;
             if (startTime > 0) {
@@ -204,14 +192,14 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
             }
         }
 
-
-
+        // Pass-through if all failed
         if (!manifest || !isSuccess) {
-            log.info({ videoId, streamUrlShort: streamUrl.slice(-30) }, 'No skip points found. Redirecting to original stream.');
-            return res.redirect(req.query.stream);
+            log.info({ streamUrlShort: streamUrl.slice(-30) }, 'No valid skip points found. Generating pass-through manifest.');
+            manifest = generateSmartManifest(streamUrl, 7200, 0, totalLength, 0);
+            isSuccess = true;
         }
 
-
+        // Cache the manifest
         cacheService.setManifest(cacheKey, manifest);
 
         res.set('Content-Type', 'application/vnd.apple.mpegurl');
@@ -224,7 +212,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
     }
 });
 
-
+// Voting Redirects
 router.get('/vote/:action/:videoId', (req, res) => {
     const { action, videoId } = req.params;
     const { stream, start, end, user } = req.query;
