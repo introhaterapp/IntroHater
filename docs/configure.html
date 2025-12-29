@@ -155,93 +155,95 @@
         </section>
 
         <script>
-            // Update Get Key link when provider changes
-            document.getElementById('provider').onchange = function () {
-                const provider = this.value;
-                const keyUrl = DEBRID_PROVIDERS[provider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
-                document.getElementById('getKeyLink').href = keyUrl;
-            };
+            document.addEventListener('DOMContentLoaded', () => {
+                // Update Get Key link when provider changes
+                document.getElementById('provider').onchange = function () {
+                    const provider = this.value;
+                    const keyUrl = DEBRID_PROVIDERS[provider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
+                    document.getElementById('getKeyLink').href = keyUrl;
+                };
 
-            // Persistence Logic - load saved config on page load
-            (function () {
-                const config = getDebridConfig();
-                const savedProvider = config.provider || 'realdebrid';
-                const savedKey = config.debridKey;
+                // Persistence Logic - load saved config on page load
+                (function () {
+                    const config = getDebridConfig();
+                    const savedProvider = config.provider || 'realdebrid';
+                    const savedKey = config.debridKey;
 
-                document.getElementById('provider').value = savedProvider;
-                document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[savedProvider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
+                    document.getElementById('provider').value = savedProvider;
+                    document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[savedProvider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
 
-                if (savedKey) {
-                    document.getElementById('debridKey').value = savedKey;
-                    document.getElementById('logoutBtn').classList.remove('d-none');
-                }
-
-                // Path-based auto-fill (Stremio redirect fallback)
-                const parts = window.location.pathname.split('/').filter(p => p);
-                if (parts.length >= 2 && parts[parts.length - 1] === 'configure') {
-                    const potentialConfig = parts[0];
-                    // Check if it's provider:key format
-                    if (potentialConfig.includes(':')) {
-                        const [provider, key] = potentialConfig.split(':');
-                        if (DEBRID_PROVIDERS[provider] && key) {
-                            document.getElementById('provider').value = provider;
-                            document.getElementById('debridKey').value = key;
-                            document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[provider].keyUrl;
-                        }
-                    } else if (potentialConfig.length > 5) {
-                        // Legacy format: just the key (assume realdebrid)
-                        document.getElementById('debridKey').value = potentialConfig;
+                    if (savedKey) {
+                        document.getElementById('debridKey').value = savedKey;
+                        document.getElementById('logoutBtn').classList.remove('d-none');
                     }
-                }
-            })();
 
-            // Logout
-            document.getElementById('logoutBtn').onclick = function () {
-                clearDebridConfig();
-                location.reload();
-            };
+                    // Path-based auto-fill (Stremio redirect fallback)
+                    const parts = window.location.pathname.split('/').filter(p => p);
+                    if (parts.length >= 2 && parts[parts.length - 1] === 'configure') {
+                        const potentialConfig = parts[0];
+                        // Check if it's provider:key format
+                        if (potentialConfig.includes(':')) {
+                            const [provider, key] = potentialConfig.split(':');
+                            if (DEBRID_PROVIDERS[provider] && key) {
+                                document.getElementById('provider').value = provider;
+                                document.getElementById('debridKey').value = key;
+                                document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[provider].keyUrl;
+                            }
+                        } else if (potentialConfig.length > 5) {
+                            // Legacy format: just the key (assume realdebrid)
+                            document.getElementById('debridKey').value = potentialConfig;
+                        }
+                    }
+                })();
 
-            // Generate Install Link Form
-            document.getElementById('config-form').onsubmit = function (e) {
-                e.preventDefault();
-                const provider = document.getElementById('provider').value;
-                const key = document.getElementById('debridKey').value.trim();
-                if (!key) return;
+                // Logout
+                document.getElementById('logoutBtn').onclick = function () {
+                    clearDebridConfig();
+                    location.reload();
+                };
 
-                // Save to localStorage
-                setDebridConfig(provider, key);
-                document.getElementById('logoutBtn').classList.remove('d-none');
+                // Generate Install Link Form
+                document.getElementById('config-form').onsubmit = function (e) {
+                    e.preventDefault();
+                    const provider = document.getElementById('provider').value;
+                    const key = document.getElementById('debridKey').value.trim();
+                    if (!key) return;
 
-                // Build config value: "provider:key"
-                const configValue = `${provider}:${key}`;
+                    // Save to localStorage
+                    setDebridConfig(provider, key);
+                    document.getElementById('logoutBtn').classList.remove('d-none');
 
-                // Construct Stremio Install URL
-                const protocol = 'stremio:';
-                const host = window.location.host;
-                const installUrl = `${protocol}//${host}/${configValue}/manifest.json`;
+                    // Build config value: "provider:key"
+                    const configValue = `${provider}:${key}`;
 
-                // Show result
-                document.getElementById('installLink').value = installUrl;
-                document.getElementById('installBtn').href = installUrl;
-                document.getElementById('result-section').classList.remove('d-none');
-            };
+                    // Construct Stremio Install URL
+                    const protocol = 'stremio:';
+                    const host = window.location.host;
+                    const installUrl = `${protocol}//${host}/${configValue}/manifest.json`;
 
-            // Copy Button
-            document.getElementById('copyBtn').onclick = function () {
-                const link = document.getElementById('installLink');
-                link.select();
-                navigator.clipboard.writeText(link.value).then(() => {
-                    const btn = this;
-                    const originalText = btn.textContent;
-                    btn.textContent = 'Copied!';
-                    setTimeout(() => btn.textContent = originalText, 2000);
-                });
-            };
+                    // Show result
+                    document.getElementById('installLink').value = installUrl;
+                    document.getElementById('installBtn').href = installUrl;
+                    document.getElementById('result-section').classList.remove('d-none');
+                };
 
-            // Select link on click
-            document.getElementById('installLink').onclick = function () {
-                this.select();
-            };
+                // Copy Button
+                document.getElementById('copyBtn').onclick = function () {
+                    const link = document.getElementById('installLink');
+                    link.select();
+                    navigator.clipboard.writeText(link.value).then(() => {
+                        const btn = this;
+                        const originalText = btn.textContent;
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => btn.textContent = originalText, 2000);
+                    });
+                };
+
+                // Select link on click
+                document.getElementById('installLink').onclick = function () {
+                    this.select();
+                };
+            });
         </script>
     </main>
 

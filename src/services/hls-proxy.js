@@ -32,24 +32,46 @@ function isSafeUrl(urlStr) {
  * Follows redirects to get the final direct URL and Contents-Length
  */
 async function getStreamDetails(url) {
-    if (!isSafeUrl(url)) return { finalUrl: url, contentLength: null };
+    if (!isSafeUrl(url)) return { finalUrl: url, contentLength: null, duration: null };
+
+    // Check cache first
+    const cacheKey = `details:${url}`;
+    const cached = getCachedProbe(cacheKey);
+    if (cached) return cached;
+
     try {
         const response = await axios.head(url, {
             maxRedirects: 10,
             validateStatus: (status) => status >= 200 && status < 400
         });
 
-        // If axios followed redirects, response.request.res.responseUrl is final
-        // In newer axios, request.res.responseUrl might be available
-        // But headers are what we care about.
+        const finalUrl = response.request.res ? response.request.res.responseUrl : url;
+        const contentLength = response.headers['content-length'] ? parseInt(response.headers['content-length']) : null;
 
-        return {
-            finalUrl: response.request.res ? response.request.res.responseUrl : url,
-            contentLength: response.headers['content-length'] ? parseInt(response.headers['content-length']) : null
-        };
+        // Try to get duration via ffprobe (needed for accurate fragmentation)
+        let duration = null;
+        try {
+            const args = [
+                '-v', 'error',
+                '-show_entries', 'format=duration',
+                '-of', 'default=noprint_wrappers=1:nokey=1',
+                finalUrl
+            ];
+            const proc = spawn(ffprobePath, args);
+            let stdout = '';
+            proc.stdout.on('data', (d) => stdout += d);
+            const exitCode = await new Promise(r => proc.on('close', r));
+            if (exitCode === 0 && stdout.trim()) duration = parseFloat(stdout.trim());
+        } catch (e) {
+            log.warn({ err: e.message }, 'Failed to get duration via ffprobe');
+        }
+
+        const res = { finalUrl, contentLength, duration };
+        setCachedProbe(cacheKey, res);
+        return res;
     } catch (e) {
         log.warn({ err: e.message }, 'HEAD request failed. Using original URL.');
-        return { finalUrl: url, contentLength: null };
+        return { finalUrl: url, contentLength: null, duration: null };
     }
 }
 
@@ -343,14 +365,10 @@ async function getChapters(url) {
 }
 
 function generateSpliceManifest(videoUrl, duration, startOffset, endOffset, totalLength) {
-    // Segment 1: 0 to startOffset (before intro)
-    // Segment 2: endOffset to End (after intro)
-
+    // Legacy single-segment splice manifest
     const len1 = startOffset;
     const len2 = totalLength ? (totalLength - endOffset) : 99999999999;
 
-    // Note: Removed EXT-X-DISCONTINUITY - causes issues with ExoPlayer/HLS.js
-    // Added EXT-X-INDEPENDENT-SEGMENTS for better seeking
     return `#EXTM3U
 #EXT-X-VERSION:4
 #EXT-X-TARGETDURATION:7200
@@ -370,11 +388,75 @@ ${videoUrl}
 #EXT-X-ENDLIST`;
 }
 
+function generateFragmentedManifest(videoUrl, duration, totalLength, skipPoints = null) {
+    const SEGMENT_DURATION = 10;
+    const headerSize = 5000000;
+    const realDuration = duration || 7200;
+    const avgBitrate = totalLength ? (totalLength / realDuration) : (2500000 / 8); // Fallback to 2.5Mbps
+
+    let m3u8 = `#EXTM3U
+#EXT-X-VERSION:4
+#EXT-X-TARGETDURATION:${SEGMENT_DURATION}
+#EXT-X-MEDIA-SEQUENCE:0
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-ALLOW-CACHE:YES
+#EXT-X-INDEPENDENT-SEGMENTS
+
+#EXTINF:1,
+#EXT-X-BYTERANGE:${headerSize}@0
+${videoUrl}
+`;
+
+    let currentTime = 0;
+    let currentByte = headerSize;
+    const skipStart = skipPoints ? skipPoints.startTime : -1;
+    const skipEnd = skipPoints ? skipPoints.endTime : -1;
+    const skipEndByte = skipPoints ? skipPoints.endOffset : -1;
+
+    let segmentsAdded = 0;
+
+    while (currentTime < realDuration) {
+        // Handle Skip
+        if (skipPoints && currentTime >= skipStart && currentTime < skipEnd) {
+            // We are inside the skip zone. Jump to the end of the skip.
+            currentTime = skipEnd;
+            currentByte = skipEndByte !== -1 ? skipEndByte : (skipEnd * avgBitrate);
+            m3u8 += `\n#EXT-X-DISCONTINUITY\n`;
+            continue;
+        }
+
+        let segDur = Math.min(SEGMENT_DURATION, realDuration - currentTime);
+        let segLen = Math.floor(segDur * avgBitrate);
+
+        // Ensure we don't go past totalLength
+        if (totalLength && (currentByte + segLen) > totalLength) {
+            segLen = totalLength - currentByte;
+        }
+
+        if (segLen <= 0 && segmentsAdded > 0) break;
+
+        m3u8 += `#EXTINF:${segDur.toFixed(3)},
+#EXT-X-BYTERANGE:${segLen}@${currentByte}
+${videoUrl}
+`;
+
+        currentTime += segDur;
+        currentByte += segLen;
+        segmentsAdded++;
+
+        if (segmentsAdded > 2000) break; // Safety break
+    }
+
+    m3u8 += `#EXT-X-ENDLIST`;
+    return m3u8;
+}
+
 module.exports = {
     getStreamDetails,
     getByteOffset,
     generateSmartManifest,
     getRefinedOffsets,
     generateSpliceManifest,
-    getChapters
+    getChapters,
+    generateFragmentedManifest
 };

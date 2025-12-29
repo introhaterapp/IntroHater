@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-const { getByteOffset, generateSmartManifest, getStreamDetails, getRefinedOffsets, generateSpliceManifest, getChapters } = require('../services/hls-proxy');
+const { getByteOffset, getStreamDetails, getRefinedOffsets, getChapters, generateFragmentedManifest } = require('../services/hls-proxy');
 const skipService = require('../services/skip-service');
 const userService = require('../services/user-service');
 const cacheService = require('../services/cache-service');
@@ -62,12 +62,12 @@ function isSafeUrl(urlStr) {
  * 
  * Affected platforms:
  * - Web Stremio (web.stremio.com, app.strem.io) - User-Agent: Lavf/, node-fetch
+ * - Google TV 
+ * - Android TV
  * 
  * Working platforms:
- * - Desktop Stremio (libmpv, Electron)
- * - iOS Stremio (KSPlayer, AppleCoreMedia)
- * - Android/Android TV (Dalvik, ExoPlayer)
- * - VLC, Kodi, and other native players
+ * - Desktop Stremio
+ * - iOS Stremio
  */
 
 // ==================== Routes ====================
@@ -156,7 +156,9 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
             streamUrl = details.finalUrl;
         }
         const totalLength = details.contentLength;
+        const duration = details.duration;
         console.log(`${logPrefix} 📏 Content-Length: ${totalLength ? (totalLength / 1024 / 1024).toFixed(0) + 'MB' : 'Unknown'}`);
+        console.log(`${logPrefix} ⏱️ Duration: ${duration ? duration.toFixed(0) + 's' : 'Unknown'}`);
 
         // Check for Invalid/Error Streams
         const URL_LOWER = streamUrl.toLowerCase();
@@ -191,7 +193,12 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
 
                 const points = await getRefinedOffsets(streamUrl, cStart, cEnd);
                 if (points) {
-                    manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
+                    manifest = generateFragmentedManifest(streamUrl, duration, totalLength, {
+                        startTime: cStart,
+                        endTime: cEnd,
+                        startOffset: points.startOffset,
+                        endOffset: points.endOffset
+                    });
                     isSuccess = true;
                 }
             }
@@ -202,7 +209,12 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
             const points = await getRefinedOffsets(streamUrl, introStart, introEnd);
             if (points) {
                 console.log(`${logPrefix} ✂️ Splicing at bytes ${points.startOffset} - ${points.endOffset}`);
-                manifest = generateSpliceManifest(streamUrl, 7200, points.startOffset, points.endOffset, totalLength);
+                manifest = generateFragmentedManifest(streamUrl, duration, totalLength, {
+                    startTime: introStart,
+                    endTime: introEnd,
+                    startOffset: points.startOffset,
+                    endOffset: points.endOffset
+                });
                 isSuccess = true;
             } else {
                 console.warn(`${logPrefix} ⚠️ Failed to find splice points, falling back`);
@@ -216,7 +228,12 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
                 const offset = await getByteOffset(streamUrl, startTime);
 
                 if (offset > 0) {
-                    manifest = generateSmartManifest(streamUrl, 7200, offset, totalLength, startTime);
+                    manifest = generateFragmentedManifest(streamUrl, duration, totalLength, {
+                        startTime: 0,
+                        endTime: startTime,
+                        startOffset: 0,
+                        endOffset: offset
+                    });
                     isSuccess = true;
                 } else {
                     console.warn(`${logPrefix} ⚠️ Failed to find offset for ${startTime}s`);
@@ -227,7 +244,7 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
         // Pass-through if all failed
         if (!manifest || !isSuccess) {
             console.log(`${logPrefix} ➡️ No valid skip points, generating pass-through`);
-            manifest = generateSmartManifest(streamUrl, 7200, 0, totalLength, 0);
+            manifest = generateFragmentedManifest(streamUrl, duration, totalLength, null);
             isSuccess = true;
         }
 
