@@ -159,8 +159,9 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         });
     });
 
-    console.log(`[Stream ${requestId}] 📊 Result: ${modifiedStreams.length} streams, skip: ${skipSeg ? 'yes' : 'no'}`);
-    return { streams: modifiedStreams };
+    const finalStreams = modifiedStreams.slice(0, 100);
+    console.log(`[Stream ${requestId}] 📊 Result: ${finalStreams.length} streams (truncated from ${modifiedStreams.length}), skip: ${skipSeg ? 'yes' : 'no'}`);
+    return { streams: finalStreams };
 }
 
 router.get(['/configure', '/:config/configure'], (req, res) => {

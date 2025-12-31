@@ -332,7 +332,10 @@ async function initServiceStatus() {
     const fetchStatus = async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/status?t=${Date.now()}`);
-            if (!res.ok) return;
+            if (!res.ok) {
+                statusGrid.innerHTML = `<div class="status-error">Health API returned ${res.status}</div>`;
+                return;
+            }
             const data = await res.json();
             console.log("[Status] Received health data:", data);
 
@@ -366,6 +369,7 @@ async function initServiceStatus() {
             });
         } catch (e) {
             console.error("Status fetch error:", e);
+            statusGrid.innerHTML = `<div class="status-error">Failed to connect to health API</div>`;
         }
     };
 
