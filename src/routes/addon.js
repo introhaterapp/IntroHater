@@ -61,7 +61,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         console.error(`[Stream ${requestId}] ⚠️ Skip lookup error: ${e.message}`);
     }
 
-    const indicator = skipSeg ? "🚀" : "🔍";
+    // const indicator = skipSeg ? "🚀" : "🔍";
     const userId = generateUserId(debridKey);
     const start = skipSeg ? skipSeg.start : 0;
     const end = skipSeg ? skipSeg.end : 0;
@@ -86,9 +86,8 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         }
 
         return {
-            name: `IntroHater\n[RD] ${preset.quality}`,
-            title: `${indicator} ${preset.label}${skipSeg ? ' • Skip Intro' : ''}`,
-            description: `📺 ${preset.label}\n${skipSeg ? `⏭️ Skip: ${start}s - ${end}s\n` : ''}🔄 Stream resolved at play time`,
+            name: "IntroHater",
+            title: `${preset.label}${skipSeg ? ' - Skip Intro' : ''}`,
             url: proxyUrl
         };
 
