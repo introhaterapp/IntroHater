@@ -6,10 +6,11 @@ const path = require('path');
 
 const skipService = require('../services/skip-service');
 const {
-    // generateUserId,
+    generateUserId,
     parseConfig,
     getProvider
 } = require('../middleware/debridAuth');
+
 
 
 const { MANIFEST } = require('../config/constants');
@@ -60,35 +61,45 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         console.error(`[Stream ${requestId}] ⚠️ Skip lookup error: ${e.message}`);
     }
 
-    // const indicator = skipSeg ? "🚀" : "🔍";
-    // const userId = generateUserId(debridKey);
-    // const start = skipSeg ? skipSeg.start : 0;
-    // const end = skipSeg ? skipSeg.end : 0;
+    const indicator = skipSeg ? "🚀" : "🔍";
+    const userId = generateUserId(debridKey);
+    const start = skipSeg ? skipSeg.start : 0;
+    const end = skipSeg ? skipSeg.end : 0;
 
-    // const qualityPresets = [
-    //     { quality: '4K', label: '2160p REMUX', priority: 1 },
-    //     { quality: '4K', label: '2160p', priority: 2 },
-    //     { quality: '1080p', label: '1080p REMUX', priority: 3 },
-    //     { quality: '1080p', label: '1080p BluRay', priority: 4 },
-    //     { quality: '1080p', label: '1080p', priority: 5 },
-    //     { quality: '720p', label: '720p', priority: 6 },
-    //     { quality: '480p', label: '480p', priority: 7 }
-    // ];
+    const qualityPresets = [
+        { quality: '4K', label: '2160p REMUX', priority: 1 },
+        { quality: '4K', label: '2160p', priority: 2 },
+        { quality: '1080p', label: '1080p REMUX', priority: 3 },
+        { quality: '1080p', label: '1080p BluRay', priority: 4 },
+        { quality: '1080p', label: '1080p', priority: 5 },
+        { quality: '720p', label: '720p', priority: 6 },
+        { quality: '480p', label: '480p', priority: 7 }
+    ];
 
     // FORCE HTTPS on Render to avoid mixed content issues
-    // const finalBaseUrl = baseUrl.replace('http://', 'https://');
+    const finalBaseUrl = baseUrl.replace('http://', 'https://');
 
+    const streams = qualityPresets.map(preset => {
+        let proxyUrl = `${finalBaseUrl}/hls/manifest.m3u8?start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}&quality=${preset.priority}`;
+        if (externalScraper) {
+            proxyUrl += `&s=${Buffer.from(externalScraper).toString('base64')}`;
+        }
 
-    // DEBUG: HARDCODE SINGLE SIMPLE STREAM
-    const simpleStream = {
-        name: "IntroHater",
-        title: "Test Stream (Bunny)",
-        url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
-    };
+        return {
+            name: `IntroHater\n[RD] ${preset.quality}`,
+            title: `${indicator} ${preset.label}${skipSeg ? ' • Skip Intro' : ''}`,
+            description: `📺 ${preset.label}\n${skipSeg ? `⏭️ Skip: ${start}s - ${end}s\n` : ''}🔄 Stream resolved at play time`,
+            url: proxyUrl,
+            behaviorHints: {
+                bingeGroup: `introhater|${preset.quality}`
+            }
+        };
+    });
 
-    console.log(`[Stream ${requestId}] 📊 Returning HARDCODED debug stream`);
-    return { streams: [simpleStream] };
+    console.log(`[Stream ${requestId}] 📊 Returning ${streams.length} deferred streams, skip: ${skipSeg ? 'yes' : 'no'}`);
+    return { streams };
 };
+
 
 
 
