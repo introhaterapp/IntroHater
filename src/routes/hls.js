@@ -168,11 +168,25 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
         const introStart = parseFloat(startStr) || 0;
         const introEnd = parseFloat(endStr) || 0;
 
+        // TEMPORARY: Direct redirect mode to bypass all HLS generation
+        // This sacrifices skip segments but proves playback works
+        // Once confirmed working, we'll re-enable HLS generation
+        const bypassHls = true; // Set to false to re-enable HLS skip functionality
+
+        if (bypassHls) {
+            console.log(`${logPrefix} 🔀 BYPASS MODE: Redirecting directly to stream URL`);
+            console.log(`${logPrefix} 📍 Stream URL: ${streamUrl.substring(0, 80)}...`);
+            res.set('Access-Control-Allow-Origin', '*');
+            res.set('Access-Control-Expose-Headers', 'Location');
+            return res.redirect(302, streamUrl);
+        }
+
         // Fallback for Web Stremio + MKV (HLS.js doesn't support MKV)
         const isMKV = streamUrl.toLowerCase().includes('.mkv') || streamUrl.toLowerCase().includes('matroska');
         if (client === 'web' && isMKV) {
-            console.log(`${logPrefix} ⚠️ Web Client + MKV detected, bypassing proxy for compatibility`);
-            return res.redirect(streamUrl);
+            console.log(`${logPrefix} ⚠️ Web Client + MKV detected - redirecting to stream`);
+            res.set('Access-Control-Allow-Origin', '*');
+            return res.redirect(302, streamUrl);
         }
 
         // Cache Key
