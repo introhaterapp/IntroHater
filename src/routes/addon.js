@@ -169,11 +169,16 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         }
 
         modifiedStreams.push({
-            ...stream,
-            url: proxyUrl,
+            name: stream.name,
             title: `${indicator} [IntroHater] ${stream.title || stream.name}`,
+            description: stream.description,
+            url: proxyUrl,
+            infoHash: infoHash,
+            fileIdx: stream.fileIdx,
             behaviorHints: {
-                ...stream.behaviorHints || {},
+                bingeGroup: stream.behaviorHints?.bingeGroup,
+                videoSize: stream.behaviorHints?.videoSize,
+                filename: stream.behaviorHints?.filename,
                 notWebReady: true
             }
         });

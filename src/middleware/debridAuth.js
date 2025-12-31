@@ -157,12 +157,9 @@ function buildCometUrl(provider, key, type, id) {
     const debridService = provider === 'realdebrid' ? 'realdebrid' : provider;
     const config = Buffer.from(JSON.stringify({
         indexers: ["bitsearch", "eztv", "thepiratebay", "torrentgalaxy", "yts"],
-        max_results: 10,
-        max_results_per_indexer: 5,
-        timeout: 10,
-        debrid_service: debridService,
-        debrid_api_key: key,
-        debrid_key: key
+        maxResultsPerResolution: 5,
+        debridService: debridService,
+        debridApiKey: key
     })).toString('base64');
     return `https://comet.elfhosted.com/${config}/stream/${type}/${id}.json`;
 }
