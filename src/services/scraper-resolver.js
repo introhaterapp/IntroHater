@@ -2,12 +2,26 @@ const axios = require('axios');
 const { buildTorrentioUrl, buildCometUrl, buildMediaFusionUrl } = require('../middleware/debridAuth');
 const debridResolver = require('./debrid-resolver');
 
-async function resolveBestStream(provider, debridKey, type, id, priority) {
-    const scrapers = [
+async function resolveBestStream(provider, debridKey, type, id, priority, customUrl = null) {
+    const scrapers = [];
+
+    // 1. If user provided a custom scraper, prioritize it
+    if (customUrl) {
+        // Clean trailing slash and add stream part
+        const baseUrl = customUrl.replace(/\/$/, '');
+        scrapers.push({
+            name: 'custom',
+            builder: () => `${baseUrl}/stream/${type}/${id}.json`
+        });
+    }
+
+    // 2. Fallback to standard scrapers if custom fails or isn't provided
+    scrapers.push(
         { name: 'torrentio', builder: buildTorrentioUrl },
         { name: 'comet', builder: buildCometUrl },
         { name: 'mediafusion', builder: buildMediaFusionUrl }
-    ];
+    );
+
 
     const browserUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 

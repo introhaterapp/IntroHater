@@ -98,6 +98,18 @@
                         </div>
 
 
+                        <div class="form-group mb-24">
+                            <label class="form-label" for="externalScraper">External Scraper (Optional but
+                                Recommended)</label>
+                            <input type="text" id="externalScraper" class="form-input"
+                                placeholder="e.g. Torrentio/Comet manifest URL">
+                            <p class="text-sm mt-8" style="color: var(--text-muted); font-size: 0.8rem;">
+                                If you get "No results", paste your Torrentio/Comet "Install" or "manifest.json" link
+                                here.
+                                This lets us use your unique configuration and bypass server-wide rate limits.
+                            </p>
+                        </div>
+
                         <div class="mt-20">
                             <button type="submit" class="btn btn-primary w-full justify-center">
                                 Generate Install Link
@@ -170,6 +182,7 @@
                     const config = getDebridConfig();
                     const savedProvider = config.provider || 'realdebrid';
                     const savedKey = config.debridKey;
+                    const savedScraper = config.externalScraper;
 
                     document.getElementById('provider').value = savedProvider;
                     document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[savedProvider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
@@ -178,6 +191,9 @@
                         document.getElementById('debridKey').value = savedKey;
                         document.getElementById('logoutBtn').classList.remove('d-none');
                     }
+                    if (savedScraper) {
+                        document.getElementById('externalScraper').value = savedScraper;
+                    }
 
                     // Path-based auto-fill (Stremio redirect fallback)
                     const parts = window.location.pathname.split('/').filter(p => p);
@@ -185,11 +201,22 @@
                         const potentialConfig = parts[0];
                         // Check if it's provider:key format
                         if (potentialConfig.includes(':')) {
-                            const [provider, key] = potentialConfig.split(':');
-                            if (DEBRID_PROVIDERS[provider] && key) {
-                                document.getElementById('provider').value = provider;
+                            const configParts = potentialConfig.split(':');
+                            const prov = configParts[0];
+                            const key = configParts[1];
+                            const extra = configParts[2];
+
+                            if (DEBRID_PROVIDERS[prov] && key) {
+                                document.getElementById('provider').value = prov;
                                 document.getElementById('debridKey').value = key;
-                                document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[provider].keyUrl;
+                                document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[prov].keyUrl;
+
+                                if (extra && extra.startsWith('s=')) {
+                                    try {
+                                        const scraperUrl = atob(extra.substring(2));
+                                        document.getElementById('externalScraper').value = scraperUrl;
+                                    } catch (e) { }
+                                }
                             }
                         } else if (potentialConfig.length > 5) {
                             // Legacy format: just the key (assume realdebrid)
@@ -209,14 +236,20 @@
                     e.preventDefault();
                     const provider = document.getElementById('provider').value;
                     const key = document.getElementById('debridKey').value.trim();
+                    const scraper = document.getElementById('externalScraper').value.trim();
                     if (!key) return;
 
                     // Save to localStorage
-                    setDebridConfig(provider, key);
+                    setDebridConfig(provider, key, scraper);
                     document.getElementById('logoutBtn').classList.remove('d-none');
 
-                    // Build config value: "provider:key"
-                    const configValue = `${provider}:${key}`;
+                    // Build config value: "provider:key[:s=BASE64]"
+                    let configValue = `${provider}:${key}`;
+                    if (scraper) {
+                        // Clean scraper URL (remove /manifest.json if present to get base)
+                        let cleanScraper = scraper.replace(/\/manifest\.json$/, '');
+                        configValue += `:s=${btoa(cleanScraper)}`;
+                    }
 
                     // Construct Stremio Install URL
                     const protocol = 'stremio:';

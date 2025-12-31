@@ -141,7 +141,7 @@ const STATS = {
 
 const MANIFEST = {
     ID: "org.introhater",
-    VERSION: "1.0.0",
+    VERSION: "2.0.0",
     NAME: "IntroHater",
     DESCRIPTION: "Universal Skip Intro for Stremio (TV/Mobile/PC)",
     resources: ["stream"],

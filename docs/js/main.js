@@ -295,6 +295,7 @@ const DEBRID_PROVIDERS = {
 function getDebridConfig() {
     let provider = localStorage.getItem('introhater_provider');
     let debridKey = localStorage.getItem('introhater_debridkey');
+    let externalScraper = localStorage.getItem('introhater_external_scraper');
 
     // Migration logic for old rdKey format
     if (!debridKey) {
@@ -307,19 +308,26 @@ function getDebridConfig() {
         }
     }
 
-    return { provider, debridKey };
+    return { provider, debridKey, externalScraper };
 }
 
-function setDebridConfig(provider, debridKey) {
+function setDebridConfig(provider, debridKey, externalScraper = '') {
     localStorage.setItem('introhater_provider', provider);
     localStorage.setItem('introhater_debridkey', debridKey);
+    if (externalScraper) {
+        localStorage.setItem('introhater_external_scraper', externalScraper);
+    } else {
+        localStorage.removeItem('introhater_external_scraper');
+    }
 }
 
 function clearDebridConfig() {
     localStorage.removeItem('introhater_provider');
     localStorage.removeItem('introhater_debridkey');
+    localStorage.removeItem('introhater_external_scraper');
     localStorage.removeItem('introhater_rdkey'); // Clear legacy key too
 }
+
 
 window.DEBRID_PROVIDERS = DEBRID_PROVIDERS;
 window.getDebridConfig = getDebridConfig;

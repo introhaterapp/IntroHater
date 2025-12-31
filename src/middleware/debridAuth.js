@@ -64,21 +64,31 @@ function generateUserId(key) {
 function parseConfig(config) {
     if (!config) return { provider: 'realdebrid', key: '' };
 
-
-    const colonIndex = config.indexOf(':');
-    if (colonIndex > 0 && colonIndex < 15) {
-        const potentialProvider = config.substring(0, colonIndex).toLowerCase();
+    const parts = config.split(':');
+    if (parts.length >= 2) {
+        const potentialProvider = parts[0].toLowerCase();
         if (DEBRID_PROVIDERS[potentialProvider]) {
-            return {
+            const result = {
                 provider: potentialProvider,
-                key: config.substring(colonIndex + 1)
+                key: parts[1]
             };
+
+            for (let i = 2; i < parts.length; i++) {
+                if (parts[i].startsWith('s=')) {
+                    try {
+                        result.scraper = Buffer.from(parts[i].substring(2), 'base64').toString('utf8');
+                    } catch (e) {
+                        console.error('Failed to parse scraper URL:', e.message);
+                    }
+                }
+            }
+            return result;
         }
     }
 
-
     return { provider: 'realdebrid', key: config };
 }
+
 
 
 function buildConfig(provider, key) {

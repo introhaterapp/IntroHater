@@ -34,7 +34,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     const isAndroid = userAgent.toLowerCase().includes('android') || userAgent.toLowerCase().includes('exoplayer');
     const client = isWebStremio ? 'web' : (isAndroid ? 'android' : 'desktop');
 
-    const { provider, key: debridKey } = parseConfig(config);
+    const { provider, key: debridKey, scraper: externalScraper } = parseConfig(config);
     const providerConfig = getProvider(provider);
     const providerName = providerConfig?.shortName || 'Debrid';
 
@@ -45,6 +45,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
     console.log(`[Stream ${requestId}] 📥 Request: ${type} ${id} (Client: ${client})`);
     console.log(`[Stream ${requestId}] 🔑 ${providerName} Key: ${debridKey.substring(0, 8)}...`);
+    if (externalScraper) console.log(`[Stream ${requestId}] 🌐 Using custom scraper: ${externalScraper.substring(0, 30)}...`);
 
     let skipSeg = null;
     try {
@@ -74,7 +75,10 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     ];
 
     const streams = qualityPresets.map(preset => {
-        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}&quality=${preset.priority}`;
+        let proxyUrl = `${baseUrl}/hls/manifest.m3u8?start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}&quality=${preset.priority}`;
+        if (externalScraper) {
+            proxyUrl += `&s=${Buffer.from(externalScraper).toString('base64')}`;
+        }
 
         return {
             name: `[${providerName}⚡] IntroHater ${preset.quality}`,
