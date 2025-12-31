@@ -7,15 +7,15 @@ const log = require('../utils/logger').indexer;
 class IndexerService {
     constructor() {
         this.isRunning = false;
-        this.interval = 12 * 60 * 60 * 1000; 
+        this.interval = 12 * 60 * 60 * 1000;
         this.STATE_KEY = 'indexer:state';
     }
 
     start() {
-        
+
         this.runIndex();
 
-        
+
         setInterval(() => this.runIndex(), this.interval);
     }
 
@@ -40,13 +40,13 @@ class IndexerService {
 
         this.isRunning = true;
 
-        
+
         const state = await this.loadState();
         log.info({ page: state.page }, 'Starting catalog indexing cycle');
 
         try {
             await this.indexAnimeSkipCatalog(state);
-            await this.indexIntroDBCatalog(); 
+            await this.indexIntroDBCatalog();
         } catch (e) {
             log.error({ err: e.message }, 'Cycle failed');
         } finally {
@@ -58,7 +58,7 @@ class IndexerService {
     async indexAnimeSkipCatalog(initialState) {
         const ANIME_SKIP_CLIENT_ID = 'th2oogUKrgOf1J8wMSIUPV0IpBMsLOJi';
         const BATCH_SIZE = 50;
-        const MAX_PAGES = 100; 
+        const MAX_PAGES = 100;
 
         let offset = initialState.offset || 0;
         let page = initialState.page || 0;
@@ -66,7 +66,7 @@ class IndexerService {
 
         while (running && page < MAX_PAGES) {
             try {
-                
+
                 const query = `
                     query ($search: String!, $offset: Int, $limit: Int) {
                         searchShows(search: $search, offset: $offset, limit: $limit) {
@@ -98,17 +98,17 @@ class IndexerService {
 
                 for (const show of shows) {
                     let imdbId = null;
-                    
+
                     if (show.externalLinks) {
                         const imdbLink = show.externalLinks.find(e => e.service === 'IMDB' || (e.url && e.url.includes('imdb.com/title/')));
                         if (imdbLink && imdbLink.url) {
-                            
+
                             const match = imdbLink.url.match(/(tt\d+)/);
                             if (match) imdbId = match[1];
                         }
                     }
 
-                    
+
                     if (!imdbId && show.name) {
                         try {
                             const searchUrl = `https://v3-cinemeta.strem.io/catalog/series/top/search=${encodeURIComponent(show.name)}.json`;
@@ -116,14 +116,14 @@ class IndexerService {
                             if (searchRes.data?.metas?.length > 0) {
                                 imdbId = searchRes.data.metas[0].id;
                             }
-                        } catch {  }
+                        } catch { }
                     }
 
-                    
+
                     if (imdbId) {
                         await catalogService.registerShow(imdbId);
 
-                        
+
                         try {
                             const epQuery = `
                                 query ($showId: ID!) {
@@ -158,11 +158,13 @@ class IndexerService {
                                     const start = intro.at;
                                     const end = next ? next.at : start + 90;
 
-                                    
-                                    const season = ep.season || 1;
-                                    const fullId = `${imdbId}:${season}:${ep.number}`;
 
-                                    
+
+                                    const season = ep.season || 1;
+                                    const epNum = ep.number || 0;
+                                    const fullId = `${imdbId}:${season}:${epNum}`;
+
+
                                     await skipService.addSkipSegment(fullId, start, end, 'Intro', 'auto-import', false);
 
                                     importedCount++;
@@ -179,41 +181,41 @@ class IndexerService {
 
                     }
 
-                    
+
                     await new Promise(r => setTimeout(r, 200));
                 }
 
                 offset += BATCH_SIZE;
                 page++;
 
-                
+
                 await this.saveState({ page, offset, lastRun: new Date().toISOString() });
 
-                
+
                 await new Promise(r => setTimeout(r, 1000));
 
             } catch (e) {
                 log.error({ page, err: e.message }, 'Error on page');
-                
+
                 await this.saveState({ page, offset, error: e.message, lastRun: new Date().toISOString() });
                 running = false;
             }
         }
     }
 
-    
+
     async indexIntroDBCatalog() {
         log.info('Starting IntroDB external catalog scrape...');
 
         const INTRODB_STATE_KEY = 'indexer:introdb_state';
-        const MAX_SHOWS_PER_RUN = 50; 
+        const MAX_SHOWS_PER_RUN = 50;
 
-        
+
         let state = await cacheRepository.getCache(INTRODB_STATE_KEY) || {
             showIndex: 0,
-            checkedShows: [], 
+            checkedShows: [],
             lastRun: null,
-            
+
             stats: {
                 totalSegmentsImported: 0,
                 totalEpisodesChecked: 0,
@@ -223,7 +225,7 @@ class IndexerService {
             }
         };
 
-        
+
         if (!state.stats) {
             state.stats = {
                 totalSegmentsImported: 0,
@@ -234,17 +236,17 @@ class IndexerService {
             };
         }
 
-        
+
         state.stats.lastCycleSegments = 0;
 
         try {
-            
-            
+
+
             const catalogs = [
-                
+
                 'https://v3-cinemeta.strem.io/catalog/series/top.json',
                 'https://v3-cinemeta.strem.io/catalog/series/year.json',
-                
+
                 'https://v3-cinemeta.strem.io/catalog/series/top/genre=Drama.json',
                 'https://v3-cinemeta.strem.io/catalog/series/top/genre=Comedy.json',
                 'https://v3-cinemeta.strem.io/catalog/series/top/genre=Action.json',
@@ -255,21 +257,21 @@ class IndexerService {
                 'https://v3-cinemeta.strem.io/catalog/series/top/genre=Animation.json',
                 'https://v3-cinemeta.strem.io/catalog/series/top/genre=Fantasy.json',
                 'https://v3-cinemeta.strem.io/catalog/series/top/genre=Mystery.json',
-                
+
                 'https://v3-cinemeta.strem.io/catalog/series/imdbRating.json'
             ];
 
             let allShows = [];
 
             for (const catalogUrl of catalogs) {
-                
+
                 for (let skip = 0; skip < 500; skip += 100) {
                     try {
                         const paginatedUrl = catalogUrl.replace('.json', `/skip=${skip}.json`);
                         const res = await axios.get(paginatedUrl, { timeout: 10000 });
                         const metas = res.data?.metas || [];
 
-                        if (metas.length === 0) break; 
+                        if (metas.length === 0) break;
 
                         for (const meta of metas) {
                             if (meta.id && meta.id.startsWith('tt') && !allShows.includes(meta.id)) {
@@ -277,21 +279,21 @@ class IndexerService {
                             }
                         }
 
-                        
+
                         await new Promise(r => setTimeout(r, 100));
                     } catch (e) {
-                        
+
                         if (skip === 0) {
                             log.warn({ catalog: catalogUrl, err: e.message }, 'Failed to fetch catalog');
                         }
-                        break; 
+                        break;
                     }
                 }
             }
 
             log.info({ totalShows: allShows.length, alreadyChecked: state.checkedShows.length }, 'Found shows to check against IntroDB');
 
-            
+
             const uncheckedShows = allShows.filter(id => !state.checkedShows.includes(id));
 
             if (uncheckedShows.length === 0) {
@@ -304,7 +306,7 @@ class IndexerService {
                 return;
             }
 
-            
+
             const showsToProcess = uncheckedShows.slice(0, MAX_SHOWS_PER_RUN);
             let totalFound = 0;
 
@@ -312,7 +314,7 @@ class IndexerService {
                 try {
                     log.info({ imdbId }, 'Checking show against IntroDB');
 
-                    
+
                     let showMeta = null;
                     try {
                         const metaRes = await axios.get(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`, { timeout: 10000 });
@@ -321,18 +323,18 @@ class IndexerService {
                         log.warn({ imdbId, err: e.message }, 'Failed to fetch show metadata');
                     }
 
-                    
+
                     let episodesToCheck = [];
 
                     if (showMeta && showMeta.videos && showMeta.videos.length > 0) {
-                        
+
                         for (const video of showMeta.videos) {
                             if (video.season && video.episode) {
                                 episodesToCheck.push({ s: video.season, e: video.episode });
                             }
                         }
                     } else {
-                        
+
                         for (let s = 1; s <= 5; s++) {
                             for (let e = 1; e <= 20; e++) {
                                 episodesToCheck.push({ s, e });
@@ -340,14 +342,15 @@ class IndexerService {
                         }
                     }
 
-                    
+
                     let foundForShow = 0;
                     let consecutiveMisses = 0;
                     let episodesCheckedForShow = 0;
 
                     for (const ep of episodesToCheck) {
                         try {
-                            const fullId = `${imdbId}:${ep.s}:${ep.e}`;
+                            const epNum = ep.e || 0;
+                            const fullId = `${imdbId}:${ep.s || 1}:${epNum}`;
                             const result = await skipService.getSkipSegment(fullId);
                             episodesCheckedForShow++;
 
@@ -362,13 +365,13 @@ class IndexerService {
                                 consecutiveMisses++;
                             }
 
-                            
+
                             if (consecutiveMisses >= 5) {
-                                
+
                                 break;
                             }
 
-                            
+
                             await new Promise(r => setTimeout(r, 200));
 
                         } catch (epErr) {
@@ -376,32 +379,32 @@ class IndexerService {
                         }
                     }
 
-                    
+
                     state.stats.totalEpisodesChecked += episodesCheckedForShow;
 
                     if (foundForShow > 0) {
                         log.info({ imdbId, count: foundForShow }, 'Imported IntroDB segments for show');
                         state.stats.showsWithData++;
-                        
+
                         await catalogService.registerShow(imdbId);
                     }
 
-                    
+
                     state.checkedShows.push(imdbId);
 
                 } catch (showErr) {
                     log.error({ imdbId, err: showErr.message }, 'Show processing failed');
-                    
+
                     state.checkedShows.push(imdbId);
                 }
 
-                
+
                 await cacheRepository.setCache(INTRODB_STATE_KEY, {
                     ...state,
                     lastRun: new Date().toISOString()
                 });
 
-                
+
                 await new Promise(r => setTimeout(r, 500));
             }
 
@@ -414,7 +417,7 @@ class IndexerService {
         log.info('IntroDB indexing complete');
     }
 
-    
+
     async getIntroDBState() {
         const INTRODB_STATE_KEY = 'indexer:introdb_state';
         const state = await cacheRepository.getCache(INTRODB_STATE_KEY) || {
@@ -433,7 +436,7 @@ class IndexerService {
             checkedShowsCount: state.checkedShows.length,
             lastRun: state.lastRun,
             isRunning: this.isRunning,
-            recentlyChecked: state.checkedShows.slice(-10), 
+            recentlyChecked: state.checkedShows.slice(-10),
             stats: state.stats || {
                 totalSegmentsImported: 0,
                 totalEpisodesChecked: 0,
@@ -444,13 +447,13 @@ class IndexerService {
         };
     }
 
-    
+
     async triggerIntroDBIndex() {
         if (this.isRunning) {
             return { success: false, message: 'Indexer is already running' };
         }
 
-        
+
         this.indexIntroDBCatalog().catch(e => {
             log.error({ err: e.message }, 'Manual IntroDB trigger failed');
         });
@@ -458,7 +461,7 @@ class IndexerService {
         return { success: true, message: 'IntroDB indexing started' };
     }
 
-    
+
     async resetIntroDBState() {
         const INTRODB_STATE_KEY = 'indexer:introdb_state';
         await cacheRepository.setCache(INTRODB_STATE_KEY, {

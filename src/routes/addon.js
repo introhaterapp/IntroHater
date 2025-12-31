@@ -78,7 +78,18 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             const latency = Date.now() - startTime;
             scraperHealth.updateStatus(scraper.name, 'online', latency);
 
-            if (response.status === 200 && response.data.streams?.length > 0) {
+            if (response.status === 200 && response.data.streams && response.data.streams.length > 0) {
+                const firstStream = response.data.streams[0];
+                if (firstStream.title && (
+                    firstStream.title.toLowerCase().includes('rate limit') ||
+                    firstStream.title.toLowerCase().includes('public instance') ||
+                    firstStream.title.toLowerCase().includes('donate to comet')
+                )) {
+                    console.warn(`[Stream ${requestId}] ⚠️ ${scraper.label} returned rate limit message. Skipping.`);
+                    scraperHealth.updateStatus(scraper.name, 'degraded');
+                    continue;
+                }
+
                 originalStreams = response.data.streams;
                 console.log(`[Stream ${requestId}] ✅ ${scraper.label} responded with ${originalStreams.length} streams (${latency}ms)`);
                 break;

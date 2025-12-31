@@ -334,6 +334,12 @@ async function initServiceStatus() {
             const res = await fetch(`${API_BASE_URL}/api/status?t=${Date.now()}`);
             if (!res.ok) return;
             const data = await res.json();
+            console.log("[Status] Received health data:", data);
+
+            if (!data || Object.keys(data).length === 0) {
+                statusGrid.innerHTML = '<div class="status-loading">No status data available</div>';
+                return;
+            }
 
             statusGrid.innerHTML = '';
             Object.entries(data).forEach(([, service]) => {

@@ -37,7 +37,13 @@ class ScraperHealthService {
                     headers: { 'User-Agent': 'IntroHater-HealthCheck/1.0' }
                 });
                 const latency = Date.now() - start;
-                const status = (response.status >= 200 && response.status < 400) ? 'online' : 'degraded';
+                let status = (response.status >= 200 && response.status < 400) ? 'online' : 'degraded';
+
+
+                if (key === 'comet' && response.data && response.data.streams?.[0]?.title?.toLowerCase().includes('rate limit')) {
+                    status = 'degraded';
+                }
+
                 this.updateStatus(key, status, latency);
             } catch (e) {
                 const status = e.response?.status === 403 ? 'blocked' : 'offline';
