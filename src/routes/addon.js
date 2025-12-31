@@ -89,11 +89,9 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             name: `IntroHater\n[RD] ${preset.quality}`,
             title: `${indicator} ${preset.label}${skipSeg ? ' • Skip Intro' : ''}`,
             description: `📺 ${preset.label}\n${skipSeg ? `⏭️ Skip: ${start}s - ${end}s\n` : ''}🔄 Stream resolved at play time`,
-            url: proxyUrl,
-            behaviorHints: {
-                bingeGroup: `introhater|${preset.quality}`
-            }
+            url: proxyUrl
         };
+
     });
 
     console.log(`[Stream ${requestId}] 📊 Returning ${streams.length} deferred streams, skip: ${skipSeg ? 'yes' : 'no'}`);
