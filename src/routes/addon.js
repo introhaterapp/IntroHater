@@ -95,6 +95,11 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     if (originalStreams.length === 0) {
         console.error(`[Stream ${requestId}] ❌ All scrapers failed or returned no results`);
         console.error(`[Stream ${requestId}] 💡 This is an upstream issue with the scrapers, not IntroHater`);
+    } else {
+        const first = originalStreams[0];
+        if (!first.url && (first.infoHash || first.infohash)) {
+            console.warn(`[Stream ${requestId}] ⚠️ Scraper returned infoHashes but no URLs. Direct proxying requires resolved URLs.`);
+        }
     }
 
     let skipSeg = null;
@@ -113,18 +118,27 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     const userId = generateUserId(debridKey);
 
     originalStreams.forEach((stream) => {
-        if (!stream.url) return;
-        const encodedUrl = encodeURIComponent(stream.url);
+        const streamUrl = stream.url || stream.externalUrl;
+        if (!streamUrl) return;
+
+        const encodedUrl = encodeURIComponent(streamUrl);
         const start = skipSeg ? skipSeg.start : 0;
         const end = skipSeg ? skipSeg.end : 0;
-        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}`;
+        // Sanitize skip times
+        const sanitizedStart = (typeof start === 'number' && !isNaN(start) && start >= 0) ? start : 0;
+        const sanitizedEnd = (typeof end === 'number' && !isNaN(end) && end > sanitizedStart) ? end : sanitizedStart;
+
+        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${sanitizedStart}&end=${sanitizedEnd}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}`;
         const indicator = skipSeg ? "🚀" : "🔍";
 
         modifiedStreams.push({
             ...stream,
             url: proxyUrl,
             title: `${indicator} [IntroHater] ${stream.title || stream.name}`,
-            behaviorHints: { notWebReady: true }
+            behaviorHints: {
+                ...stream.behaviorHints || {},
+                notWebReady: true
+            }
         });
     });
 
@@ -148,6 +162,10 @@ router.get(['/:config/manifest.json', '/manifest.json'], (req, res) => {
 });
 
 router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (req, res) => {
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Pragma', 'no-cache');
+    res.header('Expires', '0');
+
     const { config, type, id } = req.params;
 
     const fullConfig = config || process.env.RPDB_KEY;

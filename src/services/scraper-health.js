@@ -12,7 +12,7 @@ class ScraperHealthService {
 
 
         this.backgroundCheck();
-        setInterval(() => this.backgroundCheck(), 5 * 60 * 1000);
+        setInterval(() => this.backgroundCheck(), 30 * 60 * 1000);
     }
 
     updateStatus(key, status, latency = 0) {
@@ -28,6 +28,7 @@ class ScraperHealthService {
     }
 
     async backgroundCheck() {
+        console.log('[ScraperHealth] Starting background health checks...');
         const checkService = async (key, url, timeout = 5000) => {
             const start = Date.now();
             try {

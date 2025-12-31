@@ -36,27 +36,27 @@ async function getSegments(fullId) {
     const cleanId = String(fullId).trim();
     let segments = [];
 
-    
+
     const parts = cleanId.split(':');
     let imdbId, epKey, isSeriesRequest;
 
     if (cleanId.startsWith('kitsu:')) {
-        imdbId = parts.slice(0, 2).join(':'); 
+        imdbId = parts.slice(0, 2).join(':');
         isSeriesRequest = parts.length < 3;
-        epKey = !isSeriesRequest ? parts[2] : null; 
+        epKey = !isSeriesRequest ? parts[2] : null;
     } else {
-        imdbId = parts[0]; 
+        imdbId = parts[0];
         isSeriesRequest = parts.length < 3;
-        epKey = !isSeriesRequest ? `${parts[1]}:${parts[2]}` : null; 
+        epKey = !isSeriesRequest ? `${parts[1]}:${parts[2]}` : null;
     }
 
     try {
-        
+
         const media = await catalogService.getShowByImdbId(imdbId);
 
         if (media && media.episodes) {
             if (isSeriesRequest) {
-                
+
                 for (const key in media.episodes) {
                     if (media.episodes[key].segments) {
                         const epSegments = media.episodes[key].segments.map(s => ({ ...s, videoId: `${imdbId}:${key}` }));
@@ -64,17 +64,17 @@ async function getSegments(fullId) {
                     }
                 }
             } else if (media.episodes[epKey] && media.episodes[epKey].segments) {
-                
+
                 segments = media.episodes[epKey].segments.map(s => ({ ...s, videoId: cleanId }));
             }
 
             if (segments.length > 0) {
-                
+
                 return mergeSegments(segments);
             }
         }
 
-        
+
         if (isSeriesRequest) {
             const docs = await skipRepository.findBySeriesId(imdbId);
             const segmentsByEp = {};
@@ -91,19 +91,19 @@ async function getSegments(fullId) {
                 }
             });
 
-            
+
             if (Object.keys(segmentsByEp).length > 0) {
                 catalogService.bakeShowSegments(imdbId, segmentsByEp).catch(() => { });
             }
         } else {
-            
+
             const doc = await skipRepository.findByFullId(cleanId);
             if (doc && doc.segments) {
                 segments = doc.segments.map(s => ({ ...s, videoId: cleanId }));
             }
         }
 
-        
+
         if (!isSeriesRequest) {
             const seriesDoc = await skipRepository.findByFullId(imdbId);
             if (seriesDoc && seriesDoc.segments) {
@@ -197,7 +197,7 @@ async function getRecentSegments(limit = 20) {
 async function getMalId(imdbId) {
     const cleanId = String(imdbId).trim();
 
-    
+
     if (cleanId.startsWith('kitsu:')) {
         return await getMalIdFromKitsu(cleanId);
     }
@@ -245,7 +245,7 @@ async function getMalIdFromKitsu(kitsuId) {
             return malId;
         }
 
-        
+
         const metaRes = await axios.get(`https://v3-cinemeta.strem.io/meta/anime/${kitsuId}.json`);
         const name = metaRes.data?.meta?.name;
         if (name) {
@@ -286,7 +286,7 @@ async function fetchAniskip(malId, episode) {
                 return result;
             }
         }
-    } catch {  }
+    } catch { }
 
     await cacheRepository.setCache(cacheKey, null);
     return null;
@@ -306,7 +306,7 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
             try {
                 const metaRes = await axios.get(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`);
                 name = metaRes.data?.meta?.name;
-            } catch {  }
+            } catch { }
         }
 
         if (name) {
@@ -388,7 +388,7 @@ async function fetchIntroDB(imdbId, season, episode) {
         log.info({ url }, 'Fetching from IntroDB');
         const res = await axios.get(url);
 
-        
+
         if (res.data && res.data.start_sec != null && res.data.end_sec != null) {
             const segments = [{
                 start: res.data.start_sec,
@@ -402,7 +402,7 @@ async function fetchIntroDB(imdbId, season, episode) {
             return segments;
         }
     } catch (e) {
-        
+
         if (e.response?.status !== 404) {
             log.error({ imdbId, season, episode, err: e.message }, 'IntroDB fetch failed');
         }
@@ -415,7 +415,7 @@ async function fetchIntroDB(imdbId, season, episode) {
 
 
 async function getSkipSegment(fullId) {
-    
+
     const segments = await getSegments(fullId);
     if (segments && segments.length > 0) {
         const intro = segments.find(s => s.label === 'Intro' || s.label === 'OP');
@@ -428,13 +428,13 @@ async function getSkipSegment(fullId) {
         }
     }
 
-    
+
     const parts = fullId.split(':');
     if (parts.length >= 3) {
         let imdbId, season, episode;
 
         if (fullId.startsWith('kitsu:')) {
-            imdbId = parts.slice(0, 2).join(':'); 
+            imdbId = parts.slice(0, 2).join(':');
             season = 1;
             episode = parseInt(parts[2]);
         } else {
@@ -443,14 +443,14 @@ async function getSkipSegment(fullId) {
             episode = parseInt(parts[2]);
         }
 
-        
+
         if (imdbId.startsWith('tt')) {
             const introDbSegments = await fetchIntroDB(imdbId, season, episode);
             if (introDbSegments) {
                 const intro = introDbSegments.find(s => s.label === 'Intro');
                 if (intro) {
                     log.info({ fullId, start: intro.start, end: intro.end }, 'Found IntroDB');
-                    
+
                     for (const s of introDbSegments) {
                         addSkipSegment(fullId, s.start, s.end, s.label, 'introdb').catch(() => { });
                     }
@@ -459,7 +459,7 @@ async function getSkipSegment(fullId) {
             }
         }
 
-        
+
         const malId = await getMalId(imdbId);
         if (malId) {
             const aniSkip = await fetchAniskip(malId, episode);
@@ -485,11 +485,12 @@ async function getSkipSegment(fullId) {
 
 async function addSkipSegment(fullId, start, end, label = "Intro", userId = "anonymous", applyToSeries = false) {
     await ensureInit();
-    const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot', 'introdb']; 
+    const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot', 'introdb'];
     const isTrusted = TRUSTED_SOURCES.includes(userId);
 
-    if (typeof start !== 'number' || typeof end !== 'number' || start < 0 || end <= start) {
-        throw new Error("Invalid start or end times");
+    if (typeof start !== 'number' || typeof end !== 'number' || isNaN(start) || isNaN(end) || start < 0 || end <= start) {
+        log.warn({ fullId, start, end, label, userId }, "Attempted to add invalid segment, skipping");
+        return null;
     }
 
     const cleanLabel = String(label).substring(0, 50);
@@ -505,14 +506,14 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
         cleanFullId = seriesId;
     }
 
-    
+
     const existingDoc = await skipRepository.findOne({ fullId: cleanFullId });
     if (existingDoc && existingDoc.segments && existingDoc.segments.length > 0) {
         const isDuplicate = existingDoc.segments.some(s => {
             return Math.abs(s.start - start) < 1.0 && Math.abs(s.end - end) < 1.0;
         });
         if (isDuplicate) {
-            return null; 
+            return null;
         }
     }
 
@@ -529,7 +530,7 @@ async function addSkipSegment(fullId, start, end, label = "Intro", userId = "ano
 
     await skipRepository.addSegment(cleanFullId, newSegment, seriesId);
 
-    
+
     const finalSegments = await getSegments(cleanFullId);
     catalogService.registerShow(cleanFullId, finalSegments.length, finalSegments).catch(() => { });
 
@@ -572,7 +573,7 @@ async function resolveModerationBulk(items, action) {
 
     let modifiedCount = 0;
     for (const fullId in grouped) {
-        const indices = grouped[fullId].sort((a, b) => b - a); 
+        const indices = grouped[fullId].sort((a, b) => b - a);
         const doc = await skipRepository.findByFullId(fullId);
         if (!doc || !doc.segments) continue;
 
@@ -619,7 +620,7 @@ async function cleanupDuplicates() {
 
     let totalRemoved = 0;
     try {
-        const docs = await skipRepository.find({ "segments.1": { $exists: true } }); 
+        const docs = await skipRepository.find({ "segments.1": { $exists: true } });
 
         for (const doc of docs) {
             const originalCount = doc.segments.length;
