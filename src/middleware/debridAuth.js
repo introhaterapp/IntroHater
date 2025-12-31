@@ -154,12 +154,14 @@ function buildTorrentioUrl(provider, key, type, id) {
 }
 
 function buildCometUrl(provider, key, type, id) {
+    const debridService = provider === 'realdebrid' ? 'realdebrid' : provider;
     const config = Buffer.from(JSON.stringify({
         indexers: ["bitsearch", "eztv", "thepiratebay", "torrentgalaxy", "yts"],
         max_results: 10,
         max_results_per_indexer: 5,
         timeout: 10,
-        debrid_service: provider === 'realdebrid' ? 'realdebrid' : provider,
+        debrid_service: debridService,
+        debrid_api_key: key,
         debrid_key: key
     })).toString('base64');
     return `https://comet.elfhosted.com/${config}/stream/${type}/${id}.json`;
@@ -167,9 +169,14 @@ function buildCometUrl(provider, key, type, id) {
 
 
 function buildMediaFusionUrl(provider, key, type, id) {
-    const providerConfig = getProvider(provider);
-    const debridId = providerConfig?.torrentioParam || 'realdebrid';
-    return `https://mediafusion.elfhosted.com/${debridId}=${key}/stream/${type}/${id}.json`;
+    const debridService = provider === 'realdebrid' ? 'realdebrid' : provider;
+    const config = Buffer.from(JSON.stringify({
+        streaming_provider: {
+            service: debridService,
+            token: key
+        }
+    })).toString('base64');
+    return `https://mediafusion.elfhosted.com/${config}/stream/${type}/${id}.json`;
 }
 
 
