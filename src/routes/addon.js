@@ -86,9 +86,10 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             description: `📺 ${preset.label}\n${skipSeg ? `⏭️ Skip: ${start}s - ${end}s\n` : ''}🔄 Stream resolved at play time`,
             url: proxyUrl,
             behaviorHints: {
-                notWebReady: true,
-                bingeGroup: `introhater|${preset.quality}`
+                bingeGroup: `introhater|${preset.quality}`,
+                videoSize: 1000000000 // Fake size to ensure it's not filtered out as too small
             }
+
         };
     });
 
@@ -133,7 +134,12 @@ router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (
     const origin = req.get('Origin') || req.get('Referer') || '';
 
     const result = await handleStreamRequest(type, cleanId, fullConfig, baseUrl, userAgent, origin);
+
+    // DEBUG: Dump the exact JSON response - Stremio is strict!
+    console.log(`[Stream ${cleanId}] 📤 Sending Response:`, JSON.stringify(result, null, 2));
+
     res.json(result);
 });
+
 
 module.exports = router;

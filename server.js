@@ -66,10 +66,16 @@ app.use(helmet({
             upgradeInsecureRequests: [],
         }
     },
-    crossOriginEmbedderPolicy: false, 
+    crossOriginEmbedderPolicy: false,
 }));
 app.use(hpp());
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+}));
+
 app.use(express.json());
 
 
@@ -125,7 +131,7 @@ const mongoService = require('./src/services/mongodb');
 function gracefulShutdown(signal, server) {
     log.info({ signal }, 'Received shutdown signal. Shutting down gracefully...');
 
-    
+
     wsTicker.close();
 
     server.close(async () => {
@@ -142,7 +148,7 @@ function gracefulShutdown(signal, server) {
         process.exit(0);
     });
 
-    
+
     setTimeout(() => {
         log.error('Force shutdown after timeout');
         process.exit(1);
@@ -150,10 +156,10 @@ function gracefulShutdown(signal, server) {
 }
 
 if (require.main === module) {
-    
+
     validateEnv();
 
-    
+
     try {
         indexerService.start();
     } catch (e) { log.error({ err: e }, 'Failed to start indexer'); }
@@ -162,10 +168,10 @@ if (require.main === module) {
         log.info({ port: PORT, publicUrl: PUBLIC_URL }, 'IntroHater running');
     });
 
-    
+
     wsTicker.init(server);
 
-    
+
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM', server));
     process.on('SIGINT', () => gracefulShutdown('SIGINT', server));
 }
