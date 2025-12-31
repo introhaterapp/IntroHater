@@ -72,7 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initServiceStatus();
 });
 
-const API_BASE_URL = window.location.protocol === 'file:' ? 'http://localhost:7005' : '';
+const API_BASE_URL = window.location.protocol === 'file:' ? 'http://localhost:7005' : window.location.origin;
+console.log("[IntroHater] API_BASE_URL:", API_BASE_URL);
 
 async function fetchStats() {
     try {
@@ -326,8 +327,12 @@ window.setDebridConfig = setDebridConfig;
 window.clearDebridConfig = clearDebridConfig;
 
 async function initServiceStatus() {
+    console.log("[IntroHater] Initializing Service Status dashboard...");
     const statusGrid = document.getElementById('service-status-grid');
-    if (!statusGrid) return;
+    if (!statusGrid) {
+        console.warn("[IntroHater] Service status grid element not found!");
+        return;
+    }
 
     const fetchStatus = async () => {
         try {
@@ -374,5 +379,5 @@ async function initServiceStatus() {
     };
 
     fetchStatus();
-    setInterval(fetchStatus, 30000);
+    setInterval(fetchStatus, 60000);
 }

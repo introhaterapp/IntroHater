@@ -156,11 +156,12 @@ function buildTorrentioUrl(provider, key, type, id) {
 function buildCometUrl(provider, key, type, id) {
     const config = Buffer.from(JSON.stringify({
         indexers: ["bitsearch", "eztv", "thepiratebay", "torrentgalaxy", "yts"],
-        max_results: 20,
-        max_results_per_indexer: 10,
+        max_results: 10,
+        max_results_per_indexer: 5,
         timeout: 10,
         debrid_service: provider === 'realdebrid' ? 'realdebrid' : provider,
-        debrid_api_key: key
+        debrid_api_key: key,
+        debrid_key: key
     })).toString('base64');
     return `https://comet.elfhosted.com/${config}/stream/${type}/${id}.json`;
 }

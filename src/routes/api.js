@@ -22,6 +22,7 @@ router.get('/swagger.json', (req, res) => {
 });
 
 router.get('/status', (req, res) => {
+    console.log(`[API] Health status request from ${req.ip}`);
     res.json(scraperHealth.getStatus());
 });
 

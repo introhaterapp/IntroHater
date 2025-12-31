@@ -90,6 +90,15 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
                 originalStreams = response.data.streams;
                 console.log(`[Stream ${requestId}] ✅ ${scraper.label} responded with ${originalStreams.length} streams (${latency}ms)`);
+
+                if (originalStreams.length > 0) {
+                    const sample = originalStreams.slice(0, 3).map(s => ({
+                        title: s.title?.substring(0, 30),
+                        hasUrl: !!s.url,
+                        hasInfohash: !!(s.infoHash || s.infohash)
+                    }));
+                    console.log(`[Stream ${requestId}] Sample results from ${scraper.label}:`, JSON.stringify(sample));
+                }
                 break;
             }
         } catch (e) {
@@ -159,7 +168,10 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         });
     });
 
-    const finalStreams = modifiedStreams.slice(0, 100);
+    const finalStreams = modifiedStreams
+        .filter(s => s.url || s.infoHash || s.infohash)
+        .slice(0, 50);
+
     console.log(`[Stream ${requestId}] 📊 Result: ${finalStreams.length} streams (truncated from ${modifiedStreams.length}), skip: ${skipSeg ? 'yes' : 'no'}`);
     return { streams: finalStreams };
 }
