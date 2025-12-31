@@ -17,8 +17,9 @@
 
     <link rel="stylesheet" href="css/style.css?v=7">
 
-    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
+    <script src="js/toast.js" defer></script>
+    <script src="js/main.js" defer></script>
 </head>
 
 <body>
@@ -179,268 +180,270 @@
     </div>
 
     <script>
-        const { provider, debridKey } = getDebridConfig();
-        let currentItem = null;
+        document.addEventListener('DOMContentLoaded', () => {
+            const { provider, debridKey } = getDebridConfig();
+            let currentItem = null;
 
-        // --- Event Listeners (Fix for CSP) ---
-        document.getElementById('closeSubmitX')?.addEventListener('click', closeSubmit);
-        document.getElementById('closeSubmitBtn')?.addEventListener('click', closeSubmit);
+            // --- Event Listeners (Fix for CSP) ---
+            document.getElementById('closeSubmitX')?.addEventListener('click', closeSubmit);
+            document.getElementById('closeSubmitBtn')?.addEventListener('click', closeSubmit);
 
-        // Show login banner if not logged in
-        if (!debridKey) {
-            const banner = document.getElementById('login-banner');
-            if (banner) {
-                banner.classList.remove('d-none');
-                banner.style.display = 'flex';
+            // Show login banner if not logged in
+            if (!debridKey) {
+                const banner = document.getElementById('login-banner');
+                if (banner) {
+                    banner.classList.remove('d-none');
+                    banner.style.display = 'flex';
+                }
             }
-        }
 
-        // --- Search/Submit Logic ---
-        let searchTimeout = null;
-        document.getElementById('searchInput').addEventListener('input', () => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(performSearch, 500);
-        });
+            // --- Search/Submit Logic ---
+            let searchTimeout = null;
+            document.getElementById('searchInput').addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(performSearch, 500);
+            });
 
-        document.getElementById('searchBtn').onclick = performSearch;
+            document.getElementById('searchBtn').onclick = performSearch;
 
-        async function performSearch() {
-            const q = document.getElementById('searchInput').value.trim();
-            if (!q) return;
+            async function performSearch() {
+                const q = document.getElementById('searchInput').value.trim();
+                if (!q) return;
 
-            const btn = document.getElementById('searchBtn');
-            btn.textContent = 'Searching...';
+                const btn = document.getElementById('searchBtn');
+                btn.textContent = 'Searching...';
 
-            try {
-                const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-                const data = await res.json();
+                try {
+                    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+                    const data = await res.json();
 
-                const cont = document.getElementById('search-results');
-                cont.innerHTML = '';
+                    const cont = document.getElementById('search-results');
+                    cont.innerHTML = '';
 
-                if (data.Search) {
-                    data.Search.forEach(item => {
-                        const row = document.createElement('div');
-                        row.className = 'glass-panel';
-                        row.style.padding = '15px';
-                        row.style.display = 'flex';
-                        row.style.gap = '20px';
-                        row.style.alignItems = 'center';
+                    if (data.Search) {
+                        data.Search.forEach(item => {
+                            const row = document.createElement('div');
+                            row.className = 'glass-panel';
+                            row.style.padding = '15px';
+                            row.style.display = 'flex';
+                            row.style.gap = '20px';
+                            row.style.alignItems = 'center';
 
-                        const imgEl = document.createElement('img');
-                        imgEl.src = item.Poster !== 'N/A' ? item.Poster : '/icon.svg';
-                        imgEl.style.cssText = 'width: 50px; height: 75px; object-fit: cover; border-radius: 6px;';
+                            const imgEl = document.createElement('img');
+                            imgEl.src = item.Poster !== 'N/A' ? item.Poster : '/icon.svg';
+                            imgEl.style.cssText = 'width: 50px; height: 75px; object-fit: cover; border-radius: 6px;';
 
-                        const infoEl = document.createElement('div');
-                        infoEl.style.flex = '1';
-                        infoEl.innerHTML = `
+                            const infoEl = document.createElement('div');
+                            infoEl.style.flex = '1';
+                            infoEl.innerHTML = `
                             <div style="font-weight: 600; font-size: 1.1rem;">${item.Title}</div>
                             <div style="font-size: 0.85rem; color: var(--text-muted);">${item.Year} • ${item.Type}</div>
                         `;
 
-                        const contributeBtn = document.createElement('button');
-                        contributeBtn.className = 'btn btn-primary';
-                        contributeBtn.style.fontSize = '0.85rem';
-                        contributeBtn.textContent = 'Contribute';
-                        contributeBtn.onclick = (e) => { e.stopPropagation(); openSubmit(item); };
+                            const contributeBtn = document.createElement('button');
+                            contributeBtn.className = 'btn btn-primary';
+                            contributeBtn.style.fontSize = '0.85rem';
+                            contributeBtn.textContent = 'Contribute';
+                            contributeBtn.onclick = (e) => { e.stopPropagation(); openSubmit(item); };
 
-                        row.appendChild(imgEl);
-                        row.appendChild(infoEl);
-                        row.appendChild(contributeBtn);
-                        cont.appendChild(row);
-                    });
-                } else {
-                    cont.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No results found.</p>';
+                            row.appendChild(imgEl);
+                            row.appendChild(infoEl);
+                            row.appendChild(contributeBtn);
+                            cont.appendChild(row);
+                        });
+                    } else {
+                        cont.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No results found.</p>';
+                    }
+                } catch (e) {
+                    console.error(e);
+                    cont.innerHTML = '<p style="text-align: center; color: #ef4444;">Search failed. Try again.</p>';
                 }
-            } catch (e) {
-                console.error(e);
-                cont.innerHTML = '<p style="text-align: center; color: #ef4444;">Search failed. Try again.</p>';
+                finally { btn.textContent = 'Search'; }
             }
-            finally { btn.textContent = 'Search'; }
-        }
 
-        function openSubmit(item) {
-            if (!debridKey) {
-                if (typeof Toast !== 'undefined') {
-                    Toast.warning("Please log in with a Debrid API key first (go to Configure page).");
-                } else {
-                    alert("Please log in with a Debrid API key first (go to Configure page).");
+            function openSubmit(item) {
+                if (!debridKey) {
+                    if (typeof Toast !== 'undefined') {
+                        Toast.warning("Please log in with a Debrid API key first (go to Configure page).");
+                    } else {
+                        alert("Please log in with a Debrid API key first (go to Configure page).");
+                    }
+                    return;
                 }
-                return;
+
+                currentItem = item;
+                document.getElementById('submit-name').textContent = item.Title;
+                document.getElementById('submit-year').textContent = `${item.Year} (${item.imdbID})`;
+
+                const posterImg = document.getElementById('submit-poster');
+                const posterPlaceholder = document.getElementById('poster-placeholder');
+
+                if (item.Poster && item.Poster !== 'N/A') {
+                    posterImg.src = item.Poster;
+                    posterImg.classList.remove('d-none');
+                    posterPlaceholder.classList.add('d-none');
+                } else {
+                    posterImg.src = '';
+                    posterImg.classList.add('d-none');
+                    posterPlaceholder.classList.remove('d-none');
+                }
+
+                const epiSection = document.getElementById('episode-inputs');
+                if (item.Type === 'series' || item.Type === 'episode' || (item.imdbID && item.imdbID.includes(':'))) {
+                    epiSection.classList.remove('d-none');
+                    document.getElementById('seriesOptionContainer').classList.remove('d-none');
+
+                    // Pre-fill season/episode if present in ID
+                    if (item.imdbID && item.imdbID.includes(':')) {
+                        const parts = item.imdbID.split(':');
+                        if (parts.length >= 3) {
+                            document.getElementById('seasonNum').value = parts[1];
+                            document.getElementById('episodeNum').value = parts[2];
+                        }
+                    }
+                } else {
+                    epiSection.classList.add('d-none');
+                    document.getElementById('seriesOptionContainer').classList.add('d-none');
+                }
+
+                // Reset series options
+                document.getElementById('applySeries').checked = false;
+                document.getElementById('seriesWarning').classList.add('d-none');
+
+                document.getElementById('submit-overlay').style.display = 'flex';
             }
 
-            currentItem = item;
-            document.getElementById('submit-name').textContent = item.Title;
-            document.getElementById('submit-year').textContent = `${item.Year} (${item.imdbID})`;
+            // Toggle warning
+            document.getElementById('applySeries').addEventListener('change', (e) => {
+                const warn = document.getElementById('seriesWarning');
+                if (e.target.checked) warn.classList.remove('d-none');
+                else warn.classList.add('d-none');
+            });
 
-            const posterImg = document.getElementById('submit-poster');
-            const posterPlaceholder = document.getElementById('poster-placeholder');
+            function openSubmitFromHistory(vid, title, poster) {
+                // Pseudo-item for history
+                const parts = vid.split(':');
+                const imdbID = parts[0];
+                const isSeries = parts.length >= 3;
 
-            if (item.Poster && item.Poster !== 'N/A') {
-                posterImg.src = item.Poster;
-                posterImg.classList.remove('d-none');
-                posterPlaceholder.classList.add('d-none');
-            } else {
-                posterImg.src = '';
-                posterImg.classList.add('d-none');
-                posterPlaceholder.classList.remove('d-none');
+                openSubmit({
+                    Title: title || vid,
+                    imdbID: vid,
+                    Year: isSeries ? "Series Item" : "Movie",
+                    Type: isSeries ? 'series' : 'movie',
+                    Poster: poster
+                });
             }
 
-            const epiSection = document.getElementById('episode-inputs');
-            if (item.Type === 'series' || item.Type === 'episode' || (item.imdbID && item.imdbID.includes(':'))) {
-                epiSection.classList.remove('d-none');
-                document.getElementById('seriesOptionContainer').classList.remove('d-none');
+            function closeSubmit() {
+                document.getElementById('submit-overlay').style.display = 'none';
+            }
 
-                // Pre-fill season/episode if present in ID
-                if (item.imdbID && item.imdbID.includes(':')) {
-                    const parts = item.imdbID.split(':');
-                    if (parts.length >= 3) {
-                        document.getElementById('seasonNum').value = parts[1];
-                        document.getElementById('episodeNum').value = parts[2];
+            function parseTime(v) {
+                if (v.includes(':')) {
+                    const p = v.split(':').map(x => parseFloat(x));
+                    return p[0] * 60 + p[1];
+                }
+                return parseFloat(v);
+            }
+
+            document.getElementById('submitBtn').onclick = async () => {
+                const startStr = document.getElementById('skipStart').value.trim();
+                const endStr = document.getElementById('skipEnd').value.trim();
+                const season = document.getElementById('seasonNum').value;
+                const episode = document.getElementById('episodeNum').value;
+                const applyToSeries = document.getElementById('applySeries').checked;
+
+                // Helper function for showing messages
+                function showMessage(msg, type = 'error') {
+                    if (typeof Toast !== 'undefined') {
+                        Toast[type](msg);
+                    } else {
+                        alert(msg);
                     }
                 }
-            } else {
-                epiSection.classList.add('d-none');
-                document.getElementById('seriesOptionContainer').classList.add('d-none');
-            }
 
-            // Reset series options
-            document.getElementById('applySeries').checked = false;
-            document.getElementById('seriesWarning').classList.add('d-none');
-
-            document.getElementById('submit-overlay').style.display = 'flex';
-        }
-
-        // Toggle warning
-        document.getElementById('applySeries').addEventListener('change', (e) => {
-            const warn = document.getElementById('seriesWarning');
-            if (e.target.checked) warn.classList.remove('d-none');
-            else warn.classList.add('d-none');
-        });
-
-        function openSubmitFromHistory(vid, title, poster) {
-            // Pseudo-item for history
-            const parts = vid.split(':');
-            const imdbID = parts[0];
-            const isSeries = parts.length >= 3;
-
-            openSubmit({
-                Title: title || vid,
-                imdbID: vid,
-                Year: isSeries ? "Series Item" : "Movie",
-                Type: isSeries ? 'series' : 'movie',
-                Poster: poster
-            });
-        }
-
-        function closeSubmit() {
-            document.getElementById('submit-overlay').style.display = 'none';
-        }
-
-        function parseTime(v) {
-            if (v.includes(':')) {
-                const p = v.split(':').map(x => parseFloat(x));
-                return p[0] * 60 + p[1];
-            }
-            return parseFloat(v);
-        }
-
-        document.getElementById('submitBtn').onclick = async () => {
-            const startStr = document.getElementById('skipStart').value.trim();
-            const endStr = document.getElementById('skipEnd').value.trim();
-            const season = document.getElementById('seasonNum').value;
-            const episode = document.getElementById('episodeNum').value;
-            const applyToSeries = document.getElementById('applySeries').checked;
-
-            // Helper function for showing messages
-            function showMessage(msg, type = 'error') {
-                if (typeof Toast !== 'undefined') {
-                    Toast[type](msg);
-                } else {
-                    alert(msg);
+                if (!startStr || !endStr) {
+                    return showMessage("Please enter start and end times.");
                 }
-            }
 
-            if (!startStr || !endStr) {
-                return showMessage("Please enter start and end times.");
-            }
+                const start = parseTime(startStr);
+                const end = parseTime(endStr);
 
-            const start = parseTime(startStr);
-            const end = parseTime(endStr);
-
-            if (isNaN(start) || isNaN(end)) {
-                return showMessage("Invalid time format. Use MM:SS or seconds.");
-            }
-
-            if (start >= end) {
-                return showMessage("Start time must be before end time.");
-            }
-
-            // Validate season/episode for series content (unless applying to whole series)
-            const isSeries = currentItem && (currentItem.Type === 'series' || currentItem.Type === 'episode');
-            if (isSeries && !applyToSeries) {
-                if (!season || !episode) {
-                    return showMessage("Please enter both season and episode numbers.");
+                if (isNaN(start) || isNaN(end)) {
+                    return showMessage("Invalid time format. Use MM:SS or seconds.");
                 }
-                if (parseInt(season) < 1 || parseInt(episode) < 1) {
-                    return showMessage("Season and episode must be positive numbers.");
+
+                if (start >= end) {
+                    return showMessage("Start time must be before end time.");
                 }
-            }
 
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.textContent = 'Publishing...';
+                // Validate season/episode for series content (unless applying to whole series)
+                const isSeries = currentItem && (currentItem.Type === 'series' || currentItem.Type === 'episode');
+                if (isSeries && !applyToSeries) {
+                    if (!season || !episode) {
+                        return showMessage("Please enter both season and episode numbers.");
+                    }
+                    if (parseInt(season) < 1 || parseInt(episode) < 1) {
+                        return showMessage("Season and episode must be positive numbers.");
+                    }
+                }
 
-            try {
-                const segmentType = document.getElementById('segmentType').value;
-                const res = await fetch('/api/submit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        provider,
-                        debridKey,
-                        rdKey: debridKey, // Compat
-                        imdbID: currentItem.imdbID,
-                        season,
-                        episode,
-                        start,
-                        end,
-                        label: segmentType,
-                        applyToSeries: applyToSeries
-                    })
-                });
+                const btn = document.getElementById('submitBtn');
+                btn.disabled = true;
+                btn.textContent = 'Publishing...';
 
-                if (res.ok) {
-                    showMessage("Thanks for your contribution! 🎉 An admin will review it shortly.", 'success');
+                try {
+                    const segmentType = document.getElementById('segmentType').value;
+                    const res = await fetch('/api/submit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            provider,
+                            debridKey,
+                            rdKey: debridKey, // Compat
+                            imdbID: currentItem.imdbID,
+                            season,
+                            episode,
+                            start,
+                            end,
+                            label: segmentType,
+                            applyToSeries: applyToSeries
+                        })
+                    });
+
+                    if (res.ok) {
+                        showMessage("Thanks for your contribution! 🎉 An admin will review it shortly.", 'success');
+                        closeSubmit();
+                        // Clear form inputs for next submission
+                        document.getElementById('skipStart').value = '';
+                        document.getElementById('skipEnd').value = '';
+                    } else {
+                        const err = await res.json();
+                        showMessage(err.error || "Submission failed.");
+                    }
+                } catch (e) {
+                    console.error('Submission error:', e);
+                    showMessage("Network error. Please try again.");
+                }
+                finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Publish Skip';
+                }
+            };
+
+            // --- Global Modal Close ---
+            window.onclick = function (event) {
+                const submitOverlay = document.getElementById('submit-overlay');
+                if (event.target == submitOverlay) {
                     closeSubmit();
-                    // Clear form inputs for next submission
-                    document.getElementById('skipStart').value = '';
-                    document.getElementById('skipEnd').value = '';
-                } else {
-                    const err = await res.json();
-                    showMessage(err.error || "Submission failed.");
                 }
-            } catch (e) {
-                console.error('Submission error:', e);
-                showMessage("Network error. Please try again.");
             }
-            finally {
-                btn.disabled = false;
-                btn.textContent = 'Publish Skip';
-            }
-        };
-
-        // --- Global Modal Close ---
-        window.onclick = function (event) {
-            const submitOverlay = document.getElementById('submit-overlay');
-            if (event.target == submitOverlay) {
-                closeSubmit();
-            }
-        }
+        });
     </script>
 
 
-    <footer>
+    <footer style="margin-top: 60px;">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-col">
