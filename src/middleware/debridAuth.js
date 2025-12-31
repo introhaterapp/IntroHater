@@ -155,14 +155,17 @@ function buildTorrentioUrl(provider, key, type, id) {
 
 function buildCometUrl(provider, key, type, id) {
     const debridService = provider === 'realdebrid' ? 'realdebrid' : provider;
-    const config = Buffer.from(JSON.stringify({
+    const configObj = {
         indexers: ["bitsearch", "eztv", "thepiratebay", "torrentgalaxy", "yts"],
         maxResultsPerResolution: 5,
         debridService: debridService,
         debridApiKey: key
-    })).toString('base64');
+    };
+    console.log(`[Comet DEBUG] Provider: ${provider}, Key: ${key?.substring(0, 8)}..., Config: ${JSON.stringify(configObj)}`);
+    const config = Buffer.from(JSON.stringify(configObj)).toString('base64');
     return `https://comet.elfhosted.com/${config}/stream/${type}/${id}.json`;
 }
+
 
 
 function buildMediaFusionUrl(provider, key, type, id) {
