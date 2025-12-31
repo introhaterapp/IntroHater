@@ -119,17 +119,25 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
     originalStreams.forEach((stream) => {
         const streamUrl = stream.url || stream.externalUrl;
-        if (!streamUrl) return;
+        const indicator = skipSeg ? "🚀" : "🔍";
+
+        if (!streamUrl) {
+
+            modifiedStreams.push({
+                ...stream,
+                title: `${indicator} [IntroHater*] ${stream.title || stream.name} (Direct)`,
+            });
+            return;
+        }
 
         const encodedUrl = encodeURIComponent(streamUrl);
         const start = skipSeg ? skipSeg.start : 0;
         const end = skipSeg ? skipSeg.end : 0;
-        // Sanitize skip times
+
         const sanitizedStart = (typeof start === 'number' && !isNaN(start) && start >= 0) ? start : 0;
         const sanitizedEnd = (typeof end === 'number' && !isNaN(end) && end > sanitizedStart) ? end : sanitizedStart;
 
         const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${sanitizedStart}&end=${sanitizedEnd}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}`;
-        const indicator = skipSeg ? "🚀" : "🔍";
 
         modifiedStreams.push({
             ...stream,

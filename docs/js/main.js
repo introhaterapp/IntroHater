@@ -331,7 +331,7 @@ async function initServiceStatus() {
 
     const fetchStatus = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/status`);
+            const res = await fetch(`${API_BASE_URL}/api/status?t=${Date.now()}`);
             if (!res.ok) return;
             const data = await res.json();
 
