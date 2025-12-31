@@ -81,9 +81,15 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             if (response.status === 200 && response.data.streams && response.data.streams.length > 0) {
 
                 const firstStream = response.data.streams[0];
-                const title = (firstStream.title || '').toLowerCase();
-                if (title.includes('rate limit') || title.includes('public instance') || title.includes('donate')) {
-                    console.warn(`[Stream ${requestId}] ⚠️ ${scraper.label} returned rate limit/public message. Skipping.`);
+                const title = (firstStream.title || firstStream.name || '').toLowerCase();
+                const isRateLimited = title.includes('rate limit') ||
+                    title.includes('rate-limit') ||
+                    title.includes('public instance') ||
+                    title.includes('donate') ||
+                    title.includes('exceed');
+
+                if (isRateLimited) {
+                    console.warn(`[Stream ${requestId}] ⚠️ ${scraper.label} returned rate limit message: "${title.substring(0, 50)}". Skipping.`);
                     scraperHealth.updateStatus(scraper.name, 'degraded');
                     continue;
                 }
@@ -137,10 +143,10 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
     originalStreams.forEach((stream) => {
         const streamUrl = stream.url || stream.externalUrl;
+        const infoHash = stream.infoHash || stream.infohash;
         const indicator = skipSeg ? "🚀" : "🔍";
 
-        if (!streamUrl) {
-
+        if (!streamUrl && !infoHash) {
             modifiedStreams.push({
                 ...stream,
                 title: `${indicator} [IntroHater*] ${stream.title || stream.name} (Direct)`,
@@ -148,14 +154,18 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             return;
         }
 
-        const encodedUrl = encodeURIComponent(streamUrl);
         const start = skipSeg ? skipSeg.start : 0;
         const end = skipSeg ? skipSeg.end : 0;
+        const sStart = (typeof start === 'number' && !isNaN(start) && start >= 0) ? start : 0;
+        const sEnd = (typeof end === 'number' && !isNaN(end) && end > sStart) ? end : sStart;
 
-        const sanitizedStart = (typeof start === 'number' && !isNaN(start) && start >= 0) ? start : 0;
-        const sanitizedEnd = (typeof end === 'number' && !isNaN(end) && end > sanitizedStart) ? end : sanitizedStart;
+        let proxyUrl = `${baseUrl}/hls/manifest.m3u8?start=${sStart}&end=${sEnd}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}`;
 
-        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${sanitizedStart}&end=${sanitizedEnd}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}`;
+        if (streamUrl) {
+            proxyUrl += `&stream=${encodeURIComponent(streamUrl)}`;
+        } else {
+            proxyUrl += `&infoHash=${infoHash}`;
+        }
 
         modifiedStreams.push({
             ...stream,

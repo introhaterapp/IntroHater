@@ -11,6 +11,7 @@ const { getByteOffset, getStreamDetails, getRefinedOffsets, getChapters, generat
 const skipService = require('../services/skip-service');
 const userService = require('../services/user-service');
 const cacheService = require('../services/cache-service');
+const debridResolver = require('../services/debrid-resolver');
 
 // ==================== Helpers ====================
 
@@ -96,11 +97,22 @@ router.get('/sub/status/:videoId.vtt', async (req, res) => {
 
 // HLS Media Playlist Endpoint
 router.get('/hls/manifest.m3u8', async (req, res) => {
-    const { stream, start: startStr, end: endStr, id: videoId, user: userId, rdKey, client } = req.query;
+    const { stream, infoHash, start: startStr, end: endStr, id: videoId, user: userId, rdKey, client, provider } = req.query;
     const keyPrefix = rdKey ? rdKey.substring(0, 8) : 'NO-KEY';
     const logPrefix = `[HLS ${keyPrefix}]`;
 
-    if (!stream || !isSafeUrl(decodeURIComponent(stream))) {
+    let streamUrl = stream ? decodeURIComponent(stream) : null;
+
+    if (infoHash && !streamUrl) {
+        console.log(`${logPrefix} 🔍 Resolving infoHash: ${infoHash}`);
+        streamUrl = await debridResolver.resolveInfoHash(provider || 'realdebrid', rdKey, infoHash);
+        if (!streamUrl) {
+            console.error(`${logPrefix} ❌ Failed to resolve infoHash`);
+            return res.status(502).send("Failed to resolve infoHash via debrid");
+        }
+    }
+
+    if (!streamUrl || !isSafeUrl(streamUrl)) {
         console.log(`${logPrefix} ❌ Invalid or unsafe stream URL`);
         return res.status(400).send("Invalid or unsafe stream URL");
     }
@@ -135,7 +147,6 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
     }
 
     try {
-        let streamUrl = decodeURIComponent(stream);
         const introStart = parseFloat(startStr) || 0;
         const introEnd = parseFloat(endStr) || 0;
 

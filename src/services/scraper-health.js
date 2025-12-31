@@ -39,9 +39,17 @@ class ScraperHealthService {
                 const latency = Date.now() - start;
                 let status = (response.status >= 200 && response.status < 400) ? 'online' : 'degraded';
 
-                const title = (response.data?.streams?.[0]?.title || '').toLowerCase();
-                if (title.includes('rate limit') || title.includes('public instance') || title.includes('donate')) {
+                const firstStream = response.data?.streams?.[0];
+                const title = (firstStream?.title || firstStream?.name || '').toLowerCase();
+                const isRateLimited = title.includes('rate limit') ||
+                    title.includes('rate-limit') ||
+                    title.includes('public instance') ||
+                    title.includes('donate') ||
+                    title.includes('exceed');
+
+                if (isRateLimited) {
                     status = 'degraded';
+                    console.log(`[ScraperHealth] ${key} is rate-limited (detected in title)`);
                 }
 
                 console.log(`[ScraperHealth] Check for ${key} finished: ${status} (${latency}ms)`);
