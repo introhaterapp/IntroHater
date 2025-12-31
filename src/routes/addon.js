@@ -22,8 +22,9 @@ const manifest = {
     version: MANIFEST.VERSION,
     name: MANIFEST.NAME,
     description: MANIFEST.DESCRIPTION,
-    resources: ["stream"],
-    types: ["movie", "series", "anime"],
+    resources: MANIFEST.resources,
+    types: MANIFEST.types,
+    idPrefixes: MANIFEST.idPrefixes,
     catalogs: [],
     behaviorHints: {
         configurable: true,

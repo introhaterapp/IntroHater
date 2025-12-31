@@ -145,7 +145,7 @@ const MANIFEST = {
     NAME: "IntroHater",
     DESCRIPTION: "Universal Skip Intro for Stremio (TV/Mobile/PC)",
     resources: ["stream"],
-    types: ["movie", "series"],
+    types: ["movie", "series", "anime"],
     idPrefixes: ["tt"]
 };
 
