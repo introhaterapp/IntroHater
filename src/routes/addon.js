@@ -11,6 +11,7 @@ const {
     generateUserId,
     parseConfig,
     buildTorrentioUrl,
+    buildCometUrl,
     buildMediaFusionUrl,
     getProvider
 } = require('../middleware/debridAuth');
@@ -50,6 +51,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
     const scrapers = [
         { name: 'torrentio', label: 'Torrentio', builder: buildTorrentioUrl },
+        { name: 'comet', label: 'Comet', builder: buildCometUrl },
         { name: 'mediafusion', label: 'MediaFusion', builder: buildMediaFusionUrl }
     ];
 
@@ -77,6 +79,15 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             scraperHealth.updateStatus(scraper.name, 'online', latency);
 
             if (response.status === 200 && response.data.streams && response.data.streams.length > 0) {
+
+                const firstStream = response.data.streams[0];
+                const title = (firstStream.title || '').toLowerCase();
+                if (title.includes('rate limit') || title.includes('public instance') || title.includes('donate')) {
+                    console.warn(`[Stream ${requestId}] ⚠️ ${scraper.label} returned rate limit/public message. Skipping.`);
+                    scraperHealth.updateStatus(scraper.name, 'degraded');
+                    continue;
+                }
+
                 originalStreams = response.data.streams;
                 console.log(`[Stream ${requestId}] ✅ ${scraper.label} responded with ${originalStreams.length} streams (${latency}ms)`);
                 break;
