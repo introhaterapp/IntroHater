@@ -160,8 +160,8 @@ class IndexerService {
 
 
 
-                                    const season = ep.season || 1;
-                                    const epNum = ep.number || 0;
+                                    const season = parseInt(ep.season) || 1;
+                                    const epNum = parseInt(ep.number) || 0;
                                     const fullId = `${imdbId}:${season}:${epNum}`;
 
 
@@ -349,8 +349,9 @@ class IndexerService {
 
                     for (const ep of episodesToCheck) {
                         try {
-                            const epNum = ep.e || 0;
-                            const fullId = `${imdbId}:${ep.s || 1}:${epNum}`;
+                            const sNum = parseInt(ep.s) || 1;
+                            const epNum = parseInt(ep.e) || 0;
+                            const fullId = `${imdbId}:${sNum}:${epNum}`;
                             const result = await skipService.getSkipSegment(fullId);
                             episodesCheckedForShow++;
 

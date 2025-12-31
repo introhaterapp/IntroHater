@@ -153,17 +153,6 @@ function buildTorrentioUrl(provider, key, type, id) {
     return `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex,rutor,rutracker,torrent9,mejortorrent,wolfmax4k%7Csort=qualitysize%7Clanguage=korean%7Cqualityfilter=scr,cam%7Cdebridoptions=nodownloadlinks,nocatalog%7C${debridParam}=${key}/stream/${type}/${id}.json`;
 }
 
-function buildCometUrl(provider, key, type, id) {
-    const config = Buffer.from(JSON.stringify({
-        indexers: ["bitsearch", "eztv", "thepiratebay", "torrentgalaxy", "yts"],
-        max_results: 20,
-        max_results_per_indexer: 10,
-        timeout: 10,
-        debrid_service: provider === 'realdebrid' ? 'realdebrid' : provider,
-        debrid_api_key: key
-    })).toString('base64');
-    return `https://comet.elfhosted.com/${config}/stream/${type}/${id}.json`;
-}
 
 function buildMediaFusionUrl(provider, key, type, id) {
     const providerConfig = getProvider(provider);
@@ -232,7 +221,6 @@ module.exports = {
     parseConfig,
     buildConfig,
     buildTorrentioUrl,
-    buildCometUrl,
     buildMediaFusionUrl,
 
 
