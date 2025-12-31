@@ -81,11 +81,15 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         }
 
         return {
-            name: `[${providerName}⚡] IntroHater ${preset.quality}`,
-            title: `${indicator} [IntroHater] ${preset.label}${skipSeg ? ' • Skip Intro' : ''}`,
+            name: `IntroHater\n[RD] ${preset.quality}`,
+            title: `${indicator} ${preset.label}${skipSeg ? ' • Skip Intro' : ''}`,
             description: `📺 ${preset.label}\n${skipSeg ? `⏭️ Skip: ${start}s - ${end}s\n` : ''}🔄 Stream resolved at play time`,
-            url: proxyUrl
+            url: proxyUrl,
+            behaviorHints: {
+                bingeGroup: `introhater|${preset.quality}`
+            }
         };
+
 
     });
 

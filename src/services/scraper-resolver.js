@@ -7,13 +7,26 @@ async function resolveBestStream(provider, debridKey, type, id, priority, custom
 
     // 1. If user provided a custom scraper, prioritize it
     if (customUrl) {
-        // Clean trailing slash and add stream part
-        const baseUrl = customUrl.replace(/\/$/, '');
+        // Handle "stremio://" protocol which users might copy from install buttons
+        let baseUrl = customUrl.trim();
+        if (baseUrl.startsWith('stremio://')) {
+            baseUrl = baseUrl.replace('stremio://', 'https://');
+        }
+
+        // Clean trailing slash
+        baseUrl = baseUrl.replace(/\/$/, '');
+
+        // If it points to manifest.json, strip it
+        if (baseUrl.endsWith('/manifest.json')) {
+            baseUrl = baseUrl.replace('/manifest.json', '');
+        }
+
         scrapers.push({
             name: 'custom',
             builder: () => `${baseUrl}/stream/${type}/${id}.json`
         });
     }
+
 
     // 2. Fallback to standard scrapers if custom fails or isn't provided
     scrapers.push(
