@@ -72,8 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initServiceStatus();
 });
 
-const API_BASE_URL = window.location.protocol === 'file:' ? 'http://localhost:7005' : window.location.origin;
-console.log("[IntroHater] API_BASE_URL:", API_BASE_URL);
+const API_BASE_URL = window.location.protocol === 'file:' ? 'http://localhost:7005' : '';
+console.log("[IntroHater] API_BASE_URL:", API_BASE_URL || "/");
 
 async function fetchStats() {
     try {

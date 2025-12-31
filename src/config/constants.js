@@ -5,37 +5,37 @@ const SECURITY = {
     },
     RATE_LIMITS: {
         GLOBAL: {
-            WINDOW_MS: 60 * 60 * 1000, 
+            WINDOW_MS: 60 * 60 * 1000,
             MAX_REQUESTS: 5000
         },
         SUBMIT: {
-            WINDOW_MS: 15 * 60 * 1000, 
+            WINDOW_MS: 15 * 60 * 1000,
             MAX_REQUESTS: 10
         },
         REPORT: {
-            WINDOW_MS: 15 * 60 * 1000, 
+            WINDOW_MS: 15 * 60 * 1000,
             MAX_REQUESTS: 5
         },
         SUBMISSION: {
-            WINDOW_MS: 60 * 60 * 1000, 
+            WINDOW_MS: 60 * 60 * 1000,
             MAX_REQUESTS: 5,
-            MIN_GAP_MS: 2000 
+            MIN_GAP_MS: 2000
         },
         VOTING: {
-            WINDOW_MS: 60 * 60 * 1000, 
+            WINDOW_MS: 60 * 60 * 1000,
             MAX_REQUESTS: 5
         }
     },
     SHUTDOWN: {
-        FORCE_TIMEOUT_MS: 10000, 
-        MAINTENANCE_DELAY_MS: 60000 
+        FORCE_TIMEOUT_MS: 10000,
+        MAINTENANCE_DELAY_MS: 60000
     }
 };
 
 const SEGMENTS = {
     DURATION: {
-        MIN: 5,  
-        MAX: 300 
+        MIN: 5,
+        MAX: 300
     },
     GROUPING: {
         TIME_THRESHOLD: 10,
@@ -46,7 +46,7 @@ const SEGMENTS = {
 
 const CACHE = {
     LEADERBOARD: {
-        MAX_AGE_MS: 3600000 
+        MAX_AGE_MS: 3600000
     }
 };
 
@@ -55,28 +55,28 @@ const BATCH = {
 };
 
 const SUBMISSION = {
-    CHECK_EXPIRY_MS: 24 * 60 * 60 * 1000, 
-    UNIQUE_PER_VIDEO: true 
+    CHECK_EXPIRY_MS: 24 * 60 * 60 * 1000,
+    UNIQUE_PER_VIDEO: true
 };
 
 const MAINTENANCE = {
-    INTERVAL_MS: 24 * 60 * 60 * 1000, 
-    STARTUP_DELAY_MS: 60 * 1000 
+    INTERVAL_MS: 24 * 60 * 60 * 1000,
+    STARTUP_DELAY_MS: 60 * 1000
 };
 
 
 const REQUIRED_ENV_VARS = [
-    'MONGODB_URI',      
-    'TOKEN_SECRET',     
-    'ADMIN_EMAILS'      
+    'MONGODB_URI',
+    'TOKEN_SECRET',
+    'ADMIN_EMAILS'
 ];
 
 
 const OPTIONAL_ENV_VARS = [
-    'PORT',             
-    'PUBLIC_URL',       
-    'OMDB_API_KEY',     
-    'ANIME_SKIP_CLIENT_ID', 
+    'PORT',
+    'PUBLIC_URL',
+    'OMDB_API_KEY',
+    'ANIME_SKIP_CLIENT_ID',
 ];
 
 
@@ -84,26 +84,26 @@ function validateEnv() {
     const missing = [];
     const warnings = [];
 
-    
+
     for (const varName of REQUIRED_ENV_VARS) {
         if (!process.env[varName]) {
             missing.push(varName);
         }
     }
 
-    
+
     for (const varName of OPTIONAL_ENV_VARS) {
         if (!process.env[varName]) {
             warnings.push(varName);
         }
     }
 
-    
+
     if (warnings.length > 0) {
         console.warn(`⚠️  Optional environment variables not set: ${warnings.join(', ')}`);
     }
 
-    
+
     if (missing.length > 0) {
         console.error('\n❌ FATAL: Missing required environment variables:');
         missing.forEach(v => console.error(`   - ${v}`));
@@ -136,21 +136,24 @@ const SERVER = {
 
 const STATS = {
     ANISKIP_ESTIMATE: 145000,
-    REFRESH_INTERVAL_MS: 15 * 60 * 1000  
+    REFRESH_INTERVAL_MS: 15 * 60 * 1000
 };
 
 const MANIFEST = {
     ID: "org.introhater",
     VERSION: "1.0.0",
     NAME: "IntroHater",
-    DESCRIPTION: "Universal Skip Intro for Stremio (TV/Mobile/PC)"
+    DESCRIPTION: "Universal Skip Intro for Stremio (TV/Mobile/PC)",
+    resources: ["stream"],
+    types: ["movie", "series"],
+    idPrefixes: ["tt"]
 };
 
 const PROBE = {
-    TIMEOUT_MS: 15000,           
-    SPLICE_TIMEOUT_MS: 20000,    
-    CHAPTER_TIMEOUT_MS: 10000,   
-    CACHE_TTL_MS: 30 * 60 * 1000 
+    TIMEOUT_MS: 15000,
+    SPLICE_TIMEOUT_MS: 20000,
+    CHAPTER_TIMEOUT_MS: 10000,
+    CACHE_TTL_MS: 30 * 60 * 1000
 };
 
 module.exports = {
