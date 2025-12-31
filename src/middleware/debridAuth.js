@@ -161,10 +161,10 @@ function buildCometUrl(provider, key, type, id) {
         debridService: debridService,
         debridApiKey: key
     };
-    console.log(`[Comet DEBUG] Provider: ${provider}, Key: ${key?.substring(0, 8)}..., Config: ${JSON.stringify(configObj)}`);
     const config = Buffer.from(JSON.stringify(configObj)).toString('base64');
     return `https://comet.elfhosted.com/${config}/stream/${type}/${id}.json`;
 }
+
 
 
 

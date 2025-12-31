@@ -97,11 +97,18 @@ router.get('/sub/status/:videoId.vtt', async (req, res) => {
 
 // HLS Media Playlist Endpoint
 router.get('/hls/manifest.m3u8', async (req, res) => {
-    const { stream, infoHash, start: startStr, end: endStr, id: videoId, user: userId, rdKey, client, provider } = req.query;
+    const { stream, infoHash, start: startStr, end: endStr, id: videoId, user: userId, rdKey, client, provider, quality } = req.query;
     const keyPrefix = rdKey ? rdKey.substring(0, 8) : 'NO-KEY';
     const logPrefix = `[HLS ${keyPrefix}]`;
 
     let streamUrl = stream ? decodeURIComponent(stream) : null;
+
+    // Deferred Stream Resolution
+    if (!streamUrl && !infoHash && quality) {
+        const scraperResolver = require('../services/scraper-resolver');
+        console.log(`${logPrefix} 🔎 Deferred resolution triggered (Priority: ${quality})`);
+        streamUrl = await scraperResolver.resolveBestStream(provider || 'realdebrid', rdKey, videoId.includes(':') ? 'series' : 'movie', videoId, quality);
+    }
 
     if (infoHash && !streamUrl) {
         console.log(`${logPrefix} 🔍 Resolving infoHash: ${infoHash}`);
