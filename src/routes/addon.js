@@ -74,8 +74,11 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         { quality: '480p', label: '480p', priority: 7 }
     ];
 
+    // FORCE HTTPS on Render to avoid mixed content issues
+    const finalBaseUrl = baseUrl.replace('http://', 'https://');
+
     const streams = qualityPresets.map(preset => {
-        let proxyUrl = `${baseUrl}/hls/manifest.m3u8?start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}&quality=${preset.priority}`;
+        let proxyUrl = `${finalBaseUrl}/hls/manifest.m3u8?start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}&quality=${preset.priority}`;
         if (externalScraper) {
             proxyUrl += `&s=${Buffer.from(externalScraper).toString('base64')}`;
         }
@@ -84,14 +87,18 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             name: `IntroHater\n[RD] ${preset.quality}`,
             title: `${indicator} ${preset.label}${skipSeg ? ' • Skip Intro' : ''}`,
             description: `📺 ${preset.label}\n${skipSeg ? `⏭️ Skip: ${start}s - ${end}s\n` : ''}🔄 Stream resolved at play time`,
-            url: proxyUrl,
-            behaviorHints: {
-                bingeGroup: `introhater|${preset.quality}`
-            }
+            url: proxyUrl
         };
-
-
     });
+
+    // DEBUG: Add a static test stream to rule out URL issues
+    streams.unshift({
+        name: "IntroHater\n[DEBUG]",
+        title: "🐞 Debug Stream (Big Buck Bunny)",
+        description: "If you can see this, the addon works but your URLs are broken.",
+        url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+    });
+
 
     console.log(`[Stream ${requestId}] 📊 Returning ${streams.length} deferred streams, skip: ${skipSeg ? 'yes' : 'no'}`);
     return { streams };
@@ -138,7 +145,13 @@ router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (
     // DEBUG: Dump the exact JSON response - Stremio is strict!
     console.log(`[Stream ${cleanId}] 📤 Sending Response:`, JSON.stringify(result, null, 2));
 
+    // Disable caching to debug visibility issues
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     res.json(result);
+
 });
 
 
