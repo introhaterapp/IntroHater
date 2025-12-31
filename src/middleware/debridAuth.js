@@ -41,7 +41,7 @@ const DEBRID_PROVIDERS = {
 
 
 const keyCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; 
+const CACHE_TTL = 5 * 60 * 1000;
 const CACHE_MAX_SIZE = 500;
 
 
@@ -64,9 +64,9 @@ function generateUserId(key) {
 function parseConfig(config) {
     if (!config) return { provider: 'realdebrid', key: '' };
 
-    
+
     const colonIndex = config.indexOf(':');
-    if (colonIndex > 0 && colonIndex < 15) { 
+    if (colonIndex > 0 && colonIndex < 15) {
         const potentialProvider = config.substring(0, colonIndex).toLowerCase();
         if (DEBRID_PROVIDERS[potentialProvider]) {
             return {
@@ -76,7 +76,7 @@ function parseConfig(config) {
         }
     }
 
-    
+
     return { provider: 'realdebrid', key: config };
 }
 
@@ -92,7 +92,7 @@ async function verifyDebridKey(provider, key, timeout = 3000) {
     const providerConfig = getProvider(provider);
     if (!providerConfig) return false;
 
-    
+
     const cacheKey = `${provider}:${key}`;
     const cached = keyCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
@@ -113,7 +113,7 @@ async function verifyDebridKey(provider, key, timeout = 3000) {
             });
         }
 
-        
+
         let valid = false;
         if (response?.data) {
             if (provider === 'realdebrid') {
@@ -127,7 +127,7 @@ async function verifyDebridKey(provider, key, timeout = 3000) {
             }
         }
 
-        
+
         if (keyCache.size >= CACHE_MAX_SIZE) {
             const firstKey = keyCache.keys().next().value;
             keyCache.delete(firstKey);
@@ -149,13 +149,26 @@ async function verifyRdKey(rdKey, timeout = 3000) {
 
 function buildTorrentioUrl(provider, key, type, id) {
     const providerConfig = getProvider(provider);
-    if (!providerConfig) {
-        
-        return `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex,rutor,rutracker,torrent9,mejortorrent,wolfmax4k%7Csort=qualitysize%7Clanguage=korean%7Cqualityfilter=scr,cam%7Cdebridoptions=nodownloadlinks,nocatalog%7Crealdebrid=${key}/stream/${type}/${id}.json`;
-    }
-
-    const debridParam = providerConfig.torrentioParam;
+    const debridParam = providerConfig?.torrentioParam || 'realdebrid';
     return `https://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex,rutor,rutracker,torrent9,mejortorrent,wolfmax4k%7Csort=qualitysize%7Clanguage=korean%7Cqualityfilter=scr,cam%7Cdebridoptions=nodownloadlinks,nocatalog%7C${debridParam}=${key}/stream/${type}/${id}.json`;
+}
+
+function buildCometUrl(provider, key, type, id) {
+    const config = Buffer.from(JSON.stringify({
+        indexers: ["bitsearch", "eztv", "thepiratebay", "torrentgalaxy", "yts"],
+        max_results: 20,
+        max_results_per_indexer: 10,
+        timeout: 10,
+        debrid_service: provider === 'realdebrid' ? 'realdebrid' : provider,
+        debrid_api_key: key
+    })).toString('base64');
+    return `https://comet.elfhosted.com/${config}/stream/${type}/${id}.json`;
+}
+
+function buildMediaFusionUrl(provider, key, type, id) {
+    const providerConfig = getProvider(provider);
+    const debridId = providerConfig?.torrentioParam || 'realdebrid';
+    return `https://mediafusion.elfhosted.com/${debridId}=${key}/stream/${type}/${id}.json`;
 }
 
 
@@ -177,7 +190,7 @@ async function requireDebridAuth(req, res, next) {
     req.userId = generateUserId(key);
     req.debridKey = key;
     req.debridProvider = provider;
-    
+
     req.rdKey = key;
     next();
 }
@@ -200,7 +213,7 @@ async function optionalDebridAuth(req, res, next) {
         req.userId = generateUserId(key);
         req.debridKey = key;
         req.debridProvider = provider;
-        req.rdKey = key; 
+        req.rdKey = key;
     } else {
         req.userId = 'anonymous';
     }
@@ -212,22 +225,24 @@ async function optionalDebridAuth(req, res, next) {
 const optionalRdAuth = optionalDebridAuth;
 
 module.exports = {
-    
+
     DEBRID_PROVIDERS,
     getProvider,
     getAllProviders,
     parseConfig,
     buildConfig,
     buildTorrentioUrl,
+    buildCometUrl,
+    buildMediaFusionUrl,
 
-    
+
     generateUserId,
     verifyDebridKey,
-    verifyRdKey, 
+    verifyRdKey,
 
-    
+
     requireDebridAuth,
-    requireRdAuth, 
+    requireRdAuth,
     optionalDebridAuth,
-    optionalRdAuth 
+    optionalRdAuth
 };

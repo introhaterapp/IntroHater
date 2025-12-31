@@ -5,8 +5,16 @@ const router = express.Router();
 const path = require('path');
 const axios = require('axios');
 
+const scraperHealth = require('../services/scraper-health');
 const skipService = require('../services/skip-service');
-const { generateUserId, parseConfig, buildTorrentioUrl, getProvider } = require('../middleware/debridAuth');
+const {
+    generateUserId,
+    parseConfig,
+    buildTorrentioUrl,
+    buildCometUrl,
+    buildMediaFusionUrl,
+    getProvider
+} = require('../middleware/debridAuth');
 const { MANIFEST } = require('../config/constants');
 
 const manifest = {
@@ -23,10 +31,12 @@ const manifest = {
     }
 };
 
-async function handleStreamRequest(type, id, config, baseUrl) {
+async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', origin = '') {
     const requestId = Date.now().toString(36);
+    const isWebStremio = userAgent.includes('Stremio/Web') || origin.includes('strem.io') || origin.includes('stremio.com');
+    const isAndroid = userAgent.toLowerCase().includes('android') || userAgent.toLowerCase().includes('exoplayer');
+    const client = isWebStremio ? 'web' : (isAndroid ? 'android' : 'desktop');
 
-    
     const { provider, key: debridKey } = parseConfig(config);
     const providerConfig = getProvider(provider);
     const providerName = providerConfig?.shortName || 'Debrid';
@@ -36,53 +46,58 @@ async function handleStreamRequest(type, id, config, baseUrl) {
         return { streams: [] };
     }
 
-    console.log(`[Stream ${requestId}] 📥 Request: ${type} ${id}`);
+    console.log(`[Stream ${requestId}] 📥 Request: ${type} ${id} (Client: ${client})`);
     console.log(`[Stream ${requestId}] 🔑 ${providerName} Key: ${debridKey.substring(0, 8)}...`);
 
+    const scrapers = [
+        { name: 'torrentio', label: 'Torrentio', builder: buildTorrentioUrl },
+        { name: 'comet', label: 'Comet', builder: buildCometUrl },
+        { name: 'mediafusion', label: 'MediaFusion', builder: buildMediaFusionUrl }
+    ];
+
     let originalStreams = [];
-    let skipSeg = null;
+    const browserUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 
-    
-    const torrentioUrl = buildTorrentioUrl(provider, debridKey, type, id);
-
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 1000;
-    let torrentioResponse = null;
-    let lastError = null;
-
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    for (const scraper of scrapers) {
+        const scraperUrl = scraper.builder(provider, debridKey, type, id);
         try {
-            console.log(`[Stream ${requestId}] 🌐 Torrentio attempt ${attempt}/${MAX_RETRIES}...`);
+            console.log(`[Stream ${requestId}] 🌐 Trying ${scraper.label}...`);
             const startTime = Date.now();
 
-            torrentioResponse = await axios.get(torrentioUrl, { timeout: 10000 });
+            const response = await axios.get(scraperUrl, {
+                timeout: 8000,
+                headers: {
+                    'User-Agent': browserUserAgent,
+                    'Accept': 'application/json, text/plain, */*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Origin': 'https://web.stremio.com',
+                    'Referer': 'https://web.stremio.com/'
+                }
+            });
 
-            const elapsed = Date.now() - startTime;
-            console.log(`[Stream ${requestId}] ✅ Torrentio responded: ${torrentioResponse.status} (${elapsed}ms)`);
+            const latency = Date.now() - startTime;
+            scraperHealth.updateStatus(scraper.name, 'online', latency);
 
-            if (torrentioResponse.status === 200 && torrentioResponse.data.streams) {
-                originalStreams = torrentioResponse.data.streams;
-                console.log(`[Stream ${requestId}] 📦 Fetched ${originalStreams.length} streams from Torrentio+${providerName}`);
+            if (response.status === 200 && response.data.streams?.length > 0) {
+                originalStreams = response.data.streams;
+                console.log(`[Stream ${requestId}] ✅ ${scraper.label} responded with ${originalStreams.length} streams (${latency}ms)`);
                 break;
             }
         } catch (e) {
-            lastError = e;
-            const status = e.response?.status || 'N/A';
+            const status = parseInt(e.response?.status) || 0;
             const statusText = e.response?.statusText || e.code || 'Unknown';
-            console.error(`[Stream ${requestId}] ⚠️ Torrentio error (attempt ${attempt}): ${status} ${statusText} - ${e.message}`);
+            console.error(`[Stream ${requestId}] ⚠️ ${scraper.label} error: ${status || 'N/A'} ${statusText}`);
 
-            if (attempt < MAX_RETRIES) {
-                console.log(`[Stream ${requestId}] ⏳ Retrying in ${RETRY_DELAY}ms...`);
-                await new Promise(r => setTimeout(r, RETRY_DELAY));
-            }
+            scraperHealth.updateStatus(scraper.name, status === 403 ? 'blocked' : 'offline');
         }
     }
 
-    if (originalStreams.length === 0 && lastError) {
-        console.error(`[Stream ${requestId}] ❌ All ${MAX_RETRIES} Torrentio attempts failed`);
-        console.error(`[Stream ${requestId}] 💡 This is an upstream issue with Torrentio/${providerConfig?.name || 'debrid'}, not IntroHater`);
+    if (originalStreams.length === 0) {
+        console.error(`[Stream ${requestId}] ❌ All scrapers failed or returned no results`);
+        console.error(`[Stream ${requestId}] 💡 This is an upstream issue with the scrapers, not IntroHater`);
     }
 
+    let skipSeg = null;
     try {
         skipSeg = await skipService.getSkipSegment(id);
         if (skipSeg) {
@@ -99,27 +114,21 @@ async function handleStreamRequest(type, id, config, baseUrl) {
 
     originalStreams.forEach((stream) => {
         if (!stream.url) return;
-
         const encodedUrl = encodeURIComponent(stream.url);
-
         const start = skipSeg ? skipSeg.start : 0;
         const end = skipSeg ? skipSeg.end : 0;
-
-        
-        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&rdKey=${debridKey}`;
-
+        const proxyUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}`;
         const indicator = skipSeg ? "🚀" : "🔍";
 
         modifiedStreams.push({
             ...stream,
             url: proxyUrl,
             title: `${indicator} [IntroHater] ${stream.title || stream.name}`,
-            behaviorHints: { notWebReady: false }
+            behaviorHints: { notWebReady: true }
         });
     });
 
     console.log(`[Stream ${requestId}] 📊 Result: ${modifiedStreams.length} streams, skip: ${skipSeg ? 'yes' : 'no'}`);
-
     return { streams: modifiedStreams };
 }
 
@@ -141,7 +150,6 @@ router.get(['/:config/manifest.json', '/manifest.json'], (req, res) => {
 router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (req, res) => {
     const { config, type, id } = req.params;
 
-    
     const fullConfig = config || process.env.RPDB_KEY;
 
     if (!fullConfig) {
@@ -152,8 +160,10 @@ router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (
     const protocol = req.protocol;
     const host = req.get('host');
     const baseUrl = `${protocol}://${host}`;
+    const userAgent = req.get('User-Agent') || '';
+    const origin = req.get('Origin') || req.get('Referer') || '';
 
-    const result = await handleStreamRequest(type, cleanId, fullConfig, baseUrl);
+    const result = await handleStreamRequest(type, cleanId, fullConfig, baseUrl, userAgent, origin);
     res.json(result);
 });
 

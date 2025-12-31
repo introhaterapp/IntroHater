@@ -12,11 +12,12 @@ describe('HLS Proxy', () => {
     });
 
     describe('generateSmartManifest', () => {
-        it('should generate a valid m3u8 playlist with correct offsets', () => {
-            const m3u8 = hlsProxy.generateSmartManifest('http://video.mp4', 3600, 1000, 5000, 0);
+        it('should generate a valid spliced m3u8 playlist with discontinuity', () => {
+            const m3u8 = hlsProxy.generateSmartManifest('http://video.mp4', 3600, 1000, 5000);
 
             expect(m3u8).toContain('#EXT-X-TARGETDURATION:3600');
             expect(m3u8).toContain('#EXT-X-BYTERANGE:5000000@0');
+            expect(m3u8).toContain('#EXT-X-DISCONTINUITY');
             expect(m3u8).toContain('#EXT-X-BYTERANGE:4000@1000');
             expect(m3u8).toContain('http://video.mp4');
         });

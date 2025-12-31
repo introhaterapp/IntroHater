@@ -7,6 +7,7 @@ const axios = require('axios');
 const skipService = require('../services/skip-service');
 const catalogService = require('../services/catalog');
 const log = require('../utils/logger').api;
+const scraperHealth = require('../services/scraper-health');
 const swaggerSpec = require('../config/swagger-config');
 
 const statsRoutes = require('./stats');
@@ -18,6 +19,10 @@ const submissionsRoutes = require('./submissions');
 
 router.get('/swagger.json', (req, res) => {
     res.json(swaggerSpec);
+});
+
+router.get('/status', (req, res) => {
+    res.json(scraperHealth.getStatus());
 });
 
 

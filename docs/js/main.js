@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     fetchStats();
+    initServiceStatus();
 });
 
 const API_BASE_URL = window.location.protocol === 'file:' ? 'http://localhost:7005' : '';
@@ -323,3 +324,45 @@ window.DEBRID_PROVIDERS = DEBRID_PROVIDERS;
 window.getDebridConfig = getDebridConfig;
 window.setDebridConfig = setDebridConfig;
 window.clearDebridConfig = clearDebridConfig;
+
+async function initServiceStatus() {
+    const statusGrid = document.getElementById('service-status-grid');
+    if (!statusGrid) return;
+
+    const fetchStatus = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/status`);
+            if (!res.ok) return;
+            const data = await res.json();
+
+            statusGrid.innerHTML = '';
+            Object.entries(data).forEach(([, service]) => {
+                const card = document.createElement('div');
+                card.className = `status-card status-${service.status}`;
+
+                let statusLabel = service.status;
+                if (service.status === 'online') statusLabel = 'Online';
+                else if (service.status === 'blocked') statusLabel = 'HTTP 403 (Blocked)';
+                else if (service.status === 'offline') statusLabel = 'Offline';
+                else if (service.status === 'degraded') statusLabel = 'Degraded';
+
+                card.innerHTML = `
+                    <div class="status-header">
+                        <span class="status-name">${service.name}</span>
+                        <span class="status-indicator"></span>
+                    </div>
+                    <div class="status-details">
+                        <span class="status-label">${statusLabel}</span>
+                        ${service.latency ? `<span class="status-latency">${service.latency}ms</span>` : ''}
+                    </div>
+                `;
+                statusGrid.appendChild(card);
+            });
+        } catch (e) {
+            console.error("Status fetch error:", e);
+        }
+    };
+
+    fetchStatus();
+    setInterval(fetchStatus, 30000);
+}

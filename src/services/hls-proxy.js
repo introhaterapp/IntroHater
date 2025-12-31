@@ -181,19 +181,9 @@ async function getByteOffset(url, startTime) {
  * @returns {string} - The m3u8 content.
  */
 function generateSmartManifest(videoUrl, duration, byteOffset, totalLength) {
-    // Strategy: Use a "Fake Splice" to bypass player 'EXT-X-START' issues.
-    // We send the file Header to initialize the decoder, 
-    // then jump to the content at byteOffset.
-
-    // Header Size: 5MB (increased from 1MB for better decoder initialization)
-    // Some MKV files have larger headers with fonts/attachments
     const headerSize = 5000000;
-
-    // If byteOffset < headerSize, we might duplicate data, but that's fine.
     const len2 = totalLength ? (totalLength - byteOffset) : 99999999999;
 
-    // Note: Removed EXT-X-DISCONTINUITY - causes issues with ExoPlayer/HLS.js
-    // Added EXT-X-INDEPENDENT-SEGMENTS for better seeking
     let m3u8 = `#EXTM3U
 #EXT-X-VERSION:4
 #EXT-X-TARGETDURATION:${Math.ceil(duration || 7200)}
@@ -206,6 +196,7 @@ function generateSmartManifest(videoUrl, duration, byteOffset, totalLength) {
 #EXT-X-BYTERANGE:${headerSize}@0
 ${videoUrl}
 
+#EXT-X-DISCONTINUITY
 #EXTINF:${Math.ceil(duration || 7200)},
 #EXT-X-BYTERANGE:${len2}@${byteOffset}
 ${videoUrl}
