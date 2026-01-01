@@ -80,10 +80,13 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     const finalBaseUrl = baseUrl.replace('http://', 'https://');
 
     const streams = qualityPresets.map(preset => {
-        let proxyUrl = `${finalBaseUrl}/hls/manifest.m3u8?start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}&quality=${preset.priority}`;
-        if (externalScraper) {
-            proxyUrl += `&s=${Buffer.from(externalScraper).toString('base64')}`;
-        }
+        // Include full config in path so hls.js can extract scraper if needed
+        // Format: /CONFIG/hls/manifest.m3u8?params
+        const configStr = externalScraper
+            ? `${provider}:${debridKey}:s=${Buffer.from(externalScraper).toString('base64')}`
+            : `${provider}:${debridKey}`;
+
+        const proxyUrl = `${finalBaseUrl}/${configStr}/hls/manifest.m3u8?start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&quality=${preset.priority}`;
 
         return {
             name: "IntroHater",

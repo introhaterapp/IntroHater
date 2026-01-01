@@ -95,18 +95,38 @@ router.get('/sub/status/:videoId.vtt', async (req, res) => {
     res.send(vtt);
 });
 
-// HLS Media Playlist Endpoint
-router.get('/hls/manifest.m3u8', async (req, res) => {
-    const { stream, infoHash, start: startStr, end: endStr, id: videoId, user: userId, rdKey, client, provider, quality, s } = req.query;
+// HLS Media Playlist Endpoint (with config in path for shorter URLs)
+router.get(['/:config/hls/manifest.m3u8', '/hls/manifest.m3u8'], async (req, res) => {
+    // Parse config from path if present (format: provider:key:s=scraperBase64)
+    let provider, rdKey, customScraper;
+    if (req.params.config) {
+        const parts = req.params.config.split(':');
+        provider = parts[0];
+        rdKey = parts[1];
+        // Check for scraper in config (s=BASE64)
+        const scraperPart = parts.find(p => p.startsWith('s='));
+        if (scraperPart) {
+            customScraper = Buffer.from(scraperPart.substring(2), 'base64').toString('utf8');
+        }
+    }
+
+    // Fall back to query params for backwards compatibility
+    const { stream, infoHash, start: startStr, end: endStr, id: videoId, user: userId, client, quality, s } = req.query;
+    provider = provider || req.query.provider;
+    rdKey = rdKey || req.query.rdKey;
+    if (!customScraper && s) {
+        customScraper = Buffer.from(s, 'base64').toString('utf8');
+    }
+
     const keyPrefix = rdKey ? rdKey.substring(0, 8) : 'NO-KEY';
     const logPrefix = `[HLS ${keyPrefix}]`;
 
     let streamUrl = stream ? decodeURIComponent(stream) : null;
 
+
     // Deferred Stream Resolution
     if (!streamUrl && !infoHash && quality) {
         const scraperResolver = require('../services/scraper-resolver');
-        const customScraper = s ? Buffer.from(s, 'base64').toString('utf8') : null;
         console.log(`${logPrefix} 🔎 Deferred resolution triggered (Priority: ${quality})`);
         if (customScraper) console.log(`${logPrefix} 🌐 Using custom scraper URL`);
 
@@ -174,8 +194,34 @@ router.get('/hls/manifest.m3u8', async (req, res) => {
         const bypassHls = true; // Set to false to re-enable HLS skip functionality
 
         if (bypassHls) {
-            console.log(`${logPrefix} 🔀 BYPASS MODE: Redirecting directly to stream URL`);
-            console.log(`${logPrefix} 📍 Stream URL: ${streamUrl.substring(0, 80)}...`);
+            console.log(`${logPrefix} 🔀 BYPASS MODE: Resolving redirects on stream URL`);
+            console.log(`${logPrefix} 📍 Original URL: ${streamUrl.substring(0, 80)}...`);
+
+            try {
+                // Follow redirects to get the actual CDN URL (Comet playback URLs redirect to RD)
+                const resolveRes = await axios.head(streamUrl, {
+                    maxRedirects: 0, // Don't follow automatically, we want to capture the Location
+                    validateStatus: (status) => status >= 200 && status < 400,
+                    timeout: 10000,
+                    headers: { 'User-Agent': 'Stremio/4.4' }
+                });
+
+                // If there's a redirect, use that URL
+                if (resolveRes.status >= 300 && resolveRes.status < 400 && resolveRes.headers.location) {
+                    streamUrl = resolveRes.headers.location;
+                    console.log(`${logPrefix} 🔀 Resolved to: ${streamUrl.substring(0, 80)}...`);
+                }
+            } catch (e) {
+                // If it's a redirect response, axios throws but we can get the location
+                if (e.response && e.response.status >= 300 && e.response.status < 400 && e.response.headers.location) {
+                    streamUrl = e.response.headers.location;
+                    console.log(`${logPrefix} � Resolved to: ${streamUrl.substring(0, 80)}...`);
+                } else {
+                    console.log(`${logPrefix} ⚠️ Could not resolve redirects: ${e.message}`);
+                }
+            }
+
+            console.log(`${logPrefix} 📍 Final URL: ${streamUrl.substring(0, 80)}...`);
             res.set('Access-Control-Allow-Origin', '*');
             res.set('Access-Control-Expose-Headers', 'Location');
             return res.redirect(302, streamUrl);
