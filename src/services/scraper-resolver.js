@@ -64,9 +64,49 @@ async function resolveBestStream(provider, debridKey, type, id, priority, custom
                     console.log(`${logPrefix}   [${i}] infoHash: ${s.infoHash || s.infohash || 'NONE'}`);
                 });
 
+
                 const validStreams = res.data.streams.filter(s => {
+                    const name = (s.name || '').toLowerCase();
                     const title = (s.title || s.name || '').toLowerCase();
-                    return !title.includes('rate limit') && !title.includes('exceed');
+                    const url = s.url || s.externalUrl || '';
+                    const infoHash = s.infoHash || s.infohash;
+
+                    // Filter out rate limit messages
+                    if (title.includes('rate limit') || title.includes('exceed')) {
+                        console.log(`${logPrefix} ⛔ Filtered: rate limit message`);
+                        return false;
+                    }
+
+                    // Filter out error streams (🚫 symbol in name)
+                    if (name.includes('🚫') || name.includes('[no') || name.includes('error')) {
+                        console.log(`${logPrefix} ⛔ Filtered: error stream indicator in name`);
+                        return false;
+                    }
+
+                    // Must have either a valid URL or an infoHash
+                    if (!url && !infoHash) {
+                        console.log(`${logPrefix} ⛔ Filtered: no URL or infoHash`);
+                        return false;
+                    }
+
+                    // If has URL, validate it's a real domain (not placeholder like comet.fast)
+                    if (url && !infoHash) {
+                        try {
+                            const parsed = new URL(url);
+                            // Check for known placeholder domains
+                            if (parsed.hostname === 'comet.fast' ||
+                                parsed.hostname === 'error' ||
+                                !parsed.hostname.includes('.')) {
+                                console.log(`${logPrefix} ⛔ Filtered: invalid/placeholder URL domain: ${parsed.hostname}`);
+                                return false;
+                            }
+                        } catch {
+                            console.log(`${logPrefix} ⛔ Filtered: malformed URL: ${url}`);
+                            return false;
+                        }
+                    }
+
+                    return true;
                 });
 
                 console.log(`${logPrefix} Valid streams after filter: ${validStreams.length}`);
