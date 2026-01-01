@@ -116,32 +116,27 @@ router.get('/proxy/stream', async (req, res) => {
 });
 
 router.post('/generate_urls', async (req, res) => {
-    console.log(`[Proxy] 📥 Batch URL generation request`);
-    console.log(`[Proxy] Headers:`, JSON.stringify(req.headers, null, 2));
-    console.log(`[Proxy] Body keys:`, Object.keys(req.body));
-    console.log(`[Proxy] Full URL sample (first):`, JSON.stringify(req.body.urls?.[0], null, 2));
+    const { urls } = req.body;
+    const firstItem = urls?.[0];
+    let showName = '';
 
-    const firstUrl = req.body.urls?.[0]?.destination_url;
-    if (firstUrl) {
+    if (firstItem?.destination_url) {
         try {
-            const urlObj = new URL(firstUrl);
-            console.log(`[Proxy] Destination hostname:`, urlObj.hostname);
-            console.log(`[Proxy] Destination pathname:`, urlObj.pathname);
-            console.log(`[Proxy] Destination search:`, urlObj.search);
-        } catch (e) {
-            console.log(`[Proxy] Could not parse URL:`, e.message);
-        }
+            const urlObj = new URL(firstItem.destination_url);
+            showName = urlObj.searchParams.get('name') || '';
+        } catch { }
     }
 
-    try {
-        const { urls } = req.body;
+    console.log(`[Proxy] 📥 Batch: ${urls?.length || 0} URLs for "${showName || 'unknown'}"`);
 
+    try {
         if (!urls || !Array.isArray(urls)) {
-            console.error(`[Proxy] ❌ urls is ${typeof urls}, not array`);
+            console.error(`[Proxy] ❌ Invalid request: urls is ${typeof urls}`);
             return res.status(400).json({ error: 'Invalid request, expected urls array' });
         }
 
-        console.log(`[Proxy] Processing ${urls.length} URLs`);
+        let lookupCount = 0;
+        let firstSkipId = null;
 
         const results = await Promise.all(urls.map(async (item) => {
             const url = item.destination_url;
@@ -154,7 +149,7 @@ router.post('/generate_urls', async (req, res) => {
                 const show = await catalogService.getShowByTitle(showName);
                 if (show) {
                     imdbId = show.imdbId;
-                    console.log(`[Proxy] 🔍 Found IMDb ${imdbId} for "${showName}"`);
+                    lookupCount++;
                 }
             }
 
@@ -170,7 +165,7 @@ router.post('/generate_urls', async (req, res) => {
                     const encodedStreamUrl = encodeURIComponent(url);
                     const hlsUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${skipSegment.start}&end=${skipSegment.end}&id=${imdbId}&client=proxy`;
 
-                    console.log(`[Proxy] ✅ Skip for ${lookupId}: ${skipSegment.start}s-${skipSegment.end}s`);
+                    if (!firstSkipId) firstSkipId = lookupId;
                     return { ...item, destination_url: hlsUrl };
                 }
             }
@@ -179,7 +174,7 @@ router.post('/generate_urls', async (req, res) => {
         }));
 
         const modifiedCount = results.filter(r => r.destination_url && r.destination_url.includes('hls')).length;
-        console.log(`[Proxy] ✅ Processed ${results.length} URLs, ${modifiedCount} with skips`);
+        console.log(`[Proxy] ✅ ${urls.length} URLs → ${modifiedCount} with skips (${lookupCount} title lookups, first: ${firstSkipId || 'none'})`);
         res.json({ urls: results });
     } catch (error) {
         console.error(`[Proxy] ❌ Batch error: ${error.message}`);
