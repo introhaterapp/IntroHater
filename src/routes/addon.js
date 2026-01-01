@@ -61,52 +61,41 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         console.error(`[Stream ${requestId}] ⚠️ Skip lookup error: ${e.message}`);
     }
 
-    // const indicator = skipSeg ? "🚀" : "🔍";
     const userId = generateUserId(debridKey);
     const start = skipSeg ? skipSeg.start : 0;
     const end = skipSeg ? skipSeg.end : 0;
-
-    const qualityPresets = [
-        { quality: '4K', label: '2160p REMUX', priority: 1 },
-        { quality: '4K', label: '2160p', priority: 2 },
-        { quality: '1080p', label: '1080p REMUX', priority: 3 },
-        { quality: '1080p', label: '1080p BluRay', priority: 4 },
-        { quality: '1080p', label: '1080p', priority: 5 },
-        { quality: '720p', label: '720p', priority: 6 },
-        { quality: '480p', label: '480p', priority: 7 }
-    ];
-
-    // FORCE HTTPS on Render to avoid mixed content issues
     const finalBaseUrl = baseUrl.replace('http://', 'https://');
 
-    const streams = qualityPresets.map(preset => {
-        // Store scraper in cache with hash key, retrieve at play time
-        let scraperHash = null;
-        if (externalScraper) {
-            // Create short hash of scraper URL (first 12 chars of MD5)
-            const crypto = require('crypto');
-            scraperHash = crypto.createHash('md5').update(externalScraper).digest('hex').substring(0, 12);
+    // === BROWSE-TIME RESOLUTION ===
+    // Call scrapers NOW (at browse time) and embed the resolved URL
+    // This way, NO scraper calls happen at play time (only debrid API if needed)
+    const scraperResolver = require('../services/scraper-resolver');
 
-            // Store in cache for retrieval at play time
-            const cacheService = require('../services/cache-service');
-            cacheService.setScraperConfig(scraperHash, externalScraper);
-        }
+    console.log(`[Stream ${requestId}] 🔄 Resolving streams at browse time...`);
 
-        // Use query params format (working format from before)
-        let proxyUrl = `${finalBaseUrl}/hls/manifest.m3u8?start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}&quality=${preset.priority}`;
-        if (scraperHash) {
-            proxyUrl += `&h=${scraperHash}`;
-        }
+    // Get the actual stream from scrapers
+    const streamUrl = await scraperResolver.resolveBestStream(provider, debridKey, type, id, 1, externalScraper);
 
-        return {
-            name: "IntroHater",
-            title: `${preset.label}${skipSeg ? ' - Skip Intro' : ''}`,
-            url: proxyUrl
-        };
+    if (!streamUrl) {
+        console.log(`[Stream ${requestId}] ❌ No streams found from any scraper`);
+        return { streams: [] };
+    }
 
-    });
+    console.log(`[Stream ${requestId}] ✅ Resolved: ${streamUrl.substring(0, 60)}...`);
 
-    console.log(`[Stream ${requestId}] 📊 Returning ${streams.length} deferred streams, skip: ${skipSeg ? 'yes' : 'no'}`);
+    // Embed the resolved stream URL in our HLS manifest URL
+    const encodedStreamUrl = encodeURIComponent(streamUrl);
+
+    // Single stream with embedded URL - no more "deferred resolution" at play time
+    const proxyUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}`;
+
+    const streams = [{
+        name: "IntroHater",
+        title: skipSeg ? "▶️ Play with Skip Intro" : "▶️ Play",
+        url: proxyUrl
+    }];
+
+    console.log(`[Stream ${requestId}] 📊 Returning ${streams.length} stream(s), skip: ${skipSeg ? 'yes' : 'no'}`);
     return { streams };
 };
 
