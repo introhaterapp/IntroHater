@@ -95,11 +95,14 @@ router.get('/proxy/stream', async (req, res) => {
 
 router.post('/generate_urls', async (req, res) => {
     console.log(`[Proxy] 📥 Batch URL generation request`);
+    console.log(`[Proxy] Body keys:`, Object.keys(req.body));
+    console.log(`[Proxy] Body sample:`, JSON.stringify(req.body).substring(0, 500));
 
     try {
         const { streams } = req.body;
 
         if (!streams || !Array.isArray(streams)) {
+            console.error(`[Proxy] ❌ streams is ${typeof streams}, not array`);
             return res.status(400).json({ error: 'Invalid request, expected streams array' });
         }
 
