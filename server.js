@@ -36,6 +36,7 @@ const wsTicker = require('./src/services/ws-ticker');
 const apiRoutes = require('./src/routes/api');
 const hlsRoutes = require('./src/routes/hls');
 const addonRoutes = require('./src/routes/addon');
+const proxyRoutes = require('./src/routes/proxy');
 
 
 
@@ -102,6 +103,7 @@ app.use('/api', apiRoutes);
 
 app.use('/', hlsRoutes);
 
+app.use('/', proxyRoutes);
 
 app.use('/', addonRoutes);
 
