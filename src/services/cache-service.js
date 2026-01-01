@@ -13,13 +13,13 @@ class LRUCache {
         if (!this.cache.has(key)) return null;
         const entry = this.cache.get(key);
 
-        
+
         if (this.ttlMs && Date.now() - entry.timestamp > this.ttlMs) {
             this.cache.delete(key);
             return null;
         }
 
-        
+
         this.cache.delete(key);
         this.cache.set(key, entry);
         return entry.value;
@@ -28,14 +28,14 @@ class LRUCache {
     set(key, value) {
         if (this.cache.has(key)) this.cache.delete(key);
         else if (this.cache.size >= this.maxSize) {
-            
+
             this.cache.delete(this.cache.keys().next().value);
         }
         this.cache.set(key, { value, timestamp: Date.now() });
     }
 
     has(key) {
-        const value = this.get(key); 
+        const value = this.get(key);
         return value !== null;
     }
 
@@ -51,7 +51,7 @@ class LRUCache {
         return this.cache.size;
     }
 
-    
+
     gc() {
         if (!this.ttlMs) return 0;
         const cutoff = Date.now() - this.ttlMs;
@@ -67,16 +67,19 @@ class LRUCache {
 }
 
 
-const metadataCache = new LRUCache(2000, 3600000); 
+const metadataCache = new LRUCache(2000, 3600000);
 
 
-const loggedHistory = new LRUCache(5000, 3600000); 
+const loggedHistory = new LRUCache(5000, 3600000);
 
 
 const manifestCache = new LRUCache(1000, null);
 
 
 const probeCache = new LRUCache(1000, 30 * 60 * 1000);
+
+// Cache for scraper config hash -> full URL (24 hour TTL)
+const scraperConfigCache = new LRUCache(10000, 24 * 60 * 60 * 1000);
 
 
 function getMetadata(imdbId) {
@@ -121,18 +124,29 @@ function getCachedProbe(key) {
 }
 
 
+
 function setCachedProbe(key, value) {
     probeCache.set(key, value);
+}
+
+// Scraper config hash -> full URL
+function getScraperConfig(hash) {
+    return scraperConfigCache.get(hash);
+}
+
+function setScraperConfig(hash, scraperUrl) {
+    scraperConfigCache.set(hash, scraperUrl);
 }
 
 
 setInterval(() => {
     const metaRemoved = metadataCache.gc();
     const historyRemoved = loggedHistory.gc();
-    if (metaRemoved > 0 || historyRemoved > 0) {
-        log.info({ metaRemoved, historyRemoved }, 'GC cleanup');
+    const scraperRemoved = scraperConfigCache.gc();
+    if (metaRemoved > 0 || historyRemoved > 0 || scraperRemoved > 0) {
+        log.info({ metaRemoved, historyRemoved, scraperRemoved }, 'GC cleanup');
     }
-}, 300000); 
+}, 300000);
 
 module.exports = {
     LRUCache,
@@ -145,9 +159,12 @@ module.exports = {
     hasManifest,
     getCachedProbe,
     setCachedProbe,
-    
+    getScraperConfig,
+    setScraperConfig,
+
     _metadataCache: metadataCache,
     _loggedHistory: loggedHistory,
     _manifestCache: manifestCache,
-    _probeCache: probeCache
+    _probeCache: probeCache,
+    _scraperConfigCache: scraperConfigCache
 };

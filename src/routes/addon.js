@@ -80,11 +80,21 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     const finalBaseUrl = baseUrl.replace('http://', 'https://');
 
     const streams = qualityPresets.map(preset => {
-        // Include full config in path so hls.js can extract scraper if needed
-        // Format: /CONFIG/hls/manifest.m3u8?params
-        const configStr = externalScraper
-            ? `${provider}:${debridKey}:s=${Buffer.from(externalScraper).toString('base64')}`
-            : `${provider}:${debridKey}`;
+        // Use short config format: provider:key or provider:key:h=HASH
+        // Store scraper in cache with hash key, retrieve at play time
+        let configStr = `${provider}:${debridKey}`;
+
+        if (externalScraper) {
+            // Create short hash of scraper URL (first 12 chars of MD5)
+            const crypto = require('crypto');
+            const scraperHash = crypto.createHash('md5').update(externalScraper).digest('hex').substring(0, 12);
+
+            // Store in cache for retrieval at play time
+            const cacheService = require('../services/cache-service');
+            cacheService.setScraperConfig(scraperHash, externalScraper);
+
+            configStr += `:h=${scraperHash}`;
+        }
 
         const proxyUrl = `${finalBaseUrl}/${configStr}/hls/manifest.m3u8?start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&quality=${preset.priority}`;
 
