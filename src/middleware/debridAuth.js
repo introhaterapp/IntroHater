@@ -61,39 +61,44 @@ function generateUserId(key) {
 }
 
 
-function parseConfig(config) {
-    if (!config) return { provider: 'realdebrid', key: '' };
-
-    const parts = config.split(':');
-    if (parts.length >= 2) {
-        const potentialProvider = parts[0].toLowerCase();
-        if (DEBRID_PROVIDERS[potentialProvider]) {
-            const result = {
-                provider: potentialProvider,
-                key: parts[1]
-            };
-
-            for (let i = 2; i < parts.length; i++) {
-                if (parts[i].startsWith('s=')) {
-                    try {
-                        result.scraper = Buffer.from(parts[i].substring(2), 'base64').toString('utf8');
-                    } catch (e) {
-                        console.error('Failed to parse scraper URL:', e.message);
-                    }
-                }
-            }
-            return result;
-        }
-    }
-
-    return { provider: 'realdebrid', key: config };
-}
 
 
 
 function buildConfig(provider, key) {
     return `${provider}:${key}`;
 }
+
+
+const parseConfig = (configStr) => {
+    if (!configStr) return {};
+
+    // Config format: provider:key[:s=BASE64][:p=BASE64][:pp=BASE64]
+    const parts = configStr.split(':');
+
+    // Legacy fallback or weird format
+    if (parts.length < 2) return { provider: 'realdebrid', key: configStr };
+
+    const provider = parts[0];
+    const key = parts[1];
+
+    let scraper = null;
+    let proxyUrl = null;
+    let proxyPassword = null;
+
+    // Process optional parts
+    for (let i = 2; i < parts.length; i++) {
+        const part = parts[i];
+        if (part.startsWith('s=')) {
+            try { scraper = Buffer.from(part.substring(2), 'base64').toString('utf8'); } catch { }
+        } else if (part.startsWith('p=')) {
+            try { proxyUrl = Buffer.from(part.substring(2), 'base64').toString('utf8'); } catch { }
+        } else if (part.startsWith('pp=')) {
+            try { proxyPassword = Buffer.from(part.substring(3), 'base64').toString('utf8'); } catch { }
+        }
+    }
+
+    return { provider, key, scraper, proxyUrl, proxyPassword };
+};
 
 
 async function verifyDebridKey(provider, key, timeout = 3000) {

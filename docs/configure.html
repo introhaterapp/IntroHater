@@ -107,12 +107,31 @@
                                     href="https://aiostreams.elfhosted.com/stremio/configure" target="_blank"
                                     style="color: var(--primary);">AIOstreams</a>
                                 - configure it with your debrid service, then paste the manifest URL here.
-                                <br><br>
-                                <strong>Why AIOstreams?</strong> It runs on ElfHosted servers which aren't rate-limited
-                                (unlike Torrentio direct).
-                                Your streams will work reliably without "no results" errors.
                             </p>
                         </div>
+
+                        <details class="mb-24">
+                            <summary
+                                style="cursor: pointer; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px;">
+                                Advanced Options (Proxy)</summary>
+
+                            <div class="p-15" style="background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                <div class="form-group mb-15">
+                                    <label class="form-label" for="proxyUrl">MediaFlow Proxy URL</label>
+                                    <input type="text" id="proxyUrl" class="form-input"
+                                        placeholder="https://mediaflow-proxy-example.elfhosted.com">
+                                    <p class="text-sm mt-5" style="color: var(--text-muted); font-size: 0.75rem;">
+                                        Route scraper requests through your proxy to bypass rate limits.
+                                    </p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="proxyPassword">Proxy API Password</label>
+                                    <input type="password" id="proxyPassword" class="form-input"
+                                        placeholder="Your MediaFlow API Password">
+                                </div>
+                            </div>
+                        </details>
 
                         <div class="mt-20">
                             <button type="submit" class="btn btn-primary w-full justify-center">
@@ -187,6 +206,8 @@
                     const savedProvider = config.provider || 'realdebrid';
                     const savedKey = config.debridKey;
                     const savedScraper = config.externalScraper;
+                    const savedProxy = config.proxyUrl;
+                    const savedProxyPassword = config.proxyPassword;
 
                     document.getElementById('provider').value = savedProvider;
                     document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[savedProvider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
@@ -198,42 +219,46 @@
                     if (savedScraper) {
                         document.getElementById('externalScraper').value = savedScraper;
                     }
+                    if (savedProxy) {
+                        document.getElementById('proxyUrl').value = savedProxy;
+                    }
+                    if (savedProxyPassword) {
+                        document.getElementById('proxyPassword').value = savedProxyPassword;
+                    }
 
-                    // Path-based auto-fill (Stremio redirect fallback)
+                    // Path-based auto-fill
                     const parts = window.location.pathname.split('/').filter(p => p);
                     if (parts.length >= 2 && parts[parts.length - 1] === 'configure') {
                         const potentialConfig = parts[0];
-                        // Check if it's provider:key format
                         if (potentialConfig.includes(':')) {
                             const configParts = potentialConfig.split(':');
                             const prov = configParts[0];
                             const key = configParts[1];
                             const extra = configParts[2];
+                            const extra2 = configParts[3];
+                            const extra3 = configParts[4];
 
                             if (DEBRID_PROVIDERS[prov] && key) {
                                 document.getElementById('provider').value = prov;
                                 document.getElementById('debridKey').value = key;
                                 document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[prov].keyUrl;
 
-                                if (extra && extra.startsWith('s=')) {
-                                    try {
-                                        const scraperUrl = atob(extra.substring(2));
-                                        document.getElementById('externalScraper').value = scraperUrl;
-                                    } catch (e) { }
-                                }
+                                const extras = [configParts[2], configParts[3], configParts[4]].filter(Boolean);
+                                extras.forEach(part => {
+                                    if (part.startsWith('s=')) {
+                                        try { document.getElementById('externalScraper').value = atob(part.substring(2)); } catch (e) { }
+                                    } else if (part.startsWith('p=')) {
+                                        try { document.getElementById('proxyUrl').value = atob(part.substring(2)); } catch (e) { }
+                                    } else if (part.startsWith('pp=')) {
+                                        try { document.getElementById('proxyPassword').value = atob(part.substring(3)); } catch (e) { }
+                                    }
+                                });
                             }
                         } else if (potentialConfig.length > 5) {
-                            // Legacy format: just the key (assume realdebrid)
                             document.getElementById('debridKey').value = potentialConfig;
                         }
                     }
                 })();
-
-                // Logout
-                document.getElementById('logoutBtn').onclick = function () {
-                    clearDebridConfig();
-                    location.reload();
-                };
 
                 // Generate Install Link Form
                 document.getElementById('config-form').onsubmit = function (e) {
@@ -241,18 +266,36 @@
                     const provider = document.getElementById('provider').value;
                     const key = document.getElementById('debridKey').value.trim();
                     const scraper = document.getElementById('externalScraper').value.trim();
+                    const proxyUrl = document.getElementById('proxyUrl').value.trim();
+                    const proxyPassword = document.getElementById('proxyPassword').value.trim();
+
                     if (!key) return;
 
-                    // Save to localStorage
-                    setDebridConfig(provider, key, scraper);
+                    // Save to localStorage (via helper if updated, otherwise manually here for new fields)
+                    // We need to update main.js helper or just extend the object saved
+                    const currentConfig = getDebridConfig();
+                    currentConfig.provider = provider;
+                    currentConfig.debridKey = key;
+                    currentConfig.externalScraper = scraper;
+                    currentConfig.proxyUrl = proxyUrl;
+                    currentConfig.proxyPassword = proxyPassword;
+                    localStorage.setItem('introhater_config', JSON.stringify(currentConfig));
+
                     document.getElementById('logoutBtn').classList.remove('d-none');
 
-                    // Build config value: "provider:key[:s=BASE64]"
+                    // Build config value: "provider:key[:s=BASE64][:p=BASE64][:pp=BASE64]"
                     let configValue = `${provider}:${key}`;
                     if (scraper) {
-                        // Clean scraper URL (remove /manifest.json if present to get base)
                         let cleanScraper = scraper.replace(/\/manifest\.json$/, '');
                         configValue += `:s=${btoa(cleanScraper)}`;
+                    }
+                    if (proxyUrl) {
+                        // Ensure no trailing slash
+                        let cleanProxy = proxyUrl.replace(/\/$/, '');
+                        configValue += `:p=${btoa(cleanProxy)}`;
+                    }
+                    if (proxyPassword) {
+                        configValue += `:pp=${btoa(proxyPassword)}`;
                     }
 
                     // Construct Stremio Install URL

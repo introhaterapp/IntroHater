@@ -36,7 +36,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     const isAndroid = userAgent.toLowerCase().includes('android') || userAgent.toLowerCase().includes('exoplayer');
     const client = isWebStremio ? 'web' : (isAndroid ? 'android' : 'desktop');
 
-    const { provider, key: debridKey, scraper: externalScraper } = parseConfig(config);
+    const { provider, key: debridKey, scraper: externalScraper, proxyUrl, proxyPassword } = parseConfig(config);
     const providerConfig = getProvider(provider);
     const providerName = providerConfig?.shortName || 'Debrid';
 
@@ -48,6 +48,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     console.log(`[Stream ${requestId}] 📥 Request: ${type} ${id} (Client: ${client})`);
     console.log(`[Stream ${requestId}] 🔑 ${providerName} Key: ${debridKey.substring(0, 8)}...`);
     if (externalScraper) console.log(`[Stream ${requestId}] 🌐 Using custom scraper: ${externalScraper.substring(0, 30)}...`);
+    if (proxyUrl) console.log(`[Stream ${requestId}] 🛡️ Using proxy: ${proxyUrl}`);
 
     let skipSeg = null;
     try {
@@ -66,42 +67,42 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     const end = skipSeg ? skipSeg.end : 0;
     const finalBaseUrl = baseUrl.replace('http://', 'https://');
 
-    // === BROWSE-TIME RESOLUTION ===
-    // Call scrapers NOW (at browse time) and embed the resolved URL
-    // This way, NO scraper calls happen at play time (only debrid API if needed)
     const scraperResolver = require('../services/scraper-resolver');
 
     console.log(`[Stream ${requestId}] 🔄 Resolving streams at browse time...`);
 
-    // Get the actual stream from scrapers
-    const streamUrl = await scraperResolver.resolveBestStream(provider, debridKey, type, id, 1, externalScraper);
+    // Get ALL streams from AIOstreams (not just the best one)
+    const allStreams = await scraperResolver.getAllStreams(provider, debridKey, type, id, externalScraper, proxyUrl, proxyPassword);
 
-    if (!streamUrl) {
+    if (!allStreams || allStreams.length === 0) {
         console.log(`[Stream ${requestId}] ❌ No streams found from any scraper`);
-        // Return an informative message instead of empty array
         return {
             streams: [{
                 name: "IntroHater",
-                title: "⚠️ Scrapers rate-limited",
-                description: "All scrapers are blocking our server. Please use Torrentio or Comet directly for now.",
-                url: `${finalBaseUrl}/error/rate-limited`
+                title: "⚠️ No streams found",
+                description: "Configure AIOstreams in the External Scraper field for reliable results.",
+                url: `${finalBaseUrl}/error/no-streams`
             }]
         };
     }
 
-    console.log(`[Stream ${requestId}] ✅ Resolved: ${streamUrl.substring(0, 60)}...`);
+    console.log(`[Stream ${requestId}] ✅ Found ${allStreams.length} streams from scraper`);
 
-    // Embed the resolved stream URL in our HLS manifest URL
-    const encodedStreamUrl = encodeURIComponent(streamUrl);
+    // Wrap EACH stream URL with IntroHater's HLS proxy
+    const streams = allStreams.map(s => {
+        const streamUrl = s.url || s.externalUrl;
+        if (!streamUrl) return null;
 
-    // Single stream with embedded URL - no more "deferred resolution" at play time
-    const proxyUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}`;
+        const encodedStreamUrl = encodeURIComponent(streamUrl);
+        const proxyUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}`;
 
-    const streams = [{
-        name: "IntroHater",
-        title: skipSeg ? "▶️ Play with Skip Intro" : "▶️ Play",
-        url: proxyUrl
-    }];
+        return {
+            name: s.name || "IntroHater",
+            title: skipSeg ? `${s.title || s.name} 🎯` : (s.title || s.name),
+            description: s.description,
+            url: proxyUrl
+        };
+    }).filter(Boolean);
 
     console.log(`[Stream ${requestId}] 📊 Returning ${streams.length} stream(s), skip: ${skipSeg ? 'yes' : 'no'}`);
     return { streams };
