@@ -156,8 +156,23 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
     if (videoId && userId && rdKey) {
         if (!cacheService.isWatchLogged(userId, videoId)) {
             try {
-                await axios.get('https://api.real-debrid.com/rest/1.0/user', {
-                    headers: { 'Authorization': `Bearer ${rdKey}` },
+                // Use provider-specific auth endpoint
+                const authUrl = provider === 'torbox'
+                    ? 'https://api.torbox.app/v1/api/user/me'
+                    : provider === 'premiumize'
+                        ? 'https://www.premiumize.me/api/account/info'
+                        : provider === 'alldebrid'
+                            ? 'https://api.alldebrid.com/v4/user'
+                            : 'https://api.real-debrid.com/rest/1.0/user';
+
+                const authHeader = provider === 'torbox'
+                    ? { 'Authorization': `Bearer ${rdKey}` }
+                    : provider === 'alldebrid'
+                        ? { 'Authorization': `Bearer ${rdKey}` }
+                        : { 'Authorization': `Bearer ${rdKey}` };
+
+                await axios.get(authUrl, {
+                    headers: authHeader,
                     timeout: 2000
                 });
 
