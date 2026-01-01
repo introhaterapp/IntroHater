@@ -29,6 +29,15 @@ router.get('/proxy/health', (req, res) => {
     });
 });
 
+router.get('/proxy/ip', (req, res) => {
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown';
+    res.json({
+        ip: clientIp,
+        public_id: 'introhater',
+        proxy_url: `${req.protocol}://${req.get('host')}`
+    });
+});
+
 router.get('/proxy/stream', async (req, res) => {
     const { d: destinationUrl, api_password } = req.query;
 
