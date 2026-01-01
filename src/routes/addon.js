@@ -71,8 +71,20 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
     console.log(`[Stream ${requestId}] 🔄 Resolving streams at browse time...`);
 
-    // Get ALL streams from AIOstreams (not just the best one)
-    const allStreams = await scraperResolver.getAllStreams(provider, debridKey, type, id, externalScraper, proxyUrl, proxyPassword);
+    let allStreams;
+    try {
+        allStreams = await scraperResolver.getAllStreams(provider, debridKey, type, id, externalScraper, proxyUrl, proxyPassword);
+    } catch (e) {
+        console.error(`[Stream ${requestId}] ❌ Error in getAllStreams: ${e.message}`);
+        return {
+            streams: [{
+                name: "IntroHater",
+                title: "⚠️ Scraper Error",
+                description: `Failed to fetch streams: ${e.message}`,
+                url: `${finalBaseUrl}/error/scraper-failed`
+            }]
+        };
+    }
 
     if (!allStreams || allStreams.length === 0) {
         console.log(`[Stream ${requestId}] ❌ No streams found from any scraper`);
@@ -88,7 +100,6 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
     console.log(`[Stream ${requestId}] ✅ Found ${allStreams.length} streams from scraper`);
 
-    // Wrap EACH stream URL with IntroHater's HLS proxy
     const streams = allStreams.map(s => {
         const streamUrl = s.url || s.externalUrl;
         if (!streamUrl) return null;
@@ -148,8 +159,9 @@ router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (
 
     const result = await handleStreamRequest(type, cleanId, fullConfig, baseUrl, userAgent, origin);
 
-    // DEBUG: Dump the exact JSON response - Stremio is strict!
-    console.log(`[Stream ${cleanId}] 📤 Sending Response:`, JSON.stringify(result, null, 2));
+    const streamCount = result.streams?.length || 0;
+    const previewStreams = result.streams?.slice(0, 3) || [];
+    console.log(`[Stream ${cleanId}] 📤 Sending ${streamCount} stream(s). First 3:`, JSON.stringify({ streams: previewStreams }, null, 2));
 
     // Disable caching to debug visibility issues
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
