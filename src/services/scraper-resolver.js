@@ -403,11 +403,25 @@ async function getAllStreams(provider, debridKey, type, id, customUrl = null, pr
             if (res.status === 200 && res.data.streams && res.data.streams.length > 0) {
                 console.log(`${logPrefix} ✅ Found ${res.data.streams.length} streams from ${scraper.name}`);
 
-                // Filter out error streams
                 const validStreams = res.data.streams.filter(s => {
                     const name = (s.name || '').toLowerCase();
                     const title = (s.title || s.name || '').toLowerCase();
-                    return !(title.includes('rate limit') || title.includes('exceed') || name.includes('🚫') || name.includes('[no') || name.includes('error'));
+                    const url = s.url || s.externalUrl || '';
+
+                    if (title.includes('rate limit') || title.includes('exceed')) {
+                        console.log(`${logPrefix} ⛔ Filtered (rate limit): ${title.substring(0, 50)}`);
+                        return false;
+                    }
+                    if (name.includes('🚫')) {
+                        console.log(`${logPrefix} ⛔ Filtered (error symbol): ${name}`);
+                        return false;
+                    }
+                    if (!url && !s.infoHash && !s.infohash) {
+                        console.log(`${logPrefix} ⛔ Filtered (no URL/hash): ${name}`);
+                        return false;
+                    }
+
+                    return true;
                 });
 
                 console.log(`${logPrefix} ✅ Returning ${validStreams.length} valid streams`);
