@@ -312,7 +312,7 @@ class IndexerService {
 
             for (const imdbId of showsToProcess) {
                 try {
-                    log.info({ imdbId }, 'Checking show against IntroDB');
+                    log.debug({ imdbId }, 'Checking show against IntroDB');
 
 
                     let showMeta = null;
@@ -361,7 +361,7 @@ class IndexerService {
                                 state.stats.totalSegmentsImported++;
                                 state.stats.lastCycleSegments++;
                                 consecutiveMisses = 0;
-                                log.info({ fullId, start: result.start, end: result.end }, 'Found IntroDB segment');
+                                log.debug({ fullId, start: result.start, end: result.end }, 'Found IntroDB segment');
                             } else {
                                 consecutiveMisses++;
                             }

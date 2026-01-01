@@ -210,12 +210,12 @@ async function getMalId(imdbId) {
         const name = metaRes.data?.meta?.name;
         if (!name) return null;
 
-        log.info({ name }, 'Searching MAL ID');
+        log.debug({ name }, 'Searching MAL ID');
         const jikanRes = await axios.get(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(name)}&type=tv&limit=1`);
 
         if (jikanRes.data?.data?.[0]?.mal_id) {
             const malId = jikanRes.data.data[0].mal_id;
-            log.info({ imdbId, name, malId }, 'Mapped to MAL ID');
+            log.debug({ imdbId, name, malId }, 'Mapped to MAL ID');
             await cacheRepository.setCache(`mal:${imdbId}`, malId);
             return malId;
         }
@@ -385,7 +385,7 @@ async function fetchIntroDB(imdbId, season, episode) {
 
     try {
         const url = `${INTRO_DB.BASE_URL}/intro?imdb_id=${imdbId}&season=${season}&episode=${episode}`;
-        log.info({ url }, 'Fetching from IntroDB');
+        log.debug({ url }, 'Fetching from IntroDB');
         const res = await axios.get(url);
 
 
@@ -449,7 +449,7 @@ async function getSkipSegment(fullId) {
             if (introDbSegments) {
                 const intro = introDbSegments.find(s => s.label === 'Intro');
                 if (intro) {
-                    log.info({ fullId, start: intro.start, end: intro.end }, 'Found IntroDB');
+                    log.debug({ fullId, start: intro.start, end: intro.end }, 'Found IntroDB');
 
                     for (const s of introDbSegments) {
                         addSkipSegment(fullId, s.start, s.end, s.label, 'introdb').catch(() => { });
@@ -464,14 +464,14 @@ async function getSkipSegment(fullId) {
         if (malId) {
             const aniSkip = await fetchAniskip(malId, episode);
             if (aniSkip) {
-                log.info({ fullId, start: aniSkip.start, end: aniSkip.end }, 'Found Aniskip');
+                log.debug({ fullId, start: aniSkip.start, end: aniSkip.end }, 'Found Aniskip');
                 addSkipSegment(fullId, aniSkip.start, aniSkip.end, 'Intro', 'aniskip').catch(() => { });
                 return aniSkip;
             }
 
             const animeSkip = await fetchAnimeSkip(malId, episode, imdbId);
             if (animeSkip) {
-                log.info({ fullId, start: animeSkip.start, end: animeSkip.end }, 'Found Anime-Skip');
+                log.debug({ fullId, start: animeSkip.start, end: animeSkip.end }, 'Found Anime-Skip');
                 addSkipSegment(fullId, animeSkip.start, animeSkip.end, 'Intro', 'anime-skip').catch(() => { });
                 return animeSkip;
             }
