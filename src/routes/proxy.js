@@ -95,8 +95,21 @@ router.get('/proxy/stream', async (req, res) => {
 
 router.post('/generate_urls', async (req, res) => {
     console.log(`[Proxy] 📥 Batch URL generation request`);
+    console.log(`[Proxy] Headers:`, JSON.stringify(req.headers, null, 2));
     console.log(`[Proxy] Body keys:`, Object.keys(req.body));
-    console.log(`[Proxy] Body sample:`, JSON.stringify(req.body).substring(0, 500));
+    console.log(`[Proxy] Full URL sample (first):`, JSON.stringify(req.body.urls?.[0], null, 2));
+
+    const firstUrl = req.body.urls?.[0]?.destination_url;
+    if (firstUrl) {
+        try {
+            const urlObj = new URL(firstUrl);
+            console.log(`[Proxy] Destination hostname:`, urlObj.hostname);
+            console.log(`[Proxy] Destination pathname:`, urlObj.pathname);
+            console.log(`[Proxy] Destination search:`, urlObj.search);
+        } catch (e) {
+            console.log(`[Proxy] Could not parse URL:`, e.message);
+        }
+    }
 
     try {
         const { urls } = req.body;
