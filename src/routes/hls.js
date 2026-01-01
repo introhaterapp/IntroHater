@@ -199,26 +199,25 @@ router.get(['/:config/hls/manifest.m3u8', '/hls/manifest.m3u8'], async (req, res
 
             try {
                 // Follow redirects to get the actual CDN URL (Comet playback URLs redirect to RD)
-                const resolveRes = await axios.head(streamUrl, {
-                    maxRedirects: 0, // Don't follow automatically, we want to capture the Location
-                    validateStatus: (status) => status >= 200 && status < 400,
-                    timeout: 10000,
-                    headers: { 'User-Agent': 'Stremio/4.4' }
+                // Use GET with maxRedirects to follow the chain (HEAD returns 405 from Comet)
+                const resolveRes = await axios.get(streamUrl, {
+                    maxRedirects: 5, // Follow redirects
+                    timeout: 15000,
+                    headers: { 'User-Agent': 'Stremio/4.4', 'Range': 'bytes=0-0' }, // Range to minimize data
+                    responseType: 'stream' // Stream to avoid downloading the whole file
                 });
 
-                // If there's a redirect, use that URL
-                if (resolveRes.status >= 300 && resolveRes.status < 400 && resolveRes.headers.location) {
-                    streamUrl = resolveRes.headers.location;
+                // Get the final URL after redirects
+                const finalUrl = resolveRes.request.res.responseUrl || resolveRes.config.url;
+                if (finalUrl && finalUrl !== streamUrl) {
+                    streamUrl = finalUrl;
                     console.log(`${logPrefix} 🔀 Resolved to: ${streamUrl.substring(0, 80)}...`);
                 }
+
+                // Close the stream immediately
+                resolveRes.data.destroy();
             } catch (e) {
-                // If it's a redirect response, axios throws but we can get the location
-                if (e.response && e.response.status >= 300 && e.response.status < 400 && e.response.headers.location) {
-                    streamUrl = e.response.headers.location;
-                    console.log(`${logPrefix} � Resolved to: ${streamUrl.substring(0, 80)}...`);
-                } else {
-                    console.log(`${logPrefix} ⚠️ Could not resolve redirects: ${e.message}`);
-                }
+                console.log(`${logPrefix} ⚠️ Could not resolve redirects: ${e.message}`);
             }
 
             console.log(`${logPrefix} 📍 Final URL: ${streamUrl.substring(0, 80)}...`);
