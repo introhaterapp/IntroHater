@@ -47,7 +47,7 @@ async function resolveBestStream(provider, debridKey, type, id, priority, custom
         { name: 'mediafusion', builder: buildMediaFusionUrl }
     );
 
-    const browserUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+    const browserUserAgent = 'Stremio/4.4.168 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Stremio/4.4.168 Chrome/122.0.6261.156 Electron/29.3.0 Safari/537.36';
 
     for (const scraper of scrapers) {
         const url = scraper.builder(provider, debridKey, type, id);

@@ -117,8 +117,10 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
     const logPrefix = `[HLS ${keyPrefix}]`;
 
 
-    // Express already decodes query params, so using decodeURIComponent again would break URLs with encoded chars (e.g. %20 -> space)
+    // Express already decodes query params, but let's verify exact state
     let streamUrl = stream || null;
+    console.log(`${logPrefix} Raw stream param: ${stream}`);
+    console.log(`${logPrefix} Processed streamUrl: ${streamUrl}`);
 
     // Stream URL should now be embedded from browse time
     // No more server-side scraper calls at play time!
