@@ -77,7 +77,7 @@ app.use(cors({
     optionsSuccessStatus: 204
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 
 const globalLimiter = rateLimit({

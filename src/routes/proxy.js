@@ -93,4 +93,49 @@ router.get('/proxy/stream', async (req, res) => {
     }
 });
 
+router.post('/generate_urls', async (req, res) => {
+    console.log(`[Proxy] 📥 Batch URL generation request`);
+
+    try {
+        const { streams } = req.body;
+
+        if (!streams || !Array.isArray(streams)) {
+            return res.status(400).json({ error: 'Invalid request, expected streams array' });
+        }
+
+        console.log(`[Proxy] Processing ${streams.length} streams`);
+
+        const results = await Promise.all(streams.map(async (stream) => {
+            const url = stream.url || stream.stream_url;
+            if (!url) return stream;
+
+            const { imdbId, season, episode } = extractMetadataFromUrl(url);
+
+            if (imdbId) {
+                const lookupId = (season && episode) ? `${imdbId}:${season}:${episode}` : imdbId;
+                const skipSegment = await skipService.getSkipSegment(lookupId);
+
+                if (skipSegment) {
+                    const protocol = req.protocol;
+                    const host = req.get('host');
+                    const baseUrl = `${protocol}://${host}`;
+
+                    const encodedStreamUrl = encodeURIComponent(url);
+                    const hlsUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${skipSegment.start}&end=${skipSegment.end}&id=${imdbId}&client=proxy`;
+
+                    return { ...stream, url: hlsUrl };
+                }
+            }
+
+            return stream;
+        }));
+
+        console.log(`[Proxy] ✅ Processed ${results.length} streams`);
+        res.json({ streams: results });
+    } catch (error) {
+        console.error(`[Proxy] ❌ Batch error: ${error.message}`);
+        res.status(500).json({ error: 'Batch processing error', message: error.message });
+    }
+});
+
 module.exports = router;
