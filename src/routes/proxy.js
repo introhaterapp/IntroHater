@@ -30,10 +30,16 @@ router.get('/proxy/health', (req, res) => {
 });
 
 router.get('/proxy/stream', async (req, res) => {
-    const { d: destinationUrl } = req.query;
+    const { d: destinationUrl, api_password } = req.query;
 
     if (!destinationUrl) {
         return res.status(400).json({ error: 'Missing destination URL (d parameter)' });
+    }
+
+    const expectedPassword = process.env.PROXY_PASSWORD || 'introhater';
+    if (api_password && api_password !== expectedPassword) {
+        console.log(`[Proxy] ⛔ Invalid password provided`);
+        return res.status(401).json({ error: 'Unauthorized' });
     }
 
     console.log(`[Proxy] 📥 Request for: ${destinationUrl.substring(0, 100)}...`);
