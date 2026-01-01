@@ -78,7 +78,15 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
     if (!streamUrl) {
         console.log(`[Stream ${requestId}] ❌ No streams found from any scraper`);
-        return { streams: [] };
+        // Return an informative message instead of empty array
+        return {
+            streams: [{
+                name: "IntroHater",
+                title: "⚠️ Scrapers rate-limited",
+                description: "All scrapers are blocking our server. Please use Torrentio or Comet directly for now.",
+                url: `${finalBaseUrl}/error/rate-limited`
+            }]
+        };
     }
 
     console.log(`[Stream ${requestId}] ✅ Resolved: ${streamUrl.substring(0, 60)}...`);

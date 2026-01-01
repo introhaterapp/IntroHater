@@ -61,7 +61,13 @@ async function resolveBestStream(provider, debridKey, type, id, priority, custom
             });
 
             console.log(`${logPrefix} Response status: ${res.status}`);
-            console.log(`${logPrefix} Streams count: ${res.data?.streams?.length || 0}`);
+            const streamCount = res.data?.streams?.length || 0;
+            console.log(`${logPrefix} Streams count: ${streamCount}`);
+
+            if (streamCount === 0) {
+                console.log(`${logPrefix} No valid streams in response`);
+                console.log(`${logPrefix} Response data dump: ${JSON.stringify(res.data).substring(0, 500)}`);
+            }
 
             if (res.status === 200 && res.data.streams && res.data.streams.length > 0) {
                 // Log first 3 streams for debugging
