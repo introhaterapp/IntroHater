@@ -20,6 +20,16 @@ async function resolveBestStream(provider, debridKey, type, id, priority, custom
             console.log(`${logPrefix} Converted stremio:// to https://`);
         }
 
+        // Force HTTPS for known scrapers (HTTP URLs may be from old configs)
+        if (baseUrl.startsWith('http://') && (
+            baseUrl.includes('torrentio.strem.fun') ||
+            baseUrl.includes('comet.') ||
+            baseUrl.includes('mediafusion.')
+        )) {
+            baseUrl = baseUrl.replace('http://', 'https://');
+            console.log(`${logPrefix} Upgraded HTTP to HTTPS`);
+        }
+
         baseUrl = baseUrl.replace(/\/$/, '');
         if (baseUrl.endsWith('/manifest.json')) {
             baseUrl = baseUrl.replace('/manifest.json', '');
@@ -100,10 +110,25 @@ async function resolveBestStream(provider, debridKey, type, id, priority, custom
                                 console.log(`${logPrefix} ⛔ Filtered: invalid/placeholder URL domain: ${parsed.hostname}`);
                                 return false;
                             }
+
+                            // Check for error/exception URLs (MediaFusion uses these)
+                            if (parsed.pathname.includes('/exceptions/') ||
+                                parsed.pathname.includes('/error/') ||
+                                parsed.pathname.includes('invalid')) {
+                                console.log(`${logPrefix} ⛔ Filtered: error/exception URL path: ${parsed.pathname}`);
+                                return false;
+                            }
                         } catch {
                             console.log(`${logPrefix} ⛔ Filtered: malformed URL: ${url}`);
                             return false;
                         }
+                    }
+
+                    // Filter out streams with error descriptions
+                    const desc = (s.description || '').toLowerCase();
+                    if (desc.includes('invalid') || desc.includes('error') || desc.includes('configuration')) {
+                        console.log(`${logPrefix} ⛔ Filtered: error description detected`);
+                        return false;
                     }
 
                     return true;
