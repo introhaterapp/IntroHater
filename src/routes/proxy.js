@@ -1,23 +1,45 @@
 const express = require('express');
 const router = express.Router();
 const skipService = require('../services/skip-service');
+const catalogService = require('../services/catalog');
 
-function extractMetadataFromUrl(url) {
+function extractMetadataFromUrl(url, filename = '') {
+    let imdbId = null;
+
     const imdbPattern = /tt\d{7,}/;
     const imdbMatch = url.match(imdbPattern);
-    const imdbId = imdbMatch ? imdbMatch[0] : null;
+    if (imdbMatch) {
+        imdbId = imdbMatch[0];
+    }
 
     let season = null;
     let episode = null;
+    let showName = null;
 
+    const source = filename || url;
     const seasonEpisodePattern = /S(\d{1,2})E(\d{1,2})/i;
-    const match = url.match(seasonEpisodePattern);
+    const match = source.match(seasonEpisodePattern);
     if (match) {
         season = parseInt(match[1], 10);
         episode = parseInt(match[2], 10);
     }
 
-    return { imdbId, season, episode };
+    try {
+        const urlObj = new URL(url);
+        const nameParam = urlObj.searchParams.get('name');
+        if (nameParam) {
+            showName = decodeURIComponent(nameParam);
+        }
+    } catch { }
+
+    if (!showName && filename) {
+        const nameMatch = filename.match(/^([^.]+(?:\.[^.]+)*?)\.S\d{1,2}E\d{1,2}/i);
+        if (nameMatch) {
+            showName = nameMatch[1].replace(/\./g, ' ').trim();
+        }
+    }
+
+    return { imdbId, season, episode, showName };
 }
 
 router.get('/proxy/health', (req, res) => {
@@ -123,12 +145,21 @@ router.post('/generate_urls', async (req, res) => {
 
         const results = await Promise.all(urls.map(async (item) => {
             const url = item.destination_url;
+            const filename = item.filename || '';
             if (!url) return item;
 
-            const { imdbId, season, episode } = extractMetadataFromUrl(url);
+            let { imdbId, season, episode, showName } = extractMetadataFromUrl(url, filename);
 
-            if (imdbId) {
-                const lookupId = (season && episode) ? `${imdbId}:${season}:${episode}` : imdbId;
+            if (!imdbId && showName && season && episode) {
+                const show = await catalogService.getShowByTitle(showName);
+                if (show) {
+                    imdbId = show.imdbId;
+                    console.log(`[Proxy] 🔍 Found IMDb ${imdbId} for "${showName}"`);
+                }
+            }
+
+            if (imdbId && season && episode) {
+                const lookupId = `${imdbId}:${season}:${episode}`;
                 const skipSegment = await skipService.getSkipSegment(lookupId);
 
                 if (skipSegment) {

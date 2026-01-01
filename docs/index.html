@@ -68,6 +68,43 @@
         </div>
     </header>
 
+    <div id="announcement-banner" class="announcement-banner hidden">
+        <span class="banner-icon" id="banner-icon"></span>
+        <span class="banner-message" id="banner-message"></span>
+        <button class="banner-close" id="banner-close" aria-label="Close banner">&times;</button>
+    </div>
+
+    <script>
+        (async function () {
+            const banner = document.getElementById('announcement-banner');
+            const messageEl = document.getElementById('banner-message');
+            const iconEl = document.getElementById('banner-icon');
+            const closeBtn = document.getElementById('banner-close');
+
+            try {
+                const res = await fetch('/api/banner');
+                if (!res.ok) return;
+                const config = await res.json();
+
+                if (!config.enabled || !config.message) return;
+
+                const dismissedKey = `banner_dismissed_${config.updatedAt}`;
+                if (localStorage.getItem(dismissedKey)) return;
+
+                const icons = { info: 'ℹ️', warning: '⚠️', success: '✅', error: '🚨' };
+                iconEl.textContent = icons[config.level] || icons.info;
+                messageEl.textContent = config.message;
+                banner.className = `announcement-banner banner-${config.level || 'info'}`;
+
+                closeBtn.addEventListener('click', () => {
+                    banner.classList.add('hidden');
+                    localStorage.setItem(dismissedKey, 'true');
+                });
+            } catch (e) {
+                console.error('Failed to load banner:', e);
+            }
+        })();
+    </script>
 
     <div id="activity-ticker">
         <div class="container ticker-inner">

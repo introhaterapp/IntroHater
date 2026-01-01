@@ -23,28 +23,28 @@ router.post('/admin/pending', async (req, res) => {
 
             let title = imdbId;
 
-            
+
             const cached = cacheService.getMetadata(imdbId);
             if (cached) {
                 title = cached.Title;
             } else {
-                
+
                 try {
                     const metaRes = await axios.get(`https://v3-cinemeta.strem.io/meta/series/${imdbId}.json`, { timeout: 5000 });
                     if (metaRes.data?.meta?.name) {
                         title = metaRes.data.meta.name;
-                        
+
                         cacheService.setMetadata(imdbId, { Title: title });
                     }
                 } catch {
-                    
+
                     try {
                         const movieRes = await axios.get(`https://v3-cinemeta.strem.io/meta/movie/${imdbId}.json`, { timeout: 5000 });
                         if (movieRes.data?.meta?.name) {
                             title = movieRes.data.meta.name;
                             cacheService.setMetadata(imdbId, { Title: title });
                         }
-                    } catch {  }
+                    } catch { }
                 }
             }
 
@@ -121,4 +121,29 @@ router.post('/admin/indexer/reset', async (req, res) => {
     }
 });
 
+
+const bannerRepository = require('../repositories/banner.repository');
+
+router.get('/banner', async (req, res) => {
+    try {
+        const config = await bannerRepository.getBannerConfig();
+        res.json(config);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/admin/banner/update', async (req, res) => {
+    const { password, message, level, enabled } = req.body;
+    if (password !== ADMIN_PASS) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+        const config = await bannerRepository.updateBannerConfig(message, level, enabled);
+        res.json({ success: true, config });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
+

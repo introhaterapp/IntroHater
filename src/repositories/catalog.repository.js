@@ -30,8 +30,8 @@ class CatalogRepository extends BaseRepository {
         const total = await this.collection.countDocuments(query);
         const filteredTotal = search ? await this.collection.countDocuments(finalQuery) : total;
 
-        
-        
+
+
         const items = await this.collection.find(finalQuery, {
             projection: { episodes: 0 }
         })
@@ -76,8 +76,25 @@ class CatalogRepository extends BaseRepository {
         return result;
     }
 
+    async findByTitle(title) {
+        await this.ensureInit();
+        const normalizedTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        const results = await this.collection.find({
+            title: { $regex: title, $options: 'i' }
+        }).limit(10).toArray();
+
+        if (results.length === 0) return null;
+
+        const exactMatch = results.find(r =>
+            r.title.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedTitle
+        );
+
+        return exactMatch || results[0];
+    }
+
     async upsertCatalogEntry(imdbId, entry) {
-        this.cache.delete(imdbId); 
+        this.cache.delete(imdbId);
         return await this.replaceOne({ imdbId }, { imdbId, ...entry }, { upsert: true });
     }
 }

@@ -11,7 +11,7 @@ async function fetchMetadata(imdbId) {
     const omdbKey = process.env.OMDB_API_KEY;
     let data = null;
 
-    
+
     if (omdbKey) {
         try {
             const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${omdbKey}`);
@@ -27,7 +27,7 @@ async function fetchMetadata(imdbId) {
         }
     }
 
-    
+
     if (!data) {
         try {
             const type = imdbId.startsWith('tt') ? (await isSeries(imdbId) ? 'series' : 'movie') : 'series';
@@ -45,7 +45,7 @@ async function fetchMetadata(imdbId) {
         }
     }
 
-    
+
     if (!data) {
         data = {
             Title: imdbId,
@@ -81,13 +81,13 @@ async function registerShow(videoId, segmentCount = null, segments = null) {
     await ensureInit();
     let media = await catalogRepository.findByImdbId(imdbId);
 
-    
+
     if (media && !segments) {
         const lastUpdated = new Date(media.lastUpdated).getTime();
         const now = Date.now();
         const age = now - lastUpdated;
 
-        
+
         if (age < 24 * 60 * 60 * 1000) return;
     }
 
@@ -137,7 +137,7 @@ async function bakeShowSegments(imdbId, segmentsByEpisode) {
     await ensureInit();
     let media = await catalogRepository.findByImdbId(imdbId);
     if (!media) {
-        
+
         await registerShow(imdbId + ":1:1", 0);
         media = await catalogRepository.findByImdbId(imdbId);
     }
@@ -151,14 +151,14 @@ async function bakeShowSegments(imdbId, segmentsByEpisode) {
             media.episodes[epKey] = { season: s, episode: e, count: 0 };
         }
 
-        
+
         if (Array.isArray(segments)) {
             media.episodes[epKey].segments = segments;
             media.episodes[epKey].count = segments.length;
         } else if (typeof segments === 'number') {
             media.episodes[epKey].count = segments;
         } else if (typeof segments === 'object') {
-            
+
             media.episodes[epKey].count = segments.count || 0;
         }
     }
@@ -172,6 +172,11 @@ async function bakeShowSegments(imdbId, segmentsByEpisode) {
 async function getShowByImdbId(imdbId) {
     await ensureInit();
     return await catalogRepository.findByImdbId(imdbId);
+}
+
+async function getShowByTitle(title) {
+    await ensureInit();
+    return await catalogRepository.findByTitle(title);
 }
 
 
@@ -224,13 +229,13 @@ async function repairCatalog(allSkips) {
     const skipKeys = Object.keys(allSkips);
     log.info({ count: skipKeys.length }, 'Running database-only catalog sync');
 
-    if (skipKeys.length < 5) { 
+    if (skipKeys.length < 5) {
         log.warn('Aborting repair: Source of truth looks suspicious');
         return;
     }
 
     let changes = 0;
-    const showMap = {}; 
+    const showMap = {};
 
     for (const [fullId, segments] of Object.entries(allSkips)) {
         const parts = fullId.split(':');
@@ -245,7 +250,7 @@ async function repairCatalog(allSkips) {
         showMap[imdbId][epKey] = segments;
     }
 
-    
+
     for (const [imdbId, episodes] of Object.entries(showMap)) {
         try {
             await bakeShowSegments(imdbId, episodes);
@@ -266,5 +271,6 @@ module.exports = {
     getCatalogStats,
     bakeShowSegments,
     getShowByImdbId,
+    getShowByTitle,
     fetchMetadata
 };
