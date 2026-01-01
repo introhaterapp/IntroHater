@@ -20,6 +20,15 @@ function extractMetadataFromUrl(url) {
     return { imdbId, season, episode };
 }
 
+router.get('/proxy/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        service: 'introhater-mediaflow-proxy',
+        version: '1.0.0',
+        public_id: 'introhater'
+    });
+});
+
 router.get('/proxy/stream', async (req, res) => {
     const { d: destinationUrl } = req.query;
 
