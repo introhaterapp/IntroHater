@@ -99,18 +99,18 @@ router.post('/generate_urls', async (req, res) => {
     console.log(`[Proxy] Body sample:`, JSON.stringify(req.body).substring(0, 500));
 
     try {
-        const { streams } = req.body;
+        const { urls } = req.body;
 
-        if (!streams || !Array.isArray(streams)) {
-            console.error(`[Proxy] ❌ streams is ${typeof streams}, not array`);
-            return res.status(400).json({ error: 'Invalid request, expected streams array' });
+        if (!urls || !Array.isArray(urls)) {
+            console.error(`[Proxy] ❌ urls is ${typeof urls}, not array`);
+            return res.status(400).json({ error: 'Invalid request, expected urls array' });
         }
 
-        console.log(`[Proxy] Processing ${streams.length} streams`);
+        console.log(`[Proxy] Processing ${urls.length} URLs`);
 
-        const results = await Promise.all(streams.map(async (stream) => {
-            const url = stream.url || stream.stream_url;
-            if (!url) return stream;
+        const results = await Promise.all(urls.map(async (item) => {
+            const url = item.destination_url;
+            if (!url) return item;
 
             const { imdbId, season, episode } = extractMetadataFromUrl(url);
 
@@ -126,15 +126,17 @@ router.post('/generate_urls', async (req, res) => {
                     const encodedStreamUrl = encodeURIComponent(url);
                     const hlsUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${skipSegment.start}&end=${skipSegment.end}&id=${imdbId}&client=proxy`;
 
-                    return { ...stream, url: hlsUrl };
+                    console.log(`[Proxy] ✅ Skip for ${lookupId}: ${skipSegment.start}s-${skipSegment.end}s`);
+                    return { ...item, destination_url: hlsUrl };
                 }
             }
 
-            return stream;
+            return item;
         }));
 
-        console.log(`[Proxy] ✅ Processed ${results.length} streams`);
-        res.json({ streams: results });
+        const modifiedCount = results.filter(r => r.destination_url && r.destination_url.includes('hls')).length;
+        console.log(`[Proxy] ✅ Processed ${results.length} URLs, ${modifiedCount} with skips`);
+        res.json({ urls: results });
     } catch (error) {
         console.error(`[Proxy] ❌ Batch error: ${error.message}`);
         res.status(500).json({ error: 'Batch processing error', message: error.message });
