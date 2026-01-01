@@ -99,14 +99,18 @@
 
 
                         <div class="form-group mb-24">
-                            <label class="form-label" for="externalScraper">External Scraper (Optional but
-                                Recommended)</label>
+                            <label class="form-label" for="externalScraper">Stream Source (Required)</label>
                             <input type="text" id="externalScraper" class="form-input"
-                                placeholder="e.g. Torrentio/Comet manifest URL">
+                                placeholder="Paste your AIOstreams manifest URL here">
                             <p class="text-sm mt-8" style="color: var(--text-muted); font-size: 0.8rem;">
-                                If you get "No results", paste your Torrentio/Comet "Install" or "manifest.json" link
-                                here.
-                                This lets us use your unique configuration and bypass server-wide rate limits.
+                                <strong>Recommended:</strong> Use <a
+                                    href="https://aiostreams.elfhosted.com/stremio/configure" target="_blank"
+                                    style="color: var(--primary);">AIOstreams</a>
+                                - configure it with your debrid service, then paste the manifest URL here.
+                                <br><br>
+                                <strong>Why AIOstreams?</strong> It runs on ElfHosted servers which aren't rate-limited
+                                (unlike Torrentio direct).
+                                Your streams will work reliably without "no results" errors.
                             </p>
                         </div>
 
