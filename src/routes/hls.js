@@ -95,39 +95,21 @@ router.get('/sub/status/:videoId.vtt', async (req, res) => {
     res.send(vtt);
 });
 
-// HLS Media Playlist Endpoint (with config in path for shorter URLs)
-router.get(['/:config/hls/manifest.m3u8', '/hls/manifest.m3u8'], async (req, res) => {
-    // Parse config from path if present (format: provider:key:h=hash or provider:key:s=base64)
-    let provider, rdKey, customScraper;
-    if (req.params.config) {
-        const parts = req.params.config.split(':');
-        provider = parts[0];
-        rdKey = parts[1];
+// HLS Media Playlist Endpoint
+router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res) => {
+    // Parse from query params (primary method)
+    const { stream, infoHash, start: startStr, end: endStr, id: videoId, user: userId, client, quality, s, h } = req.query;
+    const provider = req.query.provider || 'realdebrid';
+    const rdKey = req.query.rdKey;
 
-        // Check for hash-based scraper config (h=HASH) - new short format
-        const hashPart = parts.find(p => p.startsWith('h='));
-        if (hashPart) {
-            const hash = hashPart.substring(2);
-            customScraper = cacheService.getScraperConfig(hash);
-            if (!customScraper) {
-                console.log(`[HLS] ⚠️ Scraper config not found for hash: ${hash}`);
-            }
-        }
-
-        // Legacy: Check for base64 scraper config (s=BASE64)
+    // Get custom scraper from hash (h=HASH) or legacy base64 (s=BASE64)
+    let customScraper = null;
+    if (h) {
+        customScraper = cacheService.getScraperConfig(h);
         if (!customScraper) {
-            const scraperPart = parts.find(p => p.startsWith('s='));
-            if (scraperPart) {
-                customScraper = Buffer.from(scraperPart.substring(2), 'base64').toString('utf8');
-            }
+            console.log(`[HLS] ⚠️ Scraper config not found for hash: ${h}`);
         }
-    }
-
-    // Fall back to query params for backwards compatibility
-    const { stream, infoHash, start: startStr, end: endStr, id: videoId, user: userId, client, quality, s } = req.query;
-    provider = provider || req.query.provider;
-    rdKey = rdKey || req.query.rdKey;
-    if (!customScraper && s) {
+    } else if (s) {
         customScraper = Buffer.from(s, 'base64').toString('utf8');
     }
 

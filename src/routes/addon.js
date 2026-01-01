@@ -80,23 +80,23 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     const finalBaseUrl = baseUrl.replace('http://', 'https://');
 
     const streams = qualityPresets.map(preset => {
-        // Use short config format: provider:key or provider:key:h=HASH
         // Store scraper in cache with hash key, retrieve at play time
-        let configStr = `${provider}:${debridKey}`;
-
+        let scraperHash = null;
         if (externalScraper) {
             // Create short hash of scraper URL (first 12 chars of MD5)
             const crypto = require('crypto');
-            const scraperHash = crypto.createHash('md5').update(externalScraper).digest('hex').substring(0, 12);
+            scraperHash = crypto.createHash('md5').update(externalScraper).digest('hex').substring(0, 12);
 
             // Store in cache for retrieval at play time
             const cacheService = require('../services/cache-service');
             cacheService.setScraperConfig(scraperHash, externalScraper);
-
-            configStr += `:h=${scraperHash}`;
         }
 
-        const proxyUrl = `${finalBaseUrl}/${configStr}/hls/manifest.m3u8?start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&quality=${preset.priority}`;
+        // Use query params format (working format from before)
+        let proxyUrl = `${finalBaseUrl}/hls/manifest.m3u8?start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}&quality=${preset.priority}`;
+        if (scraperHash) {
+            proxyUrl += `&h=${scraperHash}`;
+        }
 
         return {
             name: "IntroHater",
