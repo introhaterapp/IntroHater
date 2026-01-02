@@ -94,17 +94,10 @@ router.get('/proxy/stream', async (req, res) => {
         }
 
         if (skipSegment) {
-            const protocol = req.protocol;
-            const host = req.get('host');
-            const baseUrl = `${protocol}://${host}`;
-
-            const encodedStreamUrl = encodeURIComponent(destinationUrl);
-            const hlsUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${skipSegment.start}&end=${skipSegment.end}&id=${imdbId}&client=proxy`;
-
-            return res.redirect(hlsUrl);
-        } else {
-            return res.redirect(destinationUrl);
+            console.log(`[Proxy] 🎯 Skip available for ${imdbId}:${season}:${episode}: ${skipSegment.start}s-${skipSegment.end}s (pass-through mode)`);
         }
+
+        return res.redirect(destinationUrl);
     } catch (error) {
         console.error(`[Proxy] ❌ Error: ${error.message}`);
         return res.status(500).json({ error: 'Proxy error', message: error.message });
