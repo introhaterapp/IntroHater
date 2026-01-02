@@ -109,18 +109,6 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             ? `${s.title || s.name}${skipSeg ? ' 🎯' : ''}\n${s.description}`
             : `${s.title || s.name}${skipSeg ? ' 🎯' : ''}`;
 
-        if (client === 'web') {
-            return {
-                name: streamName,
-                title: streamTitle,
-                url: streamUrl,
-                behaviorHints: {
-                    ...(s.behaviorHints || {}),
-                    notWebReady: true
-                }
-            };
-        }
-
         const encodedStreamUrl = encodeURIComponent(streamUrl);
         const hlsUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}`;
 
