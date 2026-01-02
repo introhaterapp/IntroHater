@@ -106,6 +106,18 @@ router.get('/play', async (req, res) => {
 
     console.log(`${logPrefix} 📍 Resolving: ${streamUrl.substring(0, 60)}...`);
 
+    // Skip resolution for proxy streaming URLs - they ARE the stream, not a redirect
+    // Comet /playback/, StremThru, and MediaFusion all proxy streams through their servers
+    const isProxyStream = streamUrl.includes('/playback/') ||
+        streamUrl.toLowerCase().includes('stremthru') ||
+        streamUrl.toLowerCase().includes('mediafusion');
+
+    if (isProxyStream) {
+        console.log(`${logPrefix} 🔄 Proxy stream detected - direct pass-through`);
+        res.set('Access-Control-Allow-Origin', '*');
+        return res.redirect(302, streamUrl);
+    }
+
     try {
         const resolveRes = await axios.get(streamUrl, {
             maxRedirects: 5,
