@@ -95,6 +95,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
     console.log(`[Stream ${requestId}] ✅ Found ${allStreams.length} streams from scraper`);
 
+    let proxyStreamCount = 0;
     const streams = allStreams.map(s => {
         const streamUrl = s.url || s.externalUrl;
         if (!streamUrl) return null;
@@ -112,7 +113,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
         let playUrl;
         if (isProxyStream) {
-            console.log(`[Stream ${requestId}] 🔄 Proxy stream - using direct URL`);
+            proxyStreamCount++;
             playUrl = streamUrl;
         } else {
             const encodedUrl = encodeURIComponent(streamUrl);
@@ -126,6 +127,10 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             behaviorHints: s.behaviorHints || {}
         };
     }).filter(Boolean);
+
+    if (proxyStreamCount > 0) {
+        console.log(`[Stream ${requestId}] 🔄 ${proxyStreamCount} proxy streams passed through directly`);
+    }
 
     console.log(`[Stream ${requestId}] 📊 Returning ${streams.length} stream(s), skip: ${skipSeg ? 'yes' : 'no'}`);
     return { streams };
