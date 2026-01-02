@@ -6,7 +6,6 @@ const path = require('path');
 
 const skipService = require('../services/skip-service');
 const {
-    generateUserId,
     parseConfig,
     getProvider
 } = require('../middleware/debridAuth');
@@ -62,11 +61,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         console.error(`[Stream ${requestId}] ⚠️ Skip lookup error: ${e.message}`);
     }
 
-    const userId = generateUserId(debridKey);
-    const start = skipSeg ? skipSeg.start : 0;
-    const end = skipSeg ? skipSeg.end : 0;
     const finalBaseUrl = baseUrl.replace('http://', 'https://');
-
     const scraperResolver = require('../services/scraper-resolver');
 
     console.log(`[Stream ${requestId}] 🔄 Resolving streams at browse time...`);
@@ -109,13 +104,10 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             ? `${s.title || s.name}${skipSeg ? ' 🎯' : ''}\n${s.description}`
             : `${s.title || s.name}${skipSeg ? ' 🎯' : ''}`;
 
-        const encodedStreamUrl = encodeURIComponent(streamUrl);
-        const hlsUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}`;
-
         return {
             name: streamName,
             title: streamTitle,
-            url: hlsUrl,
+            url: streamUrl,
             behaviorHints: s.behaviorHints || {}
         };
     }).filter(Boolean);
