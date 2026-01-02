@@ -142,7 +142,7 @@ router.get('/play', async (req, res) => {
 // HLS Media Playlist Endpoint
 router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res) => {
     // Parse from query params (primary method)
-    const { stream, infoHash, start: startStr, end: endStr, id: videoId, user: userId, client, s, h } = req.query;
+    const { stream, infoHash, start: startStr, end: endStr, id: videoId, user: userId, client, s, h, transcode } = req.query;
     const provider = req.query.provider || 'realdebrid';
     const rdKey = req.query.rdKey;
 
@@ -171,8 +171,8 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
 
 
     if (infoHash && !streamUrl) {
-        console.log(`${logPrefix} 🔍 Resolving infoHash: ${infoHash}`);
-        streamUrl = await debridResolver.resolveInfoHash(provider || 'realdebrid', rdKey, infoHash);
+        console.log(`${logPrefix} 🔍 Resolving infoHash: ${infoHash} (Transcode: ${transcode})`);
+        streamUrl = await debridResolver.resolveInfoHash(provider || 'realdebrid', rdKey, infoHash, { transcode: transcode === 'true' });
         if (!streamUrl) {
             console.error(`${logPrefix} ❌ Failed to resolve infoHash`);
             return res.status(502).send("Failed to resolve infoHash via debrid");
@@ -267,6 +267,13 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
             console.log(`${logPrefix} 📍 Final URL: ${streamUrl.substring(0, 80)}...`);
             res.set('Access-Control-Allow-Origin', '*');
             res.set('Access-Control-Expose-Headers', 'Location');
+            return res.redirect(302, streamUrl);
+        }
+
+        // Check if the resolved URL is already an HLS playlist (e.g. TorBox Transcode)
+        if (streamUrl.includes('.m3u8')) {
+            console.log(`${logPrefix} ↪️ Resolved URL is m3u8, redirecting directly (skipping not yet supported for external HLS)`);
+            res.set('Access-Control-Allow-Origin', '*');
             return res.redirect(302, streamUrl);
         }
 
