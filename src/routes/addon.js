@@ -105,13 +105,18 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         if (!streamUrl) return null;
 
         const encodedStreamUrl = encodeURIComponent(streamUrl);
-        const proxyUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}`;
+        const hlsUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${start}&end=${end}&id=${id}&user=${userId}&client=${client}&rdKey=${debridKey}&provider=${provider}`;
+
+        const streamName = s.name || "IntroHater";
+        const streamTitle = s.description
+            ? `${s.title || s.name}${skipSeg ? ' 🎯' : ''}\n${s.description}`
+            : `${s.title || s.name}${skipSeg ? ' 🎯' : ''}`;
 
         return {
-            name: s.name || "IntroHater",
-            title: skipSeg ? `${s.title || s.name} 🎯` : (s.title || s.name),
-            description: s.description,
-            url: proxyUrl
+            name: streamName,
+            title: streamTitle,
+            url: hlsUrl,
+            behaviorHints: s.behaviorHints || {}
         };
     }).filter(Boolean);
 
