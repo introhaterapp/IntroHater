@@ -100,7 +100,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     let proxyStreamCount = 0;
     const streams = allStreams.map(s => {
         const streamUrl = s.url || s.externalUrl;
-        const infoHash = s.infoHash || s.infohash;
+        let infoHash = s.infoHash || s.infohash;
 
         if (!streamUrl && !infoHash) return null;
 
@@ -135,21 +135,40 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         }
         // Case 2: Existing URL (Debrid Link or Direct)
         else if (streamUrl) {
-            // Proxy streaming URLs (Comet /playback/, stremthru, mediafusion) normally pass directly
-            // BUT if we have skip segments, route through HLS proxy for intro skipping
-            const isProxyStream = streamUrl.includes('/playback/') ||
-                streamUrl.toLowerCase().includes('stremthru') ||
-                streamUrl.toLowerCase().includes('mediafusion');
+            // Attempt to extract InfoHash from Comet/Debrid URLs if missing
+            // Comet uses /playback/{infoHash}/...
+            if (!infoHash) {
+                const cometHashMatch = streamUrl.match(/\/playback\/([a-fA-F0-9]{40})\//);
+                if (cometHashMatch) {
+                    infoHash = cometHashMatch[1];
+                    console.log(`[Stream ${requestId}] 🔍 Extracted hidden InfoHash from URL: ${infoHash}`);
 
-            if (isProxyStream && !skipSeg) {
-                // No skip segment - pass through directly for best compatibility
-                proxyStreamCount++;
-                playUrl = streamUrl;
-            } else {
-                // Has skip segment OR is not a proxy stream - route through HLS for skipping
-                const encodedUrl = encodeURIComponent(streamUrl);
-                const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
-                playUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&client=${client}`;
+                    // Re-evaluate transcoding need now that we have a hash
+                    if (effectiveNeedsTranscoding) {
+                        const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
+                        playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&transcode=true&client=${client}`;
+                    }
+                }
+            }
+
+            if (!playUrl) {
+                // If we still don't have a transcode URL, proceed with standard proxy/direct logic
+                // Proxy streaming URLs (Comet /playback/, stremthru, mediafusion) normally pass directly
+                // BUT if we have skip segments, route through HLS proxy for intro skipping
+                const isProxyStream = streamUrl.includes('/playback/') ||
+                    streamUrl.toLowerCase().includes('stremthru') ||
+                    streamUrl.toLowerCase().includes('mediafusion');
+
+                if (isProxyStream && !skipSeg) {
+                    // No skip segment - pass through directly for best compatibility
+                    proxyStreamCount++;
+                    playUrl = streamUrl;
+                } else {
+                    // Has skip segment OR is not a proxy stream - route through HLS for skipping
+                    const encodedUrl = encodeURIComponent(streamUrl);
+                    const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
+                    playUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&client=${client}`;
+                }
             }
         }
         // Case 3: InfoHash Only (TorBox Native / Other)

@@ -245,8 +245,10 @@
                     const provider = document.getElementById('provider').value;
                     const key = document.getElementById('debridKey').value.trim();
                     const scraper = document.getElementById('externalScraper').value.trim();
-                    const proxyUrl = document.getElementById('proxyUrl').value.trim();
-                    const proxyPassword = document.getElementById('proxyPassword').value.trim();
+                    const proxyUrlEl = document.getElementById('proxyUrl');
+                    const proxyUrl = proxyUrlEl ? proxyUrlEl.value.trim() : '';
+                    const proxyPasswordEl = document.getElementById('proxyPassword');
+                    const proxyPassword = proxyPasswordEl ? proxyPasswordEl.value.trim() : '';
 
                     if (!key) return;
 
