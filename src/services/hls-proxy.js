@@ -442,6 +442,99 @@ ${videoUrl}
     return m3u8;
 }
 
+/**
+ * Proxies and patches an external HLS playlist to allow for intro skipping.
+ * @param {string} playlistUrl - The external M3U8 URL.
+ * @param {number|null} skipStart - Intro start time in seconds.
+ * @param {number|null} skipEnd - Intro end time in seconds.
+ * @returns {Promise<string>} - The patched M3U8 content.
+ */
+async function processExternalPlaylist(playlistUrl, skipStart = null, skipEnd = null) {
+    try {
+        const response = await axios.get(playlistUrl);
+        const originalM3u8 = response.data;
+        const lines = originalM3u8.split('\n');
+
+        // Base URL for resolving relative segments
+        // If playlistUrl is http://example.com/path/playlist.m3u8?token=123
+        // Base is http://example.com/path/
+        const urlObj = new URL(playlistUrl);
+        const pathDir = urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf('/') + 1);
+        const baseUrl = `${urlObj.origin}${pathDir}`;
+        const queryParams = urlObj.search; // ?token=123
+
+        let patchedM3u8 = '';
+        let currentTime = 0;
+        let discontinuityPending = false;
+
+        const isMaster = originalM3u8.includes('#EXT-X-STREAM-INF');
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (!line) continue;
+
+            // Pass through headers/metadata
+            if (line.startsWith('#')) {
+                if (line.startsWith('#EXTINF:')) {
+                    // #EXTINF:10.000,
+                    const durationStr = line.substring(8).split(',')[0];
+                    const duration = parseFloat(durationStr);
+
+                    // Skip Logic (Only for Media Playlists)
+                    if (!isMaster && skipStart !== null && skipEnd !== null) {
+                        const segmentStart = currentTime;
+                        const segmentEnd = currentTime + duration;
+
+                        // Check overlap with skip range
+                        const isBefore = segmentEnd <= skipStart;
+                        const isAfter = segmentStart >= skipEnd;
+
+                        if (!isBefore && !isAfter) {
+                            // Drop this segment
+                            currentTime += duration;
+                            discontinuityPending = true;
+                            // Also skip the next line which is the URL
+                            i++;
+                            continue;
+                        }
+                    }
+
+                    currentTime += duration;
+                }
+
+                patchedM3u8 += line + '\n';
+            } else {
+                // This is a URL line
+                if (discontinuityPending) {
+                    patchedM3u8 += '#EXT-X-DISCONTINUITY\n';
+                    discontinuityPending = false;
+                }
+
+                let segmentUrl = line;
+                // Rewrite to absolute if relative
+                if (!segmentUrl.startsWith('http')) {
+                    segmentUrl = baseUrl + segmentUrl;
+                }
+
+                // Append original query params (token) if not present
+                if (queryParams) {
+                    // Check if segment already has params
+                    const separator = segmentUrl.includes('?') ? '&' : '?';
+                    segmentUrl += separator + queryParams.substring(1);
+                }
+
+                patchedM3u8 += segmentUrl + '\n';
+            }
+        }
+
+        return patchedM3u8;
+
+    } catch (e) {
+        log.error({ err: e.message, playlistUrl }, 'Failed to process external playlist');
+        throw e;
+    }
+}
+
 module.exports = {
     getStreamDetails,
     getByteOffset,
@@ -449,5 +542,6 @@ module.exports = {
     getRefinedOffsets,
     generateSpliceManifest,
     getChapters,
-    generateFragmentedManifest
+    generateFragmentedManifest,
+    processExternalPlaylist
 };

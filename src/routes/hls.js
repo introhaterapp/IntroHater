@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-const { getByteOffset, getStreamDetails, getRefinedOffsets, getChapters, generateFragmentedManifest, generateSmartManifest } = require('../services/hls-proxy');
+const { getByteOffset, getStreamDetails, getRefinedOffsets, getChapters, generateFragmentedManifest, generateSmartManifest, processExternalPlaylist } = require('../services/hls-proxy');
 const skipService = require('../services/skip-service');
 const userService = require('../services/user-service');
 const cacheService = require('../services/cache-service');
@@ -272,9 +272,26 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
 
         // Check if the resolved URL is already an HLS playlist (e.g. TorBox Transcode)
         if (streamUrl.includes('.m3u8')) {
-            console.log(`${logPrefix} ↪️ Resolved URL is m3u8, redirecting directly (skipping not yet supported for external HLS)`);
-            res.set('Access-Control-Allow-Origin', '*');
-            return res.redirect(302, streamUrl);
+            console.log(`${logPrefix} ↪️ Resolved URL is m3u8, patching for skip support...`);
+
+            // Parse correct start/end times if available
+            // Note: start/end vars from query are usually 0 if not set, or defaults. 
+            // We need to check if they were actually provided for skipping.
+            // But skipSeg logic usually sets them if valid. 
+
+            const skipStart = (startStr && !isNaN(parseFloat(startStr))) ? parseFloat(startStr) : null;
+            const skipEnd = (endStr && !isNaN(parseFloat(endStr))) ? parseFloat(endStr) : null;
+
+            try {
+                const patchedM3u8 = await processExternalPlaylist(streamUrl, skipStart, skipEnd);
+                res.set('Content-Type', 'application/vnd.apple.mpegurl');
+                res.set('Access-Control-Allow-Origin', '*');
+                return res.send(patchedM3u8);
+            } catch (e) {
+                console.error(`${logPrefix} ❌ Failed to patch external playlist, falling back to redirect: ${e.message}`);
+                res.set('Access-Control-Allow-Origin', '*');
+                return res.redirect(302, streamUrl);
+            }
         }
 
         // Fallback for Web Stremio + MKV (HLS.js doesn't support MKV)
