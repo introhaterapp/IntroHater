@@ -95,7 +95,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
     console.log(`[Stream ${requestId}] ✅ Found ${allStreams.length} streams from scraper`);
 
-    const needsTranscoding = (isWebStremio || isAndroid) && provider === 'torbox';
+
 
     let proxyStreamCount = 0;
     const streams = allStreams.map(s => {
@@ -109,13 +109,23 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             ? `${s.title || s.name}${skipSeg ? ' 🎯' : ''}\n${s.description}`
             : `${s.title || s.name}${skipSeg ? ' 🎯' : ''}`;
 
+        // Auto-detect TorBox streams from name/title (e.g. "[TB", "TorBox")
+        // This handles cases where user configured as Real-Debrid but is getting TorBox streams (e.g. via AIOStreams/Comet)
+        const isTorBoxStream = (streamName.includes('[TB') || streamName.includes('TorBox') || (s.title && s.title.includes('TorBox')));
+
+        // Force TorBox provider if detected
+        const effectiveProvider = isTorBoxStream ? 'torbox' : provider;
+
+        // Determine transcoding need based on effective provider
+        const effectiveNeedsTranscoding = (isWebStremio || isAndroid) && effectiveProvider === 'torbox';
+
         let playUrl;
 
         // Case 1: Needs Transcoding (TorBox + Web/Android) AND has InfoHash
         // We MUST prioritize generating a transcoded stream from InfoHash over using the provided direct URL (which is likely MKV)
-        if (needsTranscoding && infoHash) {
+        if (effectiveNeedsTranscoding && infoHash) {
             const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
-            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${provider}&rdKey=${debridKey}${skipParams}&transcode=true&client=${client}`;
+            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&transcode=true&client=${client}`;
         }
         // Case 2: Existing URL (Debrid Link or Direct)
         else if (streamUrl) {
@@ -133,15 +143,15 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
                 // Has skip segment OR is not a proxy stream - route through HLS for skipping
                 const encodedUrl = encodeURIComponent(streamUrl);
                 const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
-                playUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${provider}&rdKey=${debridKey}${skipParams}&client=${client}`;
+                playUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&client=${client}`;
             }
         }
         // Case 3: InfoHash Only (TorBox Native / Other)
         else if (infoHash) {
             const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
             // Only add transcode param if needed (though logic above handles the forced case)
-            const transcodeParam = needsTranscoding ? '&transcode=true' : '';
-            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${provider}&rdKey=${debridKey}${skipParams}${transcodeParam}&client=${client}`;
+            const transcodeParam = effectiveNeedsTranscoding ? '&transcode=true' : '';
+            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}${transcodeParam}&client=${client}`;
         }
 
         return {
