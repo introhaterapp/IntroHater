@@ -36,7 +36,6 @@ const wsTicker = require('./src/services/ws-ticker');
 const apiRoutes = require('./src/routes/api');
 const hlsRoutes = require('./src/routes/hls');
 const addonRoutes = require('./src/routes/addon');
-const proxyRoutes = require('./src/routes/proxy');
 
 
 
@@ -77,7 +76,7 @@ app.use(cors({
     optionsSuccessStatus: 204
 }));
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
 
 
 const globalLimiter = rateLimit({
@@ -102,8 +101,6 @@ app.use('/api', apiRoutes);
 
 
 app.use('/', hlsRoutes);
-
-app.use('/', proxyRoutes);
 
 app.use('/', addonRoutes);
 
