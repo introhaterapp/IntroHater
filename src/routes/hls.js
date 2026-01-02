@@ -179,6 +179,26 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
         }
     }
 
+    // EARLY EXIT: Check if the resolved URL is already an HLS playlist (e.g. TorBox Transcode)
+    // We check this BEFORE anything else to avoid probing/safety checks on m3u8 URLs which might fail
+    if (streamUrl && streamUrl.includes('.m3u8')) {
+        console.log(`${logPrefix} ↪️ Resolved URL is m3u8, patching for skip support...`);
+
+        const skipStart = (startStr && !isNaN(parseFloat(startStr))) ? parseFloat(startStr) : null;
+        const skipEnd = (endStr && !isNaN(parseFloat(endStr))) ? parseFloat(endStr) : null;
+
+        try {
+            const patchedM3u8 = await processExternalPlaylist(streamUrl, skipStart, skipEnd);
+            res.set('Content-Type', 'application/vnd.apple.mpegurl');
+            res.set('Access-Control-Allow-Origin', '*');
+            return res.send(patchedM3u8);
+        } catch (e) {
+            console.error(`${logPrefix} ❌ Failed to patch external playlist, falling back to redirect: ${e.message}`);
+            res.set('Access-Control-Allow-Origin', '*');
+            return res.redirect(302, streamUrl);
+        }
+    }
+
     if (!streamUrl || !isSafeUrl(streamUrl)) {
         console.log(`${logPrefix} ❌ Invalid or unsafe stream URL`);
         return res.status(400).send("Invalid or unsafe stream URL");
@@ -270,29 +290,7 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
             return res.redirect(302, streamUrl);
         }
 
-        // Check if the resolved URL is already an HLS playlist (e.g. TorBox Transcode)
-        if (streamUrl.includes('.m3u8')) {
-            console.log(`${logPrefix} ↪️ Resolved URL is m3u8, patching for skip support...`);
 
-            // Parse correct start/end times if available
-            // Note: start/end vars from query are usually 0 if not set, or defaults. 
-            // We need to check if they were actually provided for skipping.
-            // But skipSeg logic usually sets them if valid. 
-
-            const skipStart = (startStr && !isNaN(parseFloat(startStr))) ? parseFloat(startStr) : null;
-            const skipEnd = (endStr && !isNaN(parseFloat(endStr))) ? parseFloat(endStr) : null;
-
-            try {
-                const patchedM3u8 = await processExternalPlaylist(streamUrl, skipStart, skipEnd);
-                res.set('Content-Type', 'application/vnd.apple.mpegurl');
-                res.set('Access-Control-Allow-Origin', '*');
-                return res.send(patchedM3u8);
-            } catch (e) {
-                console.error(`${logPrefix} ❌ Failed to patch external playlist, falling back to redirect: ${e.message}`);
-                res.set('Access-Control-Allow-Origin', '*');
-                return res.redirect(302, streamUrl);
-            }
-        }
 
         // Fallback for Web Stremio + MKV (HLS.js doesn't support MKV)
         const isMKV = streamUrl.toLowerCase().includes('.mkv') || streamUrl.toLowerCase().includes('matroska');

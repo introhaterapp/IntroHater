@@ -111,8 +111,14 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
         let playUrl;
 
-        // Case 1: Existing URL (Debrid Link or Direct)
-        if (streamUrl) {
+        // Case 1: Needs Transcoding (TorBox + Web/Android) AND has InfoHash
+        // We MUST prioritize generating a transcoded stream from InfoHash over using the provided direct URL (which is likely MKV)
+        if (needsTranscoding && infoHash) {
+            const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
+            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${provider}&rdKey=${debridKey}${skipParams}&transcode=true`;
+        }
+        // Case 2: Existing URL (Debrid Link or Direct)
+        else if (streamUrl) {
             // Proxy streaming URLs (Comet /playback/, stremthru, mediafusion) normally pass directly
             // BUT if we have skip segments, route through HLS proxy for intro skipping
             const isProxyStream = streamUrl.includes('/playback/') ||
@@ -130,9 +136,10 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
                 playUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${provider}&rdKey=${debridKey}${skipParams}`;
             }
         }
-        // Case 2: InfoHash Only (TorBox Native)
+        // Case 3: InfoHash Only (TorBox Native / Other)
         else if (infoHash) {
             const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
+            // Only add transcode param if needed (though logic above handles the forced case)
             const transcodeParam = needsTranscoding ? '&transcode=true' : '';
             playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${provider}&rdKey=${debridKey}${skipParams}${transcodeParam}`;
         }
