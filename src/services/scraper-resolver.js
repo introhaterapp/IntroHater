@@ -132,18 +132,9 @@ async function getAllStreams(provider, debridKey, type, id, customUrl = null, pr
         const url = s.url || s.externalUrl;
         const infoHash = s.infoHash || s.infohash;
 
-        if (title.includes('rate limit') || title.includes('exceed')) {
-            console.log(`${logPrefix} 🗑️ Filtered (Rate Limit): ${title}`);
-            return false;
-        }
-        if (title.includes('🚫') || title.includes('[no') || title.includes('error')) {
-            console.log(`${logPrefix} 🗑️ Filtered (Error/No): ${title}`);
-            return false;
-        }
-        if (!url && !infoHash) {
-            console.log(`${logPrefix} 🗑️ Filtered (No URL/Hash): ${title}`);
-            return false;
-        }
+        if (title.includes('rate limit') || title.includes('exceed')) return false;
+        if (title.includes('🚫') || title.includes('[no') || title.includes('error')) return false;
+        if (!url && !infoHash) return false;
 
         return true;
     });

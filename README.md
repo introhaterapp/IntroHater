@@ -110,7 +110,9 @@ Works flawlessly across:
 <td width="50%">
 
 ### 🔗 Multi-Debrid Support
-Works with **Real-Debrid**, **TorBox**, **Premiumize**, and **AllDebrid**. Premium streaming with your existing subscription.
+Works with **Real-Debrid**, **TorBox**, **Premiumize**, and **AllDebrid**. 
+
+**✨ TorBox Special Feature**: Automatic HLS transcoding for Web Stremio compatibility — no black screens or freezing on browser-based players!
 
 </td>
 </tr>

@@ -102,13 +102,19 @@
                             <label class="form-label" for="externalScraper">🌐 Stream Source (Required)</label>
                             <input type="text" id="externalScraper" class="form-input"
                                 placeholder="https://aiostreams.../manifest.json" required>
-                            <p class="text-sm mt-8" style="color: var(--text-muted); font-size: 0.8rem;">
+                            <div class="text-sm mt-8" style="color: var(--text-muted); font-size: 0.8rem;">
                                 <strong>Step 1:</strong> Go to <a
                                     href="https://aiostreams.elfhosted.com/stremio/configure" target="_blank"
                                     style="color: var(--primary);">AIOstreams</a> and configure with your debrid service
                                 + Torrentio.<br>
-                                <strong>Step 2:</strong> Copy your AIOstreams manifest URL and paste it above.
-                            </p>
+                                <strong>Step 2:</strong> Copy your AIOstreams manifest URL and paste it above.<br>
+                                <div
+                                    style="background: rgba(239, 68, 68, 0.15); border-left: 3px solid #ef4444; padding: 8px 12px; margin-top: 10px; border-radius: 4px;">
+                                    <strong style="color: #ef4444;">⚠️ IMPORTANT:</strong> The <strong>Debrid
+                                        Provider</strong> you select above MUST match the provider you configured in
+                                    AIOstreams. Mismatched settings will cause streams to fail!
+                                </div>
+                            </div>
                         </div>
 
 
