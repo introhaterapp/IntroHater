@@ -105,19 +105,22 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             ? `${s.title || s.name}${skipSeg ? ' 🎯' : ''}\n${s.description}`
             : `${s.title || s.name}${skipSeg ? ' 🎯' : ''}`;
 
-        // Proxy streaming URLs (Comet /playback/, stremthru, mediafusion) should be passed directly
-        // These services already handle debrid resolution and stream proxying themselves
+        // Proxy streaming URLs (Comet /playback/, stremthru, mediafusion) normally pass directly
+        // BUT if we have skip segments, route through HLS proxy for intro skipping
         const isProxyStream = streamUrl.includes('/playback/') ||
             streamUrl.toLowerCase().includes('stremthru') ||
             streamUrl.toLowerCase().includes('mediafusion');
 
         let playUrl;
-        if (isProxyStream) {
+        if (isProxyStream && !skipSeg) {
+            // No skip segment - pass through directly for best compatibility
             proxyStreamCount++;
             playUrl = streamUrl;
         } else {
+            // Has skip segment OR is not a proxy stream - route through HLS for skipping
             const encodedUrl = encodeURIComponent(streamUrl);
-            playUrl = `${finalBaseUrl}/play?url=${encodedUrl}&key=${debridKey}`;
+            const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
+            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${provider}&rdKey=${debridKey}${skipParams}`;
         }
 
         return {
@@ -129,7 +132,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     }).filter(Boolean);
 
     if (proxyStreamCount > 0) {
-        console.log(`[Stream ${requestId}] 🔄 ${proxyStreamCount} proxy streams passed through directly`);
+        console.log(`[Stream ${requestId}] 🔄 ${proxyStreamCount} streams without skips passed through directly`);
     }
 
     console.log(`[Stream ${requestId}] 📊 Returning ${streams.length} stream(s), skip: ${skipSeg ? 'yes' : 'no'}`);
