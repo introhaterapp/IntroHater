@@ -191,7 +191,7 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
         // TEMPORARY: Direct redirect mode to bypass all HLS generation
         // This sacrifices skip segments but proves playback works
         // Once confirmed working, we'll re-enable HLS generation
-        const bypassHls = false; // Set to true for debug passthrough mode
+        const bypassHls = true; // TEMPORARY: Testing if playback works without HLS
 
         if (bypassHls) {
             console.log(`${logPrefix} 🔀 BYPASS MODE: Resolving redirects on stream URL`);
