@@ -104,6 +104,12 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
         if (!streamUrl && !infoHash) return null;
 
+        // DEBUG: Check for hidden infoHash
+        if (s.name && s.name.includes('Comet')) {
+            console.log(`[Stream ${requestId}] 🐛 Comet stream keys: ${Object.keys(s).join(', ')}`);
+            if (s.behaviorHints) console.log(`[Stream ${requestId}] 🐛 BehaviorHints: ${JSON.stringify(s.behaviorHints)}`);
+        }
+
         const streamName = s.name || "IntroHater";
         const streamTitle = s.description
             ? `${s.title || s.name}${skipSeg ? ' 🎯' : ''}\n${s.description}`
