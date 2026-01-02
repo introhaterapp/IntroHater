@@ -104,8 +104,20 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             ? `${s.title || s.name}${skipSeg ? ' 🎯' : ''}\n${s.description}`
             : `${s.title || s.name}${skipSeg ? ' 🎯' : ''}`;
 
-        const encodedUrl = encodeURIComponent(streamUrl);
-        const playUrl = `${finalBaseUrl}/play?url=${encodedUrl}&key=${debridKey}`;
+        // Proxy streaming URLs (Comet /playback/, stremthru, mediafusion) should be passed directly
+        // These services already handle debrid resolution and stream proxying themselves
+        const isProxyStream = streamUrl.includes('/playback/') ||
+            streamUrl.toLowerCase().includes('stremthru') ||
+            streamUrl.toLowerCase().includes('mediafusion');
+
+        let playUrl;
+        if (isProxyStream) {
+            console.log(`[Stream ${requestId}] 🔄 Proxy stream - using direct URL`);
+            playUrl = streamUrl;
+        } else {
+            const encodedUrl = encodeURIComponent(streamUrl);
+            playUrl = `${finalBaseUrl}/play?url=${encodedUrl}&key=${debridKey}`;
+        }
 
         return {
             name: streamName,
