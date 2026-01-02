@@ -204,7 +204,9 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
         return res.status(400).send("Invalid or unsafe stream URL");
     }
 
-    console.log(`${logPrefix} 📥 Manifest request for ${videoId || 'unknown'} (Client: ${client || 'unknown'})`);
+    // Client detection log
+    console.log(`${logPrefix} 📥 Manifest request for ${videoId || 'unknown'}`);
+    console.log(`${logPrefix} 📱 Client detected: ${client || 'unknown'} (User-Agent: ${req.get('User-Agent') || 'none'})`);
 
     // Authenticated Telemetry
     if (videoId && userId && rdKey) {
@@ -434,7 +436,9 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
 
         // Pass-through if all failed
         if (!manifest || !isSuccess) {
-            console.log(`${logPrefix} ➡️ No valid skip points, generating pass-through`);
+            const reason = !manifest ? "Manifest generation failed" : "Unknown error";
+            console.log(`${logPrefix} ⚠️ ${reason}. Fallback: Generating simple pass-through manifest (No Skips)`);
+            console.log(`${logPrefix} 🐛 Debug Info: IntroStart=${introStart}, IntroEnd=${introEnd}, Duration=${duration}, Length=${totalLength}`);
             manifest = generateFragmentedManifest(streamUrl, duration, totalLength, null);
             isSuccess = true;
         }
