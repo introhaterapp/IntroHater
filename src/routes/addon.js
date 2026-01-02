@@ -104,10 +104,13 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             ? `${s.title || s.name}${skipSeg ? ' 🎯' : ''}\n${s.description}`
             : `${s.title || s.name}${skipSeg ? ' 🎯' : ''}`;
 
+        const encodedUrl = encodeURIComponent(streamUrl);
+        const playUrl = `${finalBaseUrl}/play?url=${encodedUrl}&key=${debridKey}`;
+
         return {
             name: streamName,
             title: streamTitle,
-            url: streamUrl,
+            url: playUrl,
             behaviorHints: s.behaviorHints || {}
         };
     }).filter(Boolean);

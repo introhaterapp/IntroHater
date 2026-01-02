@@ -95,6 +95,38 @@ router.get('/sub/status/:videoId.vtt', async (req, res) => {
     res.send(vtt);
 });
 
+router.get('/play', async (req, res) => {
+    const streamUrl = req.query.url;
+    const keyPrefix = req.query.key?.substring(0, 8) || 'PLAY';
+    const logPrefix = `[Play ${keyPrefix}]`;
+
+    if (!streamUrl) {
+        return res.status(400).send('Missing url parameter');
+    }
+
+    console.log(`${logPrefix} 📍 Resolving: ${streamUrl.substring(0, 60)}...`);
+
+    try {
+        const resolveRes = await axios.get(streamUrl, {
+            maxRedirects: 5,
+            timeout: 15000,
+            headers: { 'User-Agent': 'Stremio/4.4', 'Range': 'bytes=0-0' },
+            responseType: 'stream'
+        });
+
+        const finalUrl = resolveRes.request.res.responseUrl || resolveRes.config.url;
+        resolveRes.data.destroy();
+
+        console.log(`${logPrefix} ✅ Resolved to: ${finalUrl.substring(0, 60)}...`);
+        res.set('Access-Control-Allow-Origin', '*');
+        return res.redirect(302, finalUrl);
+    } catch (e) {
+        console.log(`${logPrefix} ❌ Resolution failed: ${e.message}`);
+        res.set('Access-Control-Allow-Origin', '*');
+        return res.redirect(302, streamUrl);
+    }
+});
+
 // HLS Media Playlist Endpoint
 router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res) => {
     // Parse from query params (primary method)
