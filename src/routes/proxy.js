@@ -61,7 +61,7 @@ router.get('/proxy/ip', (req, res) => {
 });
 
 router.get('/proxy/stream', async (req, res) => {
-    const { d: destinationUrl, api_password } = req.query;
+    const { d: destinationUrl, api_password, filename } = req.query;
 
     if (!destinationUrl) {
         return res.status(400).json({ error: 'Missing destination URL (d parameter)' });
@@ -69,25 +69,27 @@ router.get('/proxy/stream', async (req, res) => {
 
     const expectedPassword = process.env.PROXY_PASSWORD || 'introhater';
     if (api_password && api_password !== expectedPassword) {
-        console.log(`[Proxy] ⛔ Invalid password provided`);
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    console.log(`[Proxy] 📥 Request for: ${destinationUrl.substring(0, 100)}...`);
-
     try {
-        const { imdbId, season, episode } = extractMetadataFromUrl(destinationUrl);
-        console.log(`[Proxy] 🎬 Extracted: IMDb=${imdbId}, S${season}E${episode}`);
+        const decodedFilename = filename ? decodeURIComponent(filename) : '';
+        let { imdbId, season, episode, showName } = extractMetadataFromUrl(destinationUrl, decodedFilename);
+
+        if (!imdbId && showName && season && episode) {
+            const show = await catalogService.getShowByTitle(showName);
+            if (show) {
+                imdbId = show.imdbId;
+            }
+        }
 
         let skipSegment = null;
-        if (imdbId) {
-            const lookupId = (season && episode) ? `${imdbId}:${season}:${episode}` : imdbId;
+        if (imdbId && season && episode) {
+            const lookupId = `${imdbId}:${season}:${episode}`;
             skipSegment = await skipService.getSkipSegment(lookupId);
 
             if (skipSegment) {
-                console.log(`[Proxy] 🎯 Skip found: ${skipSegment.start}s - ${skipSegment.end}s`);
-            } else {
-                console.log(`[Proxy] ℹ️ No skip segment for ${lookupId}`);
+                console.log(`[Proxy] 🎯 Skip for ${lookupId}: ${skipSegment.start}s-${skipSegment.end}s`);
             }
         }
 
@@ -97,16 +99,10 @@ router.get('/proxy/stream', async (req, res) => {
             const baseUrl = `${protocol}://${host}`;
 
             const encodedStreamUrl = encodeURIComponent(destinationUrl);
-            const start = skipSegment.start;
-            const end = skipSegment.end;
-            const id = imdbId || 'unknown';
+            const hlsUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${skipSegment.start}&end=${skipSegment.end}&id=${imdbId}&client=proxy`;
 
-            const hlsUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${start}&end=${end}&id=${id}&client=proxy`;
-
-            console.log(`[Proxy] ✅ Redirecting to HLS with skips`);
             return res.redirect(hlsUrl);
         } else {
-            console.log(`[Proxy] ⏭️ No skips, passing through to original URL`);
             return res.redirect(destinationUrl);
         }
     } catch (error) {
@@ -135,46 +131,25 @@ router.post('/generate_urls', async (req, res) => {
             return res.status(400).json({ error: 'Invalid request, expected urls array' });
         }
 
-        let lookupCount = 0;
-        let firstSkipId = null;
-
-        const results = await Promise.all(urls.map(async (item) => {
+        const results = urls.map((item) => {
             const url = item.destination_url;
             const filename = item.filename || '';
+            const endpoint = item.endpoint || '/proxy/stream';
             if (!url) return item;
 
-            let { imdbId, season, episode, showName } = extractMetadataFromUrl(url, filename);
+            const protocol = req.protocol;
+            const host = req.get('host');
+            const baseUrl = `${protocol}://${host}`;
 
-            if (!imdbId && showName && season && episode) {
-                const show = await catalogService.getShowByTitle(showName);
-                if (show) {
-                    imdbId = show.imdbId;
-                    lookupCount++;
-                }
-            }
+            const encodedUrl = encodeURIComponent(url);
+            const encodedFilename = encodeURIComponent(filename);
 
-            if (imdbId && season && episode) {
-                const lookupId = `${imdbId}:${season}:${episode}`;
-                const skipSegment = await skipService.getSkipSegment(lookupId);
+            const proxyUrl = `${baseUrl}${endpoint}?d=${encodedUrl}&filename=${encodedFilename}`;
 
-                if (skipSegment) {
-                    const protocol = req.protocol;
-                    const host = req.get('host');
-                    const baseUrl = `${protocol}://${host}`;
+            return { ...item, url: proxyUrl };
+        });
 
-                    const encodedStreamUrl = encodeURIComponent(url);
-                    const hlsUrl = `${baseUrl}/hls/manifest.m3u8?stream=${encodedStreamUrl}&start=${skipSegment.start}&end=${skipSegment.end}&id=${imdbId}&client=proxy`;
-
-                    if (!firstSkipId) firstSkipId = lookupId;
-                    return { ...item, destination_url: hlsUrl };
-                }
-            }
-
-            return item;
-        }));
-
-        const modifiedCount = results.filter(r => r.destination_url && r.destination_url.includes('hls')).length;
-        console.log(`[Proxy] ✅ ${urls.length} URLs → ${modifiedCount} with skips (${lookupCount} title lookups, first: ${firstSkipId || 'none'})`);
+        console.log(`[Proxy] ✅ ${urls.length} URLs wrapped for proxy`);
         res.json({ urls: results });
     } catch (error) {
         console.error(`[Proxy] ❌ Batch error: ${error.message}`);
