@@ -135,7 +135,7 @@ router.post('/generate_urls', async (req, res) => {
             const url = item.destination_url;
             const filename = item.filename || '';
             const endpoint = item.endpoint || '/proxy/stream';
-            if (!url) return item;
+            if (!url) return null;
 
             const protocol = req.protocol;
             const host = req.get('host');
@@ -143,13 +143,12 @@ router.post('/generate_urls', async (req, res) => {
 
             const encodedUrl = encodeURIComponent(url);
             const encodedFilename = encodeURIComponent(filename);
+            const password = req.body.api_password || '';
 
-            const proxyUrl = `${baseUrl}${endpoint}?d=${encodedUrl}&filename=${encodedFilename}`;
+            return `${baseUrl}${endpoint}?d=${encodedUrl}&filename=${encodedFilename}&api_password=${encodeURIComponent(password)}`;
+        }).filter(Boolean);
 
-            return { ...item, url: proxyUrl };
-        });
-
-        console.log(`[Proxy] ✅ ${urls.length} URLs wrapped for proxy`);
+        console.log(`[Proxy] ✅ ${urls.length} → ${results.length} URLs wrapped`);
         res.json({ urls: results });
     } catch (error) {
         console.error(`[Proxy] ❌ Batch error: ${error.message}`);
