@@ -126,24 +126,9 @@ router.post('/generate_urls', async (req, res) => {
             return res.status(400).json({ error: 'Invalid request, expected urls array' });
         }
 
-        const results = urls.map((item) => {
-            const url = item.destination_url;
-            const filename = item.filename || '';
-            const endpoint = item.endpoint || '/proxy/stream';
-            if (!url) return null;
+        const results = urls.map((item) => item.destination_url).filter(Boolean);
 
-            const protocol = req.protocol;
-            const host = req.get('host');
-            const baseUrl = `${protocol}://${host}`;
-
-            const encodedUrl = encodeURIComponent(url);
-            const encodedFilename = encodeURIComponent(filename);
-            const password = req.body.api_password || '';
-
-            return `${baseUrl}${endpoint}?d=${encodedUrl}&filename=${encodedFilename}&api_password=${encodeURIComponent(password)}`;
-        }).filter(Boolean);
-
-        console.log(`[Proxy] ✅ ${urls.length} → ${results.length} URLs wrapped`);
+        console.log(`[Proxy] ✅ ${urls.length} URLs passed through (skip injection disabled)`);
         res.json({ urls: results });
     } catch (error) {
         console.error(`[Proxy] ❌ Batch error: ${error.message}`);
