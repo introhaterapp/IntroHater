@@ -109,8 +109,8 @@ Works flawlessly across:
 </td>
 <td width="50%">
 
-### 🔗 Real-Debrid Integration
-Premium streaming through Real-Debrid ensures high-quality, unrestricted content delivery with your existing subscription.
+### 🔗 Multi-Debrid Support
+Works with **Real-Debrid**, **TorBox**, **Premiumize**, and **AllDebrid**. Premium streaming with your existing subscription.
 
 </td>
 </tr>
@@ -152,41 +152,47 @@ Search for any show and submit skip segments in seconds. Report issues with exis
 
 ```mermaid
 flowchart LR
-    subgraph Client
+    subgraph Client["👤 Client"]
         A[🎬 Stremio]
     end
     
-    subgraph IntroHater
-        B[🔀 HLS Proxy] --> C{Skip Data?}
-        C -->|1st| D[(Community DB)]
-        C -->|2nd| E[🎌 Ani-Skip API]
-        C -->|3rd| F[📼 Chapter Detection]
+    subgraph IntroHater["🎯 IntroHater Server"]
+        B[📡 Stream Router]
+        C[(Skip Database)]
+        D[✂️ HLS Proxy]
     end
     
-    subgraph Upstream
-        G[☁️ Real-Debrid]
-        H[🎥 Video Source]
+    subgraph External["☁️ External Scrapers"]
+        E[AIOstreams]
+        F[Comet / Torrentio]
+        G[Debrid Services]
     end
     
-    A -->|Request Stream| B
-    B -->|Resolve| G
-    G -->|Fetch| H
-    B -->|Modified M3U8| A
+    A -->|1. Request| B
+    B -->|2. Get Streams| E
+    E -->|Fetches from| F
+    F -->|Resolves via| G
+    B -->|3. Lookup Skips| C
+    B -->|4a. With Skip| D
+    D -->|Skip Manifest| A
+    B -->|4b. No Skip| A
     
     style B fill:#6366f1,stroke:#4f46e5,color:#fff
-    style D fill:#22c55e,stroke:#16a34a,color:#fff
-    style E fill:#f59e0b,stroke:#d97706,color:#fff
-    style F fill:#3b82f6,stroke:#2563eb,color:#fff
+    style C fill:#22c55e,stroke:#16a34a,color:#fff
+    style D fill:#f59e0b,stroke:#d97706,color:#fff
+    style E fill:#3b82f6,stroke:#2563eb,color:#fff
 ```
 
 </div>
 
 ### How It Works
 
-1. **📥 Intercept** — Stremio requests a stream from IntroHater
-2. **🔍 Resolve** — IntroHater resolves the content via Real-Debrid
-3. **🧠 Analyze** — Checks Community DB → Ani-Skip → Video Chapters for skip timestamps
-4. **✂️ Proxy** — Generates a modified `.m3u8` playlist that jumps from `0:00 → IntroStart` then `IntroEnd → Finish`
+1. **📥 Request** — Stremio requests streams from IntroHater
+2. **🔄 Fetch** — IntroHater queries your configured scraper (AIOstreams/Comet) — **rate limits handled by external service, not IntroHater!**
+3. **🎯 Lookup** — Checks Community DB → Ani-Skip → Video Chapters for skip timestamps
+4. **✂️ Route** — 
+   - **With skip data**: Generates HLS manifest that cuts out intros
+   - **Without skip data**: Passes stream directly (zero overhead)
 
 ---
 
