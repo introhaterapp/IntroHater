@@ -47,14 +47,17 @@ async function getAllStreams(provider, debridKey, type, id, customUrl = null, pr
         scrapers.push({ name: 'custom', builder: customBuilder });
     }
 
-    // 2. Standard Scrapers?
-    // If custom is present, maybe skipping standard ones? 
-    // The previous code pushed them anyway.
-    scrapers.push(
-        { name: 'torrentio', builder: buildTorrentioUrl },
-        { name: 'comet', builder: buildCometUrl },
-        { name: 'mediafusion', builder: buildMediaFusionUrl }
-    );
+    // 2. Standard Scrapers - ONLY if no custom scraper is configured
+    // If custom is present (e.g., AIOStreams), skip standard scrapers since AIOStreams already aggregates them
+    if (!customUrl) {
+        scrapers.push(
+            { name: 'torrentio', builder: buildTorrentioUrl },
+            { name: 'comet', builder: buildCometUrl },
+            { name: 'mediafusion', builder: buildMediaFusionUrl }
+        );
+    } else {
+        console.log(`${logPrefix} 📡 Custom scraper configured, skipping fallback scrapers`);
+    }
 
     // 3. TorBox Native Search
     if (provider === 'torbox') {
