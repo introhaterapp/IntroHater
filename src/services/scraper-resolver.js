@@ -111,15 +111,36 @@ async function getAllStreams(provider, debridKey, type, id, customUrl = null, pr
         }
     }
 
+    // Extract InfoHashes from URLs (Comet/Debrid) before filtering
+    allStreams.forEach(s => {
+        if (!s.infoHash && (s.url || s.externalUrl)) {
+            const url = s.url || s.externalUrl;
+            const match = url.match(/\/playback\/([a-fA-F0-9]{40})\//);
+            if (match) {
+                s.infoHash = match[1];
+                // console.log(`${logPrefix} 🔍 Extracted InfoHash from URL: ${s.infoHash}`);
+            }
+        }
+    });
+
     // Filter Streams
     const validStreams = allStreams.filter(s => {
         const title = (s.title || s.name || '').toLowerCase();
         const url = s.url || s.externalUrl;
         const infoHash = s.infoHash || s.infohash;
 
-        if (title.includes('rate limit') || title.includes('exceed')) return false;
-        if (title.includes('🚫') || title.includes('[no') || title.includes('error')) return false;
-        if (!url && !infoHash) return false;
+        if (title.includes('rate limit') || title.includes('exceed')) {
+            console.log(`${logPrefix} 🗑️ Filtered (Rate Limit): ${title}`);
+            return false;
+        }
+        if (title.includes('🚫') || title.includes('[no') || title.includes('error')) {
+            console.log(`${logPrefix} 🗑️ Filtered (Error/No): ${title}`);
+            return false;
+        }
+        if (!url && !infoHash) {
+            console.log(`${logPrefix} 🗑️ Filtered (No URL/Hash): ${title}`);
+            return false;
+        }
 
         return true;
     });
