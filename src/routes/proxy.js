@@ -97,7 +97,9 @@ router.get('/proxy/stream', async (req, res) => {
             console.log(`[Proxy] 🎯 Skip available for ${imdbId}:${season}:${episode}: ${skipSegment.start}s-${skipSegment.end}s (pass-through mode)`);
         }
 
-        return res.redirect(destinationUrl);
+        const decodedUrl = decodeURIComponent(destinationUrl);
+        console.log(`[Proxy] 🔄 Redirecting to: ${decodedUrl.substring(0, 100)}...`);
+        return res.redirect(decodedUrl);
     } catch (error) {
         console.error(`[Proxy] ❌ Error: ${error.message}`);
         return res.status(500).json({ error: 'Proxy error', message: error.message });
