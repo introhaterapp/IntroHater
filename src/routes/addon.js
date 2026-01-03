@@ -125,7 +125,9 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         // We MUST prioritize generating a transcoded stream from InfoHash over using the provided direct URL (which is likely MKV)
         if (effectiveNeedsTranscoding && infoHash) {
             const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
-            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&transcode=true&client=${client}`;
+            // Include original streamUrl as fallback for when TorBox doesn't have the torrent cached
+            const fallbackParam = streamUrl ? `&fallback=${encodeURIComponent(streamUrl)}` : '';
+            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&transcode=true&client=${client}${fallbackParam}`;
         }
         // Case 2: Existing URL (Debrid Link or Direct)
         else if (streamUrl) {
@@ -135,12 +137,13 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
                 const cometHashMatch = streamUrl.match(/\/playback\/([a-fA-F0-9]{40})\//);
                 if (cometHashMatch) {
                     infoHash = cometHashMatch[1];
-                    console.log(`[Stream ${requestId}] 🔍 Extracted hidden InfoHash from URL: ${infoHash}`);
 
                     // Re-evaluate transcoding need now that we have a hash
                     if (effectiveNeedsTranscoding) {
                         const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
-                        playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&transcode=true&client=${client}`;
+                        // Include original streamUrl as fallback
+                        const fallbackParam = `&fallback=${encodeURIComponent(streamUrl)}`;
+                        playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&transcode=true&client=${client}${fallbackParam}`;
                     }
                 }
             }

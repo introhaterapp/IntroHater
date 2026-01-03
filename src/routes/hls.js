@@ -174,8 +174,22 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
         console.log(`${logPrefix} 🔍 Resolving infoHash: ${infoHash} (Transcode: ${transcode})`);
         streamUrl = await debridResolver.resolveInfoHash(provider || 'realdebrid', rdKey, infoHash, { transcode: transcode === 'true' });
         if (!streamUrl) {
-            console.error(`${logPrefix} ❌ Failed to resolve infoHash`);
-            return res.status(502).send("Failed to resolve infoHash via debrid");
+            // Check for fallback URL (original Comet/Debrid stream)
+            const fallbackUrl = req.query.fallback;
+            if (fallbackUrl) {
+                console.log(`${logPrefix} ⚠️ TorBox transcode unavailable, using fallback URL`);
+                streamUrl = fallbackUrl;
+                // For web clients with fallback, just redirect (MKV may not play but better than 502)
+                if (client === 'web') {
+                    console.log(`${logPrefix} ↪️ Redirecting web client to fallback stream`);
+                    res.set('Access-Control-Allow-Origin', '*');
+                    return res.redirect(302, streamUrl);
+                }
+                // For native clients, continue with HLS generation on the fallback URL
+            } else {
+                console.error(`${logPrefix} ❌ Failed to resolve infoHash, no fallback available`);
+                return res.status(502).send("Failed to resolve infoHash via debrid");
+            }
         }
     }
 
