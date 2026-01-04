@@ -43,33 +43,30 @@ function isSafeUrl(urlStr) {
 }
 
 /*
- * WEB STREMIO LIMITATION
- * ======================
- * Web Stremio (browser-based) cannot play our HLS manifests. This is a fundamental
- * limitation that cannot be fixed without server-side transcoding.
+ * PLATFORM COMPATIBILITY NOTES
+ * ============================
+ * Our HLS manifests use byte-range requests on MKV files. This works on Desktop/iOS
+ * but FAILS on Android/Web because ExoPlayer/HLS.js cannot decode MKV containers.
  * 
- * Root cause: Our manifests use byte-range requests on MKV files. Web Stremio's
- * streaming server (Lavf/FFmpeg) fetches these, but the browser's HLS.js player
- * cannot decode MKV containers - it only supports MPEG-TS and fMP4 segments.
+ * SOLUTION: For Android + TorBox, we use TorBox's native HLS transcode API.
+ * If that fails, we MUST redirect to the original stream (no intro skip) to prevent crashes.
  * 
- * Attempted fixes that did NOT work:
- * - 302 redirect to original stream URL
- * - Pass-through manifest without byte-ranges
- * - Removing EXT-X-DISCONTINUITY tags
- * - Increasing header size
+ * Affected platforms (need transcoded HLS or direct redirect):
+ * - Web Stremio (web.stremio.com, app.strem.io)
+ * - Android (Galaxy, etc)
+ * - Android TV / Google TV / Nvidia Shield
  * 
- * The only real fix would be server-side remuxing (MKV → MPEG-TS), which would
- * require significant CPU/bandwidth resources and is not viable for this project.
- * 
- * Affected platforms:
- * - Web Stremio (web.stremio.com, app.strem.io) - User-Agent: Lavf/, node-fetch
- * - Google TV 
- * - Android TV
- * 
- * Working platforms:
- * - Desktop Stremio
+ * Working platforms (byte-range HLS works):
+ * - Desktop Stremio (Windows, Mac, Linux)
  * - iOS Stremio
  */
+
+// Helper: Detect Android-based clients that cannot handle byte-range MKV
+function isAndroidClient(client, userAgent) {
+    if (client === 'android' || client === 'google-tv') return true;
+    const ua = (userAgent || '').toLowerCase();
+    return ua.includes('android') || ua.includes('exoplayer') || ua.includes('shield');
+}
 
 // ==================== Routes ====================
 
@@ -172,20 +169,23 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
 
     if (infoHash && !streamUrl) {
         console.log(`${logPrefix} 🔍 Resolving infoHash: ${infoHash} (Transcode: ${transcode})`);
-        streamUrl = await debridResolver.resolveInfoHash(provider || 'realdebrid', rdKey, infoHash, { transcode: transcode === 'true' });
+        streamUrl = await debridResolver.resolveInfoHash(provider || 'realdebrid', rdKey, infoHash, { transcode: transcode === 'true', videoId: videoId });
         if (!streamUrl) {
             // Check for fallback URL (original Comet/Debrid stream)
             const fallbackUrl = req.query.fallback;
             if (fallbackUrl) {
                 console.log(`${logPrefix} ⚠️ TorBox transcode unavailable, using fallback URL`);
                 streamUrl = fallbackUrl;
-                // For web clients with fallback, just redirect (MKV may not play but better than 502)
-                if (client === 'web') {
-                    console.log(`${logPrefix} ↪️ Redirecting web client to fallback stream`);
+
+                // CRITICAL: Android/Web clients CANNOT play our byte-range MKV manifests
+                // They will crash. We MUST redirect directly to the stream.
+                const isAndroid = isAndroidClient(client, req.get('User-Agent'));
+                if (client === 'web' || isAndroid) {
+                    console.log(`${logPrefix} 🛡️ ${isAndroid ? 'Android' : 'Web'} client + fallback = Direct redirect (HLS would crash)`);
                     res.set('Access-Control-Allow-Origin', '*');
                     return res.redirect(302, streamUrl);
                 }
-                // For native clients, continue with HLS generation on the fallback URL
+                // Only Desktop/iOS can continue with HLS generation on the fallback URL
             } else {
                 console.error(`${logPrefix} ❌ Failed to resolve infoHash, no fallback available`);
                 return res.status(502).send("Failed to resolve infoHash via debrid");
@@ -308,10 +308,11 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
 
 
 
-        // Fallback for Web Stremio + MKV (HLS.js doesn't support MKV)
+        // Fallback for Web/Android + MKV (ExoPlayer/HLS.js doesn't support byte-range MKV)
         const isMKV = streamUrl.toLowerCase().includes('.mkv') || streamUrl.toLowerCase().includes('matroska');
-        if (client === 'web' && isMKV) {
-            console.log(`${logPrefix} ⚠️ Web Client + MKV detected - redirecting to stream`);
+        const isAndroid = isAndroidClient(client, req.get('User-Agent'));
+        if ((client === 'web' || isAndroid) && isMKV) {
+            console.log(`${logPrefix} 🛡️ ${isAndroid ? 'Android' : 'Web'} + MKV detected - direct redirect (HLS would crash)`);
             res.set('Access-Control-Allow-Origin', '*');
             return res.redirect(302, streamUrl);
         }
@@ -344,11 +345,12 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
             return res.redirect(streamUrl);
         }
 
-        // Final check for MKV on Web after redirection resolution
+        // Final check for MKV on Web/Android after redirection resolution
         const isStillMKV = streamUrl.toLowerCase().includes('.mkv') || streamUrl.toLowerCase().includes('matroska');
-        if (client === 'web' && isStillMKV) {
-            console.log(`${logPrefix} ⚠️ Final URL is MKV, bypassing proxy for compatibility`);
-            return res.redirect(streamUrl);
+        if ((client === 'web' || isAndroid) && isStillMKV) {
+            console.log(`${logPrefix} 🛡️ Final URL is MKV on ${isAndroid ? 'Android' : 'Web'} - direct redirect`);
+            res.set('Access-Control-Allow-Origin', '*');
+            return res.redirect(302, streamUrl);
         }
 
         let manifest = "";
@@ -451,8 +453,18 @@ router.get(['/hls/manifest.m3u8', '/:config/hls/manifest.m3u8'], async (req, res
         // Pass-through if all failed
         if (!manifest || !isSuccess) {
             const reason = !manifest ? "Manifest generation failed" : "Unknown error";
-            console.log(`${logPrefix} ⚠️ ${reason}. Fallback: Generating simple pass-through manifest (No Skips)`);
+            console.log(`${logPrefix} ⚠️ ${reason}. Fallback mode...`);
             console.log(`${logPrefix} 🐛 Debug Info: IntroStart=${introStart}, IntroEnd=${introEnd}, Duration=${duration}, Length=${totalLength}`);
+
+            // CRITICAL: Android/Web clients crash on byte-range MKV manifests
+            // If we couldn't generate a proper manifest, redirect directly
+            if (client === 'web' || isAndroid) {
+                console.log(`${logPrefix} 🛡️ ${isAndroid ? 'Android' : 'Web'} client - redirecting to original stream (safer than fragmented manifest)`);
+                res.set('Access-Control-Allow-Origin', '*');
+                return res.redirect(302, streamUrl);
+            }
+
+            // Desktop/iOS can handle the fragmented manifest even if not perfect
             manifest = generateFragmentedManifest(streamUrl, duration, totalLength, null);
             isSuccess = true;
         }

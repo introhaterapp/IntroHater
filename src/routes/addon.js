@@ -32,7 +32,8 @@ const manifest = {
 async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', origin = '') {
     const requestId = Date.now().toString(36);
     const isWebStremio = userAgent.includes('Stremio/Web') || origin.includes('strem.io') || origin.includes('stremio.com');
-    const isAndroid = userAgent.toLowerCase().includes('android') || userAgent.toLowerCase().includes('exoplayer');
+    const ua = userAgent.toLowerCase();
+    const isAndroid = ua.includes('android') || ua.includes('exoplayer') || ua.includes('shield');
     const client = isWebStremio ? 'web' : (isAndroid ? 'android' : 'desktop');
 
     const { provider, key: debridKey, scraper: externalScraper, proxyUrl, proxyPassword } = parseConfig(config);

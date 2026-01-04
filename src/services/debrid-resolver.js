@@ -284,33 +284,52 @@ async function resolveTorBox(key, infoHash, options = {}) {
 
         // Step 3: Get Stream/Download Link
         if (transcode) {
-            // Request Transcoded HLS Stream
+            // Request Transcoded HLS Stream (preferred for Android/Web)
             log.info(`${logPrefix} Requesting transcoded stream for torrent ${torrentId}, file ${fileId}`);
-            const streamRes = await axios.get(`https://api.torbox.app/v1/api/stream/createstream`, {
-                params: { id: torrentId, file_id: fileId, type: 'torrent' },
-                headers: { Authorization: `Bearer ${key}` }
-            });
+            try {
+                const streamRes = await axios.get(`https://api.torbox.app/v1/api/stream/createstream`, {
+                    params: { id: torrentId, file_id: fileId, type: 'torrent' },
+                    headers: { Authorization: `Bearer ${key}` },
+                    timeout: 15000 // 15s timeout for transcode API
+                });
 
-            if (streamRes.data.success && streamRes.data.data) {
-                if (streamRes.data.data.hls_url) {
-                    return streamRes.data.data.hls_url;
+                if (streamRes.data.success && streamRes.data.data) {
+                    if (streamRes.data.data.hls_url) {
+                        log.info(`${logPrefix} ✅ Got HLS transcode URL`);
+                        return streamRes.data.data.hls_url;
+                    }
+                    if (streamRes.data.data.player) {
+                        log.info(`${logPrefix} ✅ Got player URL`);
+                        return streamRes.data.data.player;
+                    }
                 }
-                if (streamRes.data.data.player) return streamRes.data.data.player;
+                log.warn(`${logPrefix} createstream response missing HLS: ${JSON.stringify(streamRes.data)}`);
+            } catch (streamErr) {
+                log.warn(`${logPrefix} createstream failed: ${streamErr.message}`);
             }
-            log.warn(`${logPrefix} Failed to create stream: ${JSON.stringify(streamRes.data)}`);
-            return null;
-        } else {
-            // Request Download Link 
+
+            // Transcode failed - DO NOT return null, try download link as fallback
+            log.info(`${logPrefix} ⚠️ Transcode unavailable, falling back to download link`);
+        }
+
+        // Request Download Link (either no transcode requested, or transcode failed)
+        try {
             const dlRes = await axios.get('https://api.torbox.app/v1/api/torrents/requestdl', {
                 params: { token: key, torrent_id: torrentId, file_id: fileId },
-                validateStatus: false
+                validateStatus: false,
+                timeout: 10000
             });
 
             if (dlRes.data.success && dlRes.data.data) {
+                log.info(`${logPrefix} ✅ Got download URL`);
                 return dlRes.data.data;
             }
-            return null;
+            log.warn(`${logPrefix} requestdl failed: ${JSON.stringify(dlRes.data)}`);
+        } catch (dlErr) {
+            log.error(`${logPrefix} requestdl error: ${dlErr.message}`);
         }
+
+        return null;
 
     } catch (e) {
         log.error({ err: e.message, infoHash }, `${logPrefix} Resolution failed`);
