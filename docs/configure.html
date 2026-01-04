@@ -61,6 +61,9 @@
                     <p class="hero-subtitle">
                         To skip intros, IntroHater needs your debrid service API key.
                     </p>
+                    <button type="button" id="openGuideBtn" class="btn btn-guide" style="margin-top: 16px;">
+                        📖 Setup Guide
+                    </button>
                 </div>
 
                 <div class="glass-panel p-40">
@@ -354,7 +357,144 @@
         </div>
     </footer>
 
-    </footer>
+    <div id="setupGuideModal" class="setup-guide-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <span>📖</span>
+                    <span>Setup Guide</span>
+                </div>
+                <button class="modal-close" id="closeGuideBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="carousel">
+                    <div class="carousel-track" id="carouselTrack">
+                        <div class="carousel-slide">
+                            <img src="CopyAioStreamsURL.png" alt="Step 1: Copy AIOstreams URL">
+                            <div class="carousel-caption">
+                                <span class="step-number">1</span>
+                                <span class="step-text">Copy your AIOstreams manifest URL</span>
+                                <p class="step-hint">Configure AIOstreams with your debrid service + Torrentio, then
+                                    copy the generated URL.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <img src="PasteAioStreamsURLandAPIKEYtoIntroHaterConfig.png"
+                                alt="Step 2: Paste URL and API Key">
+                            <div class="carousel-caption">
+                                <span class="step-number">2</span>
+                                <span class="step-text">Paste URL & API Key into IntroHater</span>
+                                <p class="step-hint">Enter your debrid API key and paste the AIOstreams manifest URL in
+                                    the form above.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <img src="InstallIntroHAterTOStremio.png" alt="Step 3: Install to Stremio">
+                            <div class="carousel-caption">
+                                <span class="step-number">3</span>
+                                <span class="step-text">Install IntroHater to Stremio</span>
+                                <p class="step-hint">Click "Install on Stremio" to add the addon to your Stremio app.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <img src="OpenAStreamAndSeeIntroHaterListed.png" alt="Step 4: See IntroHater streams">
+                            <div class="carousel-caption">
+                                <span class="step-number">4</span>
+                                <span class="step-text">Open a show and see IntroHater listed</span>
+                                <p class="step-hint">Browse to any TV show or movie - you'll see IntroHater streams in
+                                    the list.</p>
+                            </div>
+                        </div>
+                        <div class="carousel-slide">
+                            <img src="selectstream-targetmeansskipenabled.png" alt="Step 5: Select stream with skip">
+                            <div class="carousel-caption">
+                                <span class="step-number">5</span>
+                                <span class="step-text">Select a stream with the 🎯 icon</span>
+                                <p class="step-hint">The 🎯 icon means intro skip is available! Select it and enjoy
+                                    auto-skipped intros.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-controls">
+                        <button class="carousel-btn" id="prevBtn" disabled>←</button>
+                        <div class="carousel-dots" id="carouselDots"></div>
+                        <button class="carousel-btn" id="nextBtn">→</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const modal = document.getElementById('setupGuideModal');
+            const openBtn = document.getElementById('openGuideBtn');
+            const closeBtn = document.getElementById('closeGuideBtn');
+            const track = document.getElementById('carouselTrack');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const dotsContainer = document.getElementById('carouselDots');
+            const slides = track.children;
+            const totalSlides = slides.length;
+            let currentSlide = 0;
+
+            for (let i = 0; i < totalSlides; i++) {
+                const dot = document.createElement('button');
+                dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+                dot.addEventListener('click', () => goToSlide(i));
+                dotsContainer.appendChild(dot);
+            }
+            const dots = dotsContainer.children;
+
+            function goToSlide(index) {
+                currentSlide = index;
+                track.style.transform = `translateX(-${currentSlide * 100}%)`;
+                prevBtn.disabled = currentSlide === 0;
+                nextBtn.disabled = currentSlide === totalSlides - 1;
+                Array.from(dots).forEach((dot, i) => {
+                    dot.classList.toggle('active', i === currentSlide);
+                });
+            }
+
+            prevBtn.addEventListener('click', () => {
+                if (currentSlide > 0) goToSlide(currentSlide - 1);
+            });
+
+            nextBtn.addEventListener('click', () => {
+                if (currentSlide < totalSlides - 1) goToSlide(currentSlide + 1);
+            });
+
+            openBtn.addEventListener('click', () => {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            closeBtn.addEventListener('click', () => {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (!modal.classList.contains('active')) return;
+                if (e.key === 'Escape') {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                } else if (e.key === 'ArrowLeft') {
+                    if (currentSlide > 0) goToSlide(currentSlide - 1);
+                } else if (e.key === 'ArrowRight') {
+                    if (currentSlide < totalSlides - 1) goToSlide(currentSlide + 1);
+                }
+            });
+        })();
+    </script>
 </body>
 
 </html>
