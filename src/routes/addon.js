@@ -36,9 +36,10 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     const isAndroid = ua.includes('android') || ua.includes('exoplayer') || ua.includes('shield');
     const client = isWebStremio ? 'web' : (isAndroid ? 'android' : 'desktop');
 
-    const { provider, key: debridKey, scraper: externalScraper, proxyUrl, proxyPassword } = parseConfig(config);
+    const { provider, key: debridKey, providers, scraper: externalScraper, proxyUrl, proxyPassword } = parseConfig(config);
     const providerConfig = getProvider(provider);
     const providerName = providerConfig?.shortName || 'Debrid';
+    const providerCount = providers ? Object.keys(providers).length : 1;
 
     if (!debridKey) {
         console.error(`[Stream ${requestId}] ❌ No debrid key provided`);
@@ -46,7 +47,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     }
 
     console.log(`[Stream ${requestId}] 📥 Request: ${type} ${id} (Client: ${client})`);
-    console.log(`[Stream ${requestId}] 🔑 ${providerName} Key: ${debridKey.substring(0, 8)}...`);
+    console.log(`[Stream ${requestId}] 🔑 Primary: ${providerName} Key: ${debridKey.substring(0, 8)}...${providerCount > 1 ? ` (+${providerCount - 1} secondary)` : ''}`);
     if (externalScraper) console.log(`[Stream ${requestId}] 🌐 Using custom scraper: ${externalScraper.substring(0, 30)}...`);
     if (proxyUrl) console.log(`[Stream ${requestId}] 🛡️ Using proxy: ${proxyUrl}`);
 
@@ -110,12 +111,28 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             ? `${s.title || s.name}${skipSeg ? ' 🎯' : ''}\n${s.description}`
             : `${s.title || s.name}${skipSeg ? ' 🎯' : ''}`;
 
-        // Auto-detect TorBox streams from name/title (e.g. "[TB", "TorBox")
-        // This handles cases where user configured as Real-Debrid but is getting TorBox streams (e.g. via AIOStreams/Comet)
-        const isTorBoxStream = (streamName.includes('[TB') || streamName.includes('TorBox') || (s.title && s.title.includes('TorBox')));
+        // Detect stream provider from name/title prefixes
+        // Supports: [TB]/TorBox, [RD]/Real-Debrid, [PM]/Premiumize, [AD]/AllDebrid
+        let effectiveProvider = provider;
+        let effectiveKey = debridKey;
 
-        // Force TorBox provider if detected
-        const effectiveProvider = isTorBoxStream ? 'torbox' : provider;
+        if (providers) {
+            const combinedText = `${streamName} ${s.title || ''}`;
+
+            if ((combinedText.includes('[TB]') || combinedText.includes('[TB ') || combinedText.includes('TorBox')) && providers.torbox) {
+                effectiveProvider = 'torbox';
+                effectiveKey = providers.torbox;
+            } else if ((combinedText.includes('[RD]') || combinedText.includes('[RD ') || combinedText.includes('Real-Debrid')) && providers.realdebrid) {
+                effectiveProvider = 'realdebrid';
+                effectiveKey = providers.realdebrid;
+            } else if ((combinedText.includes('[PM]') || combinedText.includes('[PM ') || combinedText.includes('Premiumize')) && providers.premiumize) {
+                effectiveProvider = 'premiumize';
+                effectiveKey = providers.premiumize;
+            } else if ((combinedText.includes('[AD]') || combinedText.includes('[AD ') || combinedText.includes('AllDebrid')) && providers.alldebrid) {
+                effectiveProvider = 'alldebrid';
+                effectiveKey = providers.alldebrid;
+            }
+        }
 
         // Determine transcoding need based on effective provider
         const effectiveNeedsTranscoding = (isWebStremio || isAndroid) && effectiveProvider === 'torbox';
@@ -128,7 +145,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
             // Include original streamUrl as fallback for when TorBox doesn't have the torrent cached
             const fallbackParam = streamUrl ? `&fallback=${encodeURIComponent(streamUrl)}` : '';
-            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&transcode=true&client=${client}${fallbackParam}`;
+            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${effectiveKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${effectiveKey}${skipParams}&transcode=true&client=${client}${fallbackParam}`;
         }
         // Case 2: Existing URL (Debrid Link or Direct)
         else if (streamUrl) {
@@ -144,7 +161,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
                         const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
                         // Include original streamUrl as fallback
                         const fallbackParam = `&fallback=${encodeURIComponent(streamUrl)}`;
-                        playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&transcode=true&client=${client}${fallbackParam}`;
+                        playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${effectiveKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${effectiveKey}${skipParams}&transcode=true&client=${client}${fallbackParam}`;
                     }
                 }
             }
@@ -165,7 +182,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
                     // Has skip segment OR is not a proxy stream - route through HLS for skipping
                     const encodedUrl = encodeURIComponent(streamUrl);
                     const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
-                    playUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}&client=${client}`;
+                    playUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&id=${id}&user=${effectiveKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${effectiveKey}${skipParams}&client=${client}`;
                 }
             }
         }
@@ -174,7 +191,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
             // Only add transcode param if needed (though logic above handles the forced case)
             const transcodeParam = effectiveNeedsTranscoding ? '&transcode=true' : '';
-            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${debridKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${debridKey}${skipParams}${transcodeParam}&client=${client}`;
+            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${effectiveKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${effectiveKey}${skipParams}${transcodeParam}&client=${client}`;
         }
 
         return {

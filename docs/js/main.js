@@ -286,16 +286,25 @@ async function initTicker() {
 
 // --- Debrid Configuration ---
 const DEBRID_PROVIDERS = {
-    realdebrid: { name: 'Real-Debrid', keyUrl: 'https://real-debrid.com/apitoken' },
-    torbox: { name: 'TorBox', keyUrl: 'https://torbox.app/settings' },
-    premiumize: { name: 'Premiumize', keyUrl: 'https://www.premiumize.me/account' },
-    alldebrid: { name: 'AllDebrid', keyUrl: 'https://alldebrid.com/apikeys/' }
+    realdebrid: { name: 'Real-Debrid', shortName: 'RD', keyUrl: 'https://real-debrid.com/apitoken' },
+    torbox: { name: 'TorBox', shortName: 'TB', keyUrl: 'https://torbox.app/settings' },
+    premiumize: { name: 'Premiumize', shortName: 'PM', keyUrl: 'https://www.premiumize.me/account' },
+    alldebrid: { name: 'AllDebrid', shortName: 'AD', keyUrl: 'https://alldebrid.com/apikeys/' }
 };
 
 function getDebridConfig() {
     let provider = localStorage.getItem('introhater_provider');
     let debridKey = localStorage.getItem('introhater_debridkey');
     let externalScraper = localStorage.getItem('introhater_external_scraper');
+    let proxyUrl = localStorage.getItem('introhater_proxy_url');
+    let proxyPassword = localStorage.getItem('introhater_proxy_password');
+
+    // Secondary providers: stored as JSON array [{provider, key}, ...]
+    let secondaryProviders = [];
+    try {
+        const stored = localStorage.getItem('introhater_secondary_providers');
+        if (stored) secondaryProviders = JSON.parse(stored);
+    } catch { }
 
     // Migration logic for old rdKey format
     if (!debridKey) {
@@ -308,16 +317,36 @@ function getDebridConfig() {
         }
     }
 
-    return { provider, debridKey, externalScraper };
+    return { provider, debridKey, secondaryProviders, externalScraper, proxyUrl, proxyPassword };
 }
 
-function setDebridConfig(provider, debridKey, externalScraper = '') {
+function setDebridConfig(provider, debridKey, options = {}) {
     localStorage.setItem('introhater_provider', provider);
     localStorage.setItem('introhater_debridkey', debridKey);
-    if (externalScraper) {
-        localStorage.setItem('introhater_external_scraper', externalScraper);
+
+    if (options.externalScraper) {
+        localStorage.setItem('introhater_external_scraper', options.externalScraper);
     } else {
         localStorage.removeItem('introhater_external_scraper');
+    }
+
+    if (options.proxyUrl) {
+        localStorage.setItem('introhater_proxy_url', options.proxyUrl);
+    } else {
+        localStorage.removeItem('introhater_proxy_url');
+    }
+
+    if (options.proxyPassword) {
+        localStorage.setItem('introhater_proxy_password', options.proxyPassword);
+    } else {
+        localStorage.removeItem('introhater_proxy_password');
+    }
+
+    // Secondary providers: array of {provider, key}
+    if (options.secondaryProviders && options.secondaryProviders.length > 0) {
+        localStorage.setItem('introhater_secondary_providers', JSON.stringify(options.secondaryProviders));
+    } else {
+        localStorage.removeItem('introhater_secondary_providers');
     }
 }
 
@@ -325,6 +354,9 @@ function clearDebridConfig() {
     localStorage.removeItem('introhater_provider');
     localStorage.removeItem('introhater_debridkey');
     localStorage.removeItem('introhater_external_scraper');
+    localStorage.removeItem('introhater_proxy_url');
+    localStorage.removeItem('introhater_proxy_password');
+    localStorage.removeItem('introhater_secondary_providers');
     localStorage.removeItem('introhater_rdkey'); // Clear legacy key too
 }
 

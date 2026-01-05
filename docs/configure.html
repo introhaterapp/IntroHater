@@ -70,7 +70,7 @@
 
                     <form id="config-form">
                         <div class="form-group">
-                            <label class="form-label" for="provider">Debrid Provider</label>
+                            <label class="form-label" for="provider">Primary Debrid Provider</label>
                             <select id="provider" class="form-input" style="margin-bottom: 16px;">
                                 <option value="realdebrid">Real-Debrid</option>
                                 <option value="torbox">TorBox</option>
@@ -95,27 +95,38 @@
                                 <button type="button" id="logoutBtn"
                                     class="btn btn-danger-outline d-none flex-1">Logout</button>
                             </div>
-                            <p class="text-sm mt-15" style="color: var(--text-muted);">
-                                We need your <strong>API Key</strong> to fetch streams from your debrid service.
-                            </p>
                         </div>
 
+                        <!-- Secondary Providers Section -->
+                        <div id="secondary-providers-container" class="mt-20"></div>
 
-                        <div class="form-group mb-24">
+                        <button type="button" id="addSecondaryBtn" class="btn btn-secondary w-full justify-center mt-16"
+                            style="border-style: dashed;">
+                            ➕ Add Secondary Provider
+                        </button>
+                        <p class="text-sm mt-8 text-center" style="color: var(--text-dim); font-size: 0.75rem;">
+                            Use this if your AIOstreams is configured with multiple debrid services (e.g., TorBox +
+                            Real-Debrid)
+                        </p>
+
+
+                        <div class="form-group mb-24 mt-24">
                             <label class="form-label" for="externalScraper">🌐 Stream Source (Required)</label>
                             <input type="text" id="externalScraper" class="form-input"
                                 placeholder="https://aiostreams.../manifest.json" required>
                             <div class="text-sm mt-8" style="color: var(--text-muted); font-size: 0.8rem;">
                                 <strong>Step 1:</strong> Go to <a
                                     href="https://aiostreams.elfhosted.com/stremio/configure" target="_blank"
-                                    style="color: var(--primary);">AIOstreams</a> and configure with your debrid service
+                                    style="color: var(--primary);">AIOstreams</a> and configure with your debrid
+                                service(s)
                                 + Scraper (Comet works great, torrentio is also good but has a lot of downtime).<br>
                                 <strong>Step 2:</strong> Copy your AIOstreams manifest URL and paste it above.<br>
                                 <div
-                                    style="background: rgba(239, 68, 68, 0.15); border-left: 3px solid #ef4444; padding: 8px 12px; margin-top: 10px; border-radius: 4px;">
-                                    <strong style="color: #ef4444;">⚠️ IMPORTANT:</strong> The <strong>Debrid
-                                        Provider</strong> you select above MUST match the provider you configured in
-                                    AIOstreams. Mismatched settings will cause streams to fail!
+                                    style="background: rgba(59, 130, 246, 0.15); border-left: 3px solid #3b82f6; padding: 8px 12px; margin-top: 10px; border-radius: 4px;">
+                                    <strong style="color: #3b82f6;">ℹ️ Multi-Provider:</strong> If using multiple debrid
+                                    services in AIOstreams,
+                                    add each provider above. IntroHater will automatically use the correct API key based
+                                    on stream source.
                                 </div>
                             </div>
                         </div>
@@ -181,12 +192,99 @@
 
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                // Update Get Key link when provider changes
+                let secondaryCount = 0;
+                const maxSecondary = 3;
+                const container = document.getElementById('secondary-providers-container');
+                const addBtn = document.getElementById('addSecondaryBtn');
+
+                // Create secondary provider entry
+                function createSecondaryEntry(prov = '', key = '') {
+                    if (secondaryCount >= maxSecondary) return;
+                    secondaryCount++;
+
+                    const id = secondaryCount;
+                    const usedProviders = getUsedProviders();
+
+                    const entry = document.createElement('div');
+                    entry.className = 'secondary-provider-entry';
+                    entry.dataset.id = id;
+                    entry.style.cssText = 'background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; margin-bottom: 12px;';
+
+                    // Build options excluding already used providers
+                    const providerOptions = Object.entries(DEBRID_PROVIDERS)
+                        .filter(([k]) => !usedProviders.includes(k) || k === prov)
+                        .map(([k, v]) => `<option value="${k}" ${k === prov ? 'selected' : ''}>${v.name}</option>`)
+                        .join('');
+
+                    entry.innerHTML = `
+                        <div class="flex gap-10 items-center mb-8">
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Secondary Provider</span>
+                            <button type="button" class="remove-secondary-btn" style="margin-left: auto; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;" title="Remove">&times;</button>
+                        </div>
+                        <div class="flex gap-10 mb-8">
+                            <select class="form-input secondary-provider-select" style="flex: 0 0 140px;">
+                                ${providerOptions}
+                            </select>
+                            <input type="text" class="form-input secondary-key-input" placeholder="API Key" value="${key}">
+                            <a href="${DEBRID_PROVIDERS[prov || 'realdebrid']?.keyUrl}" target="_blank" class="btn btn-secondary nowrap secondary-get-key">Get Key ↗</a>
+                        </div>
+                    `;
+
+                    container.appendChild(entry);
+
+                    // Event: update get key link
+                    entry.querySelector('.secondary-provider-select').onchange = function () {
+                        const keyUrl = DEBRID_PROVIDERS[this.value]?.keyUrl || '#';
+                        entry.querySelector('.secondary-get-key').href = keyUrl;
+                    };
+
+                    // Event: remove entry
+                    entry.querySelector('.remove-secondary-btn').onclick = function () {
+                        entry.remove();
+                        secondaryCount--;
+                        updateAddButton();
+                    };
+
+                    updateAddButton();
+                }
+
+                function getUsedProviders() {
+                    const used = [document.getElementById('provider').value];
+                    document.querySelectorAll('.secondary-provider-select').forEach(sel => {
+                        used.push(sel.value);
+                    });
+                    return used;
+                }
+
+                function updateAddButton() {
+                    if (secondaryCount >= maxSecondary || getUsedProviders().length >= Object.keys(DEBRID_PROVIDERS).length) {
+                        addBtn.style.display = 'none';
+                    } else {
+                        addBtn.style.display = '';
+                    }
+                }
+
+                function getSecondaryProviders() {
+                    const providers = [];
+                    document.querySelectorAll('.secondary-provider-entry').forEach(entry => {
+                        const prov = entry.querySelector('.secondary-provider-select')?.value;
+                        const key = entry.querySelector('.secondary-key-input')?.value?.trim();
+                        if (prov && key) {
+                            providers.push({ provider: prov, key });
+                        }
+                    });
+                    return providers;
+                }
+
+                // Update Get Key link when primary provider changes
                 document.getElementById('provider').onchange = function () {
                     const provider = this.value;
                     const keyUrl = DEBRID_PROVIDERS[provider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
                     document.getElementById('getKeyLink').href = keyUrl;
                 };
+
+                // Add secondary button
+                addBtn.onclick = () => createSecondaryEntry();
 
                 // Persistence Logic - load saved config on page load
                 (function () {
@@ -196,6 +294,7 @@
                     const savedScraper = config.externalScraper;
                     const savedProxy = config.proxyUrl;
                     const savedProxyPassword = config.proxyPassword;
+                    const savedSecondary = config.secondaryProviders || [];
 
                     document.getElementById('provider').value = savedProvider;
                     document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[savedProvider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
@@ -207,45 +306,20 @@
                     if (savedScraper) {
                         document.getElementById('externalScraper').value = savedScraper;
                     }
-                    if (savedProxy) {
-                        document.getElementById('proxyUrl').value = savedProxy;
+
+                    const proxyUrlEl = document.getElementById('proxyUrl');
+                    const proxyPasswordEl = document.getElementById('proxyPassword');
+                    if (savedProxy && proxyUrlEl) {
+                        proxyUrlEl.value = savedProxy;
                     }
-                    if (savedProxyPassword) {
-                        document.getElementById('proxyPassword').value = savedProxyPassword;
+                    if (savedProxyPassword && proxyPasswordEl) {
+                        proxyPasswordEl.value = savedProxyPassword;
                     }
 
-                    // Path-based auto-fill
-                    const parts = window.location.pathname.split('/').filter(p => p);
-                    if (parts.length >= 2 && parts[parts.length - 1] === 'configure') {
-                        const potentialConfig = parts[0];
-                        if (potentialConfig.includes(':')) {
-                            const configParts = potentialConfig.split(':');
-                            const prov = configParts[0];
-                            const key = configParts[1];
-                            const extra = configParts[2];
-                            const extra2 = configParts[3];
-                            const extra3 = configParts[4];
-
-                            if (DEBRID_PROVIDERS[prov] && key) {
-                                document.getElementById('provider').value = prov;
-                                document.getElementById('debridKey').value = key;
-                                document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[prov].keyUrl;
-
-                                const extras = [configParts[2], configParts[3], configParts[4]].filter(Boolean);
-                                extras.forEach(part => {
-                                    if (part.startsWith('s=')) {
-                                        try { document.getElementById('externalScraper').value = atob(part.substring(2)); } catch (e) { }
-                                    } else if (part.startsWith('p=')) {
-                                        try { document.getElementById('proxyUrl').value = atob(part.substring(2)); } catch (e) { }
-                                    } else if (part.startsWith('pp=')) {
-                                        try { document.getElementById('proxyPassword').value = atob(part.substring(3)); } catch (e) { }
-                                    }
-                                });
-                            }
-                        } else if (potentialConfig.length > 5) {
-                            document.getElementById('debridKey').value = potentialConfig;
-                        }
-                    }
+                    // Load secondary providers
+                    savedSecondary.forEach(s => {
+                        createSecondaryEntry(s.provider, s.key);
+                    });
                 })();
 
                 // Generate Install Link Form
@@ -258,29 +332,34 @@
                     const proxyUrl = proxyUrlEl ? proxyUrlEl.value.trim() : '';
                     const proxyPasswordEl = document.getElementById('proxyPassword');
                     const proxyPassword = proxyPasswordEl ? proxyPasswordEl.value.trim() : '';
+                    const secondaryProviders = getSecondaryProviders();
 
                     if (!key) return;
 
-                    // Save to localStorage (via helper if updated, otherwise manually here for new fields)
-                    // We need to update main.js helper or just extend the object saved
-                    const currentConfig = getDebridConfig();
-                    currentConfig.provider = provider;
-                    currentConfig.debridKey = key;
-                    currentConfig.externalScraper = scraper;
-                    currentConfig.proxyUrl = proxyUrl;
-                    currentConfig.proxyPassword = proxyPassword;
-                    localStorage.setItem('introhater_config', JSON.stringify(currentConfig));
+                    // Save to localStorage using helper
+                    setDebridConfig(provider, key, {
+                        externalScraper: scraper,
+                        proxyUrl: proxyUrl,
+                        proxyPassword: proxyPassword,
+                        secondaryProviders: secondaryProviders
+                    });
 
                     document.getElementById('logoutBtn').classList.remove('d-none');
 
-                    // Build config value: "provider:key[:s=BASE64][:p=BASE64][:pp=BASE64]"
+                    // Build config value: "provider:key[+provider2:key2][:s=BASE64][:p=BASE64][:pp=BASE64]"
                     let configValue = `${provider}:${key}`;
+
+                    // Add secondary providers with + separator
+                    secondaryProviders.forEach(s => {
+                        configValue += `+${s.provider}:${s.key}`;
+                    });
+
+                    // Add optional params
                     if (scraper) {
                         let cleanScraper = scraper.replace(/\/manifest\.json$/, '');
                         configValue += `:s=${btoa(cleanScraper)}`;
                     }
                     if (proxyUrl) {
-                        // Ensure no trailing slash
                         let cleanProxy = proxyUrl.replace(/\/$/, '');
                         configValue += `:p=${btoa(cleanProxy)}`;
                     }

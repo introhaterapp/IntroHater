@@ -72,32 +72,84 @@ function buildConfig(provider, key) {
 const parseConfig = (configStr) => {
     if (!configStr) return {};
 
-    // Config format: provider:key[:s=BASE64][:p=BASE64][:pp=BASE64]
-    const parts = configStr.split(':');
+    // Config format: provider:key[+provider2:key2][+provider3:key3][:s=BASE64][:p=BASE64][:pp=BASE64]
+    // Examples:
+    //   realdebrid:RDKEY
+    //   realdebrid:RDKEY+torbox:TBKEY
+    //   realdebrid:RDKEY+torbox:TBKEY:s=BASE64SCRAPER
 
-    // Legacy fallback or weird format
-    if (parts.length < 2) return { provider: 'realdebrid', key: configStr };
-
-    const provider = parts[0];
-    const key = parts[1];
+    // First, separate provider configs from optional params (s=, p=, pp=)
+    // Provider configs use + separator, optional params use : with prefix
 
     let scraper = null;
     let proxyUrl = null;
     let proxyPassword = null;
+    const providers = {};
 
-    // Process optional parts
-    for (let i = 2; i < parts.length; i++) {
-        const part = parts[i];
-        if (part.startsWith('s=')) {
-            try { scraper = Buffer.from(part.substring(2), 'base64').toString('utf8'); } catch { }
-        } else if (part.startsWith('p=')) {
-            try { proxyUrl = Buffer.from(part.substring(2), 'base64').toString('utf8'); } catch { }
-        } else if (part.startsWith('pp=')) {
-            try { proxyPassword = Buffer.from(part.substring(3), 'base64').toString('utf8'); } catch { }
+    // Split by : first to find optional params at the end
+    const colonParts = configStr.split(':');
+
+    // Find where optional params start (look for s=, p=, pp= prefixes)
+    let optionalStartIdx = colonParts.length;
+    for (let i = 0; i < colonParts.length; i++) {
+        const part = colonParts[i];
+        if (part.startsWith('s=') || part.startsWith('p=') || part.startsWith('pp=')) {
+            optionalStartIdx = i;
+            break;
         }
     }
 
-    return { provider, key, scraper, proxyUrl, proxyPassword };
+    // Process optional params
+    for (let i = optionalStartIdx; i < colonParts.length; i++) {
+        const part = colonParts[i];
+        if (part.startsWith('s=')) {
+            try { scraper = Buffer.from(part.substring(2), 'base64').toString('utf8'); } catch { }
+        } else if (part.startsWith('pp=')) {
+            try { proxyPassword = Buffer.from(part.substring(3), 'base64').toString('utf8'); } catch { }
+        } else if (part.startsWith('p=')) {
+            try { proxyUrl = Buffer.from(part.substring(2), 'base64').toString('utf8'); } catch { }
+        }
+    }
+
+    // Reconstruct provider config string (everything before optional params)
+    const providerConfigStr = colonParts.slice(0, optionalStartIdx).join(':');
+
+    // Split by + to get individual provider configs
+    const providerConfigs = providerConfigStr.split('+');
+
+    let primaryProvider = null;
+    let primaryKey = null;
+
+    for (const providerConfig of providerConfigs) {
+        // Each provider config is "provider:key"
+        const [prov, ...keyParts] = providerConfig.split(':');
+        const key = keyParts.join(':'); // Handle keys that might contain :
+
+        if (prov && key && DEBRID_PROVIDERS[prov.toLowerCase()]) {
+            const normalizedProv = prov.toLowerCase();
+            providers[normalizedProv] = key;
+
+            // First valid provider is primary
+            if (!primaryProvider) {
+                primaryProvider = normalizedProv;
+                primaryKey = key;
+            }
+        }
+    }
+
+    // Legacy fallback - if no valid providers found, treat entire string as RD key
+    if (!primaryProvider) {
+        return { provider: 'realdebrid', key: configStr, providers: { realdebrid: configStr }, scraper, proxyUrl, proxyPassword };
+    }
+
+    return {
+        provider: primaryProvider,
+        key: primaryKey,
+        providers,
+        scraper,
+        proxyUrl,
+        proxyPassword
+    };
 };
 
 
