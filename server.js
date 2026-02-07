@@ -57,27 +57,55 @@ const config = {
     issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
 };
 
+// Global status for diagnostics
+const oidcStatus = {
+    configured: !!(config.clientID && config.issuerBaseURL),
+    discovery: {
+        status: 'pending',
+        lastChecked: null,
+        error: null,
+        url: config.issuerBaseURL ? `${config.issuerBaseURL.replace(/\/$/, '')}/.well-known/openid-configuration` : null
+    },
+    config: {
+        hasClientId: !!config.clientID,
+        hasIssuer: !!config.issuerBaseURL,
+        hasSecret: !!process.env.TOKEN_SECRET,
+        baseURL: config.baseURL
+    }
+};
+
 // auth router attaches /login, /logout, and /callback routes to the baseURL
 if (config.clientID && config.issuerBaseURL) {
     app.use(auth(config));
     // Verify discovery endpoint asynchronously
     async function verifyOidcDiscovery(issuerBaseURL) {
+        oidcStatus.discovery.lastChecked = new Date().toISOString();
         try {
             const discoveryURL = `${issuerBaseURL.replace(/\/$/, '')}/.well-known/openid-configuration`;
             log.info({ url: discoveryURL }, 'Verifying OIDC discovery...');
             const response = await axios.get(discoveryURL, { timeout: 5000 });
             if (response.status === 200) {
                 log.info('✅ OIDC discovery successful');
+                oidcStatus.discovery.status = 'success';
+                oidcStatus.discovery.error = null;
             } else {
                 log.warn(`⚠️ OIDC discovery returned status ${response.status}`);
+                oidcStatus.discovery.status = 'warning';
+                oidcStatus.discovery.error = `HTTP ${response.status}`;
             }
         } catch (e) {
             log.error({ err: e.message }, '❌ OIDC discovery failed. OIDC login will likely fail.');
+            oidcStatus.discovery.status = 'failed';
+            oidcStatus.discovery.error = e.message;
             if (e.response) {
                 log.error({
                     status: e.response.status,
                     data: e.response.data
                 }, 'OIDC Discovery Error Details');
+                oidcStatus.discovery.details = {
+                    status: e.response.status,
+                    data: e.response.data
+                };
             }
         }
     }
@@ -140,6 +168,12 @@ app.use(express.static(path.join(__dirname, 'docs')));
 
 app.use('/api/v1', v1Routes);
 app.use('/api/keys', apiKeyRoutes);
+
+// Auth diagnostics
+app.get('/api/auth/status', (req, res) => {
+    res.json(oidcStatus);
+});
+
 app.use('/api', apiRoutes);
 
 
