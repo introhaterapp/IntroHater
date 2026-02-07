@@ -7,6 +7,7 @@ const path = require('path');
 const helmet = require('helmet');
 const hpp = require('hpp');
 const morgan = require('morgan');
+const { auth } = require('express-openid-connect');
 
 const rateLimit = require('express-rate-limit');
 const log = require('./src/utils/logger').server;
@@ -34,6 +35,8 @@ const wsTicker = require('./src/services/ws-ticker');
 
 
 const apiRoutes = require('./src/routes/api');
+const v1Routes = require('./src/routes/v1');
+const apiKeyRoutes = require('./src/routes/apiKeys');
 const hlsRoutes = require('./src/routes/hls');
 const addonRoutes = require('./src/routes/addon');
 
@@ -42,6 +45,19 @@ const addonRoutes = require('./src/routes/addon');
 const app = express();
 const PORT = SERVER.PORT;
 const PUBLIC_URL = SERVER.PUBLIC_URL || `http://127.0.0.1:${PORT}`;
+
+// OIDC Configuration
+const config = {
+    authRequired: false,
+    auth0Logout: true,
+    secret: process.env.TOKEN_SECRET || 'a_very_long_random_string_for_session_encryption',
+    baseURL: PUBLIC_URL,
+    clientID: process.env.AUTH0_CLIENT_ID,
+    issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
+};
+
+// auth router attaches /login, /logout, and /callback routes to the baseURL
+app.use(auth(config));
 
 
 app.set('trust proxy', 1);
@@ -95,8 +111,8 @@ app.use(express.static(path.join(__dirname, 'docs')));
 
 
 
-app.use('/api/v1', apiRoutes);
-
+app.use('/api/v1', v1Routes);
+app.use('/api/keys', apiKeyRoutes);
 app.use('/api', apiRoutes);
 
 
@@ -107,7 +123,15 @@ app.use('/', addonRoutes);
 
 
 
-app.get('/me', (req, res) => res.json(null));
+app.get('/api/me', (req, res) => {
+    if (req.oidc.isAuthenticated()) {
+        res.json(req.oidc.user);
+    } else {
+        res.status(401).json({ error: 'Not authenticated' });
+    }
+});
+
+app.get('/me', (req, res) => res.json(req.oidc.user || null));
 
 
 app.get('/ping', (req, res) => res.send('pong'));

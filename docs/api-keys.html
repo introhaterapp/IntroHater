@@ -4,11 +4,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IntroHater - API Keys</title>
+    <meta name="color-scheme" content="dark">
+    <title>IntroHater - API Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="stylesheet" href="css/style.css?v=8">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <style>
+        .api-key-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+        }
+
+        .key-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .key-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .key-string {
+            font-family: monospace;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .usage-bar-container {
+            width: 100%;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 8px;
+            position: relative;
+        }
+
+        .usage-bar-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.5s ease-out;
+        }
+
+        .usage-label {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .loading-shimmer {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.03) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -17,33 +111,310 @@
             <a href="/" class="logo text-gradient">
                 <img src="icon.svg" alt="Logo"> IntroHater
             </a>
-            <nav>
+            <nav id="mainNav">
                 <ul class="nav-links">
-                    <li><a href="index.html">Home</a></li>
+                    <li><a href="/">Home</a></li>
                     <li><a href="catalog.html">Catalog</a></li>
-                    <li><a href="leaderboard.html">Leaderboard</a></li>
-                    <li><a href="api.html">API</a></li>
+                    <li><a href="api.html">Docs</a></li>
+                    <li><a href="api-keys.html" class="active">Console</a></li>
                 </ul>
             </nav>
+            <div class="header-actions">
+                <div id="user-info" class="hidden">
+                    <span id="user-name" class="text-sm font-semibold mr-10"></span>
+                    <a href="/logout" class="btn btn-secondary btn-header-install">Logout</a>
+                </div>
+                <div id="login-actions" class="hidden">
+                    <a href="/login" class="btn btn-primary btn-header-install">Developer Login</a>
+                </div>
+            </div>
         </div>
     </header>
-    <main>
-        <div class="container" style="padding-top: 120px; text-align: center;">
-            <div class="glass-panel" style="padding: 40px; max-width: 600px; margin: 0 auto;">
-                <h1>No Keys Required</h1>
-                <p style="margin-top: 20px; color: var(--text-muted);">
-                    This is the <strong>NEW</strong> version of IntroHater.
-                    <br><br>
-                    It is designed for simplicity and personal use, so it does not require individual API keys or user
-                    authentication.
-                </p>
-                <div style="margin-top: 30px;">
-                    <a href="catalog.html" class="btn btn-primary">Browse Catalog</a>
-                    <a href="index.html" class="btn btn-secondary">Back Home</a>
+
+    <main class="container pt-100">
+        <div id="auth-check" class="text-center p-40">
+            <div class="loading-shimmer" style="height: 200px; width: 100%; border-radius: var(--radius);"></div>
+        </div>
+
+        <div id="dashboard-content" class="hidden">
+            <div class="section-header-lg">
+                <h1>API Console</h1>
+                <p>Manage your developer keys and track usage.</p>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="flex-col gap-24">
+                    <!-- API Keys Section -->
+                    <div class="glass-panel">
+                        <div class="flex justify-between items-center mb-24">
+                            <h3>My API Keys</h3>
+                            <button id="btn-new-key" class="btn btn-primary">Generate New Key</button>
+                        </div>
+                        <div id="keys-list" class="flex-col gap-12">
+                            <!-- Keys will be injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Usage Stats -->
+                    <div class="glass-panel">
+                        <h3>API Usage Tracking</h3>
+                        <p class="text-sm text-dim mb-24">Last 30 days of activity across all your keys.</p>
+                        <div id="usage-container" class="flex-col gap-20">
+                            <!-- Usage bars will be injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-col gap-24">
+                    <!-- Documentation Shortcut -->
+                    <div class="glass-panel">
+                        <h3>Quick Start</h3>
+                        <p class="text-sm text-dim mt-10">Our public API allows you to programmatically fetch skip
+                            segments for any video.</p>
+                        <div class="mt-20">
+                            <code
+                                style="background: var(--bg-dark); padding: 8px; border-radius: var(--radius-sm); display: block; font-size: 0.8rem; border: 1px solid var(--border);">
+                                GET /api/v1/segments/{videoId}<br>
+                                x-api-key: your_key_here
+                            </code>
+                        </div>
+                        <a href="api.html" class="btn btn-secondary w-full mt-20">Full Documentation</a>
+                    </div>
+
+                    <!-- Developer Support -->
+                    <div class="glass-panel">
+                        <h3>Support</h3>
+                        <p class="text-sm text-dim mt-10">Need help integrating IntroHater? Join our community or report
+                            issues on GitHub.</p>
+                        <a href="https://github.com/introhaterapp/IntroHater/issues" target="_blank"
+                            class="btn btn-secondary w-full mt-20">Open an Issue</a>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
+
+    <!-- New Key Modal (Simple Prompt for now) -->
+    <div id="modal-container" class="hidden"
+        style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; items-center; justify-center; align-items: center; justify-content: center;">
+        <div class="glass-panel max-w-600 w-full">
+            <h3>New API Key</h3>
+            <p class="text-sm text-dim mt-10">Give your key a name to help you identify it.</p>
+            <div class="mt-20">
+                <input type="text" id="input-key-name" class="btn btn-secondary w-full"
+                    style="background: var(--bg-dark); text-align: left;" placeholder="e.g. My Awesome App">
+            </div>
+            <div class="flex gap-12 mt-20">
+                <button id="btn-cancel-modal" class="btn btn-secondary flex-1">Cancel</button>
+                <button id="btn-create-key" class="btn btn-primary flex-1">Create Key</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Key Modal -->
+    <div id="success-modal" class="hidden"
+        style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2100; display: flex; items-center; justify-center; align-items: center; justify-content: center;">
+        <div class="glass-panel max-w-600 w-full">
+            <h3 class="text-gradient-primary">Key Generated Successfully!</h3>
+            <p class="text-sm text-dim mt-10">Copy this key now. For security reasons, you won't be able to see it
+                again.</p>
+            <div class="mt-20">
+                <div class="flex items-center gap-12">
+                    <input type="text" id="output-key-string" readonly class="btn btn-secondary flex-1"
+                        style="background: var(--bg-dark); text-align: left; font-family: monospace;">
+                    <button id="btn-copy-key" class="btn btn-secondary">Copy</button>
+                </div>
+            </div>
+            <button id="btn-close-success" class="btn btn-primary w-full mt-20">I've Saved My Key</button>
+        </div>
+    </div>
+
+    <script>
+        const UI = {
+            authCheck: document.getElementById('auth-check'),
+            dashboard: document.getElementById('dashboard-content'),
+            keysList: document.getElementById('keys-list'),
+            usageContainer: document.getElementById('usage-container'),
+            userInfo: document.getElementById('user-info'),
+            loginActions: document.getElementById('login-actions'),
+            userName: document.getElementById('user-name')
+        };
+
+        async function init() {
+            try {
+                const res = await fetch('/api/me');
+                if (res.ok) {
+                    const user = await res.json();
+                    UI.userName.textContent = user.name || user.email;
+                    showDashboard();
+                } else {
+                    showLogin();
+                }
+            } catch (e) {
+                showLogin();
+            }
+        }
+
+        function showLogin() {
+            UI.authCheck.innerHTML = `
+                <div class="glass-panel p-40">
+                    <h2 class="mb-20">Developer Access Only</h2>
+                    <p class="mb-32">You must be logged in to manage API keys and view usage statistics.</p>
+                    <a href="/login" class="btn btn-primary">Login with Google / GitHub</a>
+                </div>
+            `;
+            UI.loginActions.classList.remove('hidden');
+        }
+
+        function showDashboard() {
+            UI.authCheck.classList.add('hidden');
+            UI.dashboard.classList.remove('hidden');
+            UI.userInfo.classList.remove('hidden');
+            loadKeys();
+            loadUsage();
+        }
+
+        async function loadKeys() {
+            try {
+                const res = await fetch('/api/keys');
+                const data = await res.json();
+                UI.keysList.innerHTML = '';
+
+                if (!data.keys || data.keys.length === 0) {
+                    UI.keysList.innerHTML = '<p class="text-center p-20 text-dim">No active API keys found.</p>';
+                    return;
+                }
+
+                data.keys.forEach(key => {
+                    const el = document.createElement('div');
+                    el.className = 'api-key-item';
+                    el.innerHTML = `
+                        <div class="key-info">
+                            <span class="key-name">${key.name}</span>
+                            <span class="text-xs text-dim">Created: ${new Date(key.createdAt).toLocaleDateString()}</span>
+                            <span class="key-string">${key.partialKey}</span>
+                        </div>
+                        <button class="btn btn-danger-outline btn-revoke" data-id="${key.id}">Revoke</button>
+                    `;
+                    UI.keysList.appendChild(el);
+                });
+
+                document.querySelectorAll('.btn-revoke').forEach(btn => {
+                    btn.onclick = () => revokeKey(btn.dataset.id);
+                });
+            } catch (e) {
+                console.error('Failed to load keys', e);
+            }
+        }
+
+        async function loadUsage() {
+            try {
+                const res = await fetch('/api/keys/usage');
+                const data = await res.json();
+                UI.usageContainer.innerHTML = '';
+
+                if (!data.usage || data.usage.length === 0) {
+                    UI.usageContainer.innerHTML = '<p class="text-center p-20 text-dim">No usage data found.</p>';
+                    return;
+                }
+
+                data.usage.forEach(item => {
+                    const totalCalls = item.stats.reduce((sum, s) => sum + s.count, 0);
+                    const el = document.createElement('div');
+                    el.innerHTML = `
+                        <div class="flex justify-between items-center text-sm mb-4">
+                            <span>${item.keyName}</span>
+                            <span class="text-dim">${totalCalls} calls</span>
+                        </div>
+                        <div class="usage-bar-container">
+                            <div class="usage-bar-fill" style="width: ${Math.min(100, Math.max(5, (totalCalls / 500) * 100))}%"></div>
+                            <span class="usage-label">${totalCalls} / 5,000</span>
+                        </div>
+                    `;
+                    UI.usageContainer.appendChild(el);
+                });
+            } catch (e) {
+                console.error('Failed to load usage', e);
+            }
+        }
+
+        async function createKey() {
+            const name = document.getElementById('input-key-name').value.trim();
+            if (!name) return alert('Please enter a key name');
+
+            const btn = document.getElementById('btn-create-key');
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+
+            try {
+                const res = await fetch('/api/keys', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, permissions: ['read:segments', 'read:stats'] })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('modal-container').classList.add('hidden');
+                    document.getElementById('output-key-string').value = data.apiKey.key;
+                    document.getElementById('success-modal').classList.remove('hidden');
+                    loadKeys();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Failed to generate key');
+                }
+            } catch (e) {
+                alert('Server error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Key';
+            }
+        }
+
+        async function revokeKey(id) {
+            if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) return;
+
+            try {
+                const res = await fetch(`/api/keys/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadKeys();
+                    loadUsage();
+                } else {
+                    alert('Failed to revoke key');
+                }
+            } catch (e) {
+                alert('Server error');
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('btn-new-key').onclick = () => {
+            document.getElementById('modal-container').classList.remove('hidden');
+            document.getElementById('input-key-name').focus();
+        };
+
+        document.getElementById('btn-cancel-modal').onclick = () => {
+            document.getElementById('modal-container').classList.add('hidden');
+        };
+
+        document.getElementById('btn-create-key').onclick = createKey;
+
+        document.getElementById('btn-copy-key').onclick = () => {
+            const input = document.getElementById('output-key-string');
+            input.select();
+            document.execCommand('copy');
+            document.getElementById('btn-copy-key').textContent = 'Copied!';
+            setTimeout(() => {
+                document.getElementById('btn-copy-key').textContent = 'Copy';
+            }, 2000);
+        };
+
+        document.getElementById('btn-close-success').onclick = () => {
+            document.getElementById('success-modal').classList.add('hidden');
+        };
+
+        init();
+    </script>
 </body>
 
 </html>

@@ -12,16 +12,16 @@ const requireAuth = (req, res, next) => {
 
 
 const requireAdmin = (req, res, next) => {
-    
+
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(email => email.trim());
-    
-    
+
+
     const adminGithubIds = (process.env.ADMIN_GITHUB_IDS || '').split(',').map(id => id.trim());
     const githubId = req.oidc?.user?.sub?.split('|')[1];
-    
-    
-    if (!req.oidc || !req.oidc.isAuthenticated() || 
-        !req.oidc.user || 
+
+
+    if (!req.oidc || !req.oidc.isAuthenticated() ||
+        !req.oidc.user ||
         !(adminEmails.includes(req.oidc.user.email) || adminGithubIds.includes(githubId))) {
         return res.status(403).json({ error: 'Admin access required' });
     }
@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
     try {
         const userId = req.oidc.user.sub;
         const keys = await apiKeyService.getKeysByUser(userId);
-        
+
         const sanitizedKeys = keys.map(key => ({
             id: key._id,
             name: key.name,
@@ -46,11 +46,38 @@ router.get('/', async (req, res) => {
             isActive: key.isActive,
             partialKey: `${key.key.substring(0, 4)}...${key.key.substring(key.key.length - 4)}`
         }));
-        
+
         res.json({ keys: sanitizedKeys });
     } catch (error) {
         console.error('Error retrieving API keys:', error);
         res.status(500).json({ error: 'Failed to retrieve API keys' });
+    }
+});
+
+
+router.get('/usage', async (req, res) => {
+    try {
+        const userId = req.oidc.user.sub;
+        const { startDate, endDate } = req.query;
+
+        // Get all keys for this user
+        const keys = await apiKeyService.getKeysByUser(userId);
+
+        // Fetch usage for each key
+        const usagePromises = keys.map(async (key) => {
+            const stats = await apiKeyService.getUsageStats(key._id, startDate, endDate);
+            return {
+                keyId: key._id,
+                keyName: key.name,
+                stats
+            };
+        });
+
+        const results = await Promise.all(usagePromises);
+        res.json({ usage: results });
+    } catch (error) {
+        console.error('Error retrieving user API usage:', error);
+        res.status(500).json({ error: 'Failed to retrieve usage statistics' });
     }
 });
 
@@ -90,15 +117,15 @@ router.delete('/:id', async (req, res) => {
     try {
         const userId = req.oidc.user.sub;
         const keyId = req.params.id;
-        
-        
+
+
         const keys = await apiKeyService.getKeysByUser(userId);
         const keyBelongsToUser = keys.some(key => key._id.toString() === keyId);
-        
+
         if (!keyBelongsToUser) {
             return res.status(403).json({ error: 'You do not have permission to revoke this API key' });
         }
-        
+
         const revoked = await apiKeyService.revokeKey(keyId);
         if (revoked) {
             res.json({ message: 'API key revoked successfully' });
@@ -117,11 +144,11 @@ router.delete('/:id', async (req, res) => {
 router.get('/admin/all', requireAdmin, async (req, res) => {
     try {
         const keys = await apiKeyService.getKeysWithUserInfo();
-        
-        res.json({ 
+
+        res.json({
             keys: keys.map(key => ({
                 ...key,
-                _id: key._id, 
+                _id: key._id,
                 userName: key.userName || key.userEmail || key.userId,
                 lastUsed: key.lastUsed || null
             }))
@@ -149,7 +176,7 @@ router.delete('/admin/:id', requireAdmin, async (req, res) => {
     try {
         const keyId = req.params.id;
         const revoked = await apiKeyService.revokeKey(keyId);
-        
+
         if (revoked) {
             res.json({ message: 'API key revoked successfully' });
         } else {
