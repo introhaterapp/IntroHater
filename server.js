@@ -2,6 +2,7 @@
 
 require('dotenv').config();
 const express = require('express');
+const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
@@ -57,7 +58,33 @@ const config = {
 };
 
 // auth router attaches /login, /logout, and /callback routes to the baseURL
-app.use(auth(config));
+if (config.clientID && config.issuerBaseURL) {
+    app.use(auth(config));
+    // Verify discovery endpoint asynchronously
+    async function verifyOidcDiscovery(issuerBaseURL) {
+        try {
+            const discoveryURL = `${issuerBaseURL.replace(/\/$/, '')}/.well-known/openid-configuration`;
+            log.info({ url: discoveryURL }, 'Verifying OIDC discovery...');
+            const response = await axios.get(discoveryURL, { timeout: 5000 });
+            if (response.status === 200) {
+                log.info('✅ OIDC discovery successful');
+            } else {
+                log.warn(`⚠️ OIDC discovery returned status ${response.status}`);
+            }
+        } catch (e) {
+            log.error({ err: e.message }, '❌ OIDC discovery failed. OIDC login will likely fail.');
+            if (e.response) {
+                log.error({
+                    status: e.response.status,
+                    data: e.response.data
+                }, 'OIDC Discovery Error Details');
+            }
+        }
+    }
+    verifyOidcDiscovery(config.issuerBaseURL);
+} else {
+    log.info('Auth0 (OIDC) not configured. API Console auth will be disabled.');
+}
 
 
 app.set('trust proxy', 1);
@@ -124,14 +151,14 @@ app.use('/', addonRoutes);
 
 
 app.get('/api/me', (req, res) => {
-    if (req.oidc.isAuthenticated()) {
+    if (req.oidc && req.oidc.isAuthenticated()) {
         res.json(req.oidc.user);
     } else {
         res.status(401).json({ error: 'Not authenticated' });
     }
 });
 
-app.get('/me', (req, res) => res.json(req.oidc.user || null));
+app.get('/me', (req, res) => res.json(req.oidc ? (req.oidc.user || null) : null));
 
 
 app.get('/ping', (req, res) => res.send('pong'));

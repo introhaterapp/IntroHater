@@ -77,6 +77,8 @@ const OPTIONAL_ENV_VARS = [
     'PUBLIC_URL',
     'OMDB_API_KEY',
     'ANIME_SKIP_CLIENT_ID',
+    'AUTH0_CLIENT_ID',
+    'AUTH0_ISSUER_BASE_URL',
 ];
 
 
@@ -110,6 +112,24 @@ function validateEnv() {
         console.error('\n   Please set these in your .env file or environment.');
         console.error('   See .env.example for reference.\n');
         process.exit(1);
+    }
+
+    // Additional validation for OIDC
+    const issuer = process.env.AUTH0_ISSUER_BASE_URL;
+    const clientId = process.env.AUTH0_CLIENT_ID;
+    if (clientId && issuer) {
+        try {
+            const url = new URL(issuer);
+            if (url.protocol !== 'https:') {
+                console.warn(`⚠️  AUTH0_ISSUER_BASE_URL should use HTTPS: ${issuer}`);
+            }
+            // Check if it's likely a misconfigured local URL
+            if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname.includes('introhater.com')) {
+                console.warn(`⚠️  AUTH0_ISSUER_BASE_URL looks like a local or app-specific URL: ${issuer}. It should typically be your Auth0 domain (e.g., https://dev-xxxx.us.auth0.com).`);
+            }
+        } catch {
+            console.error(`❌ INVALID AUTH0_ISSUER_BASE_URL: ${issuer}. Must be a valid URL.`);
+        }
     }
 
     console.log('✅ Environment validation passed');
