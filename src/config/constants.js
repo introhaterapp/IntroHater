@@ -127,6 +127,10 @@ function validateEnv() {
             if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname.includes('introhater.com')) {
                 console.warn(`⚠️  AUTH0_ISSUER_BASE_URL looks like a local or app-specific URL: ${issuer}. It should typically be your Auth0 domain (e.g., https://dev-xxxx.us.auth0.com).`);
             }
+            // Check for common incorrect suffixes
+            if (url.pathname !== '/' && url.pathname !== '') {
+                console.warn(`⚠️  AUTH0_ISSUER_BASE_URL contains a path suffix (${url.pathname}). It should usually just be the base domain (e.g., https://dev-xxxx.us.auth0.com).`);
+            }
         } catch {
             console.error(`❌ INVALID AUTH0_ISSUER_BASE_URL: ${issuer}. Must be a valid URL.`);
         }
