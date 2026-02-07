@@ -12,4 +12,4 @@ Disallow: /api/
 Disallow: /admin.html
 Disallow: /admin-keys.html
 Disallow: /api-keys.html
-Disallow: /swagger-ui.html
+Disallow: /api.html
