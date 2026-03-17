@@ -150,6 +150,11 @@ const TMDB = {
     BASE_URL: 'https://api.themoviedb.org/3'
 };
 
+const ANIME_SKIP = {
+    CLIENT_ID: process.env.ANIME_SKIP_CLIENT_ID || 'th2oogUKrgOf1J8wMSIUPV0IpBMsLOJi',
+    BASE_URL: 'https://api.anime-skip.com/graphql'
+};
+
 const INTRO_DB = {
     BASE_URL: 'https://api.introdb.app'
 };
@@ -193,6 +198,7 @@ module.exports = {
     validateEnv,
     OMDB,
     TMDB,
+    ANIME_SKIP,
     INTRO_DB,
     SERVER,
     STATS,
