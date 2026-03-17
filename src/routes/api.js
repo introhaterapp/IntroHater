@@ -37,12 +37,23 @@ router.use('/', submissionsRoutes);
 
 router.get('/search', async (req, res) => {
     const { q } = req.query;
+
+    const dataProvider = process.env.DATA_PROVIDER || 'OMDB';
     const omdbKey = process.env.OMDB_API_KEY;
-    if (!q || !omdbKey) return res.json({ Search: [] });
+    const tmdbKey = process.env.TMDB_API_KEY;
+
+    if (!q || !dataProvider) return res.json({ Search: [] });
 
     try {
-        const response = await axios.get(`https://www.omdbapi.com/?s=${encodeURIComponent(q)}&apikey=${omdbKey}`);
-        res.json(response.data);
+        if (dataProvider === 'OMDB' && omdbKey) {
+            const response = await axios.get(`https://www.omdbapi.com/?s=${encodeURIComponent(q)}&apikey=${omdbKey}`);
+            res.json(response.data);
+        }
+        
+        if (dataProvider === 'TMDB' && tmdbKey) {
+            const response = await axios.get(`https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(q)}&api_key=${tmdbKey}`);
+            res.json(response.data);
+        }
     } catch {
         res.status(500).json({ error: "Search failed" });
     }

@@ -76,6 +76,7 @@ const OPTIONAL_ENV_VARS = [
     'PORT',
     'PUBLIC_URL',
     'OMDB_API_KEY',
+    'TMDB_API_KEY',
     'ANIME_SKIP_CLIENT_ID',
     'AUTH0_CLIENT_ID',
     'AUTH0_ISSUER_BASE_URL',
@@ -144,9 +145,9 @@ const OMDB = {
     BASE_URL: 'https://www.omdbapi.com'
 };
 
-const ANIME_SKIP = {
-    CLIENT_ID: process.env.ANIME_SKIP_CLIENT_ID || 'th2oogUKrgOf1J8wMSIUPV0IpBMsLOJi',
-    BASE_URL: 'https://api.anime-skip.com/graphql'
+const TMDB = {
+    API_KEY: process.env.TMDB_API_KEY,
+    BASE_URL: 'https://api.themoviedb.org/3'
 };
 
 const INTRO_DB = {
@@ -191,7 +192,7 @@ module.exports = {
     OPTIONAL_ENV_VARS,
     validateEnv,
     OMDB,
-    ANIME_SKIP,
+    TMDB,
     INTRO_DB,
     SERVER,
     STATS,
