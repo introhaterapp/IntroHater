@@ -396,11 +396,19 @@ async function initServiceStatus() {
                 const card = document.createElement('div');
                 card.className = `status-card status-${service.status}`;
 
-                let statusLabel = service.status;
-                if (service.status === 'online') statusLabel = 'Online';
-                else if (service.status === 'blocked') statusLabel = 'HTTP 403 (Blocked)';
-                else if (service.status === 'offline') statusLabel = 'Offline';
-                else if (service.status === 'degraded') statusLabel = 'Degraded';
+                const statusLabels = {
+                    online: 'Online',
+                    degraded: 'Degraded',
+                    offline: 'Offline',
+                    unreachable: 'Unreachable from server',
+                    timeout: 'Timed out from server',
+                    blocked: 'CDN blocked from server',
+                    unknown: 'Checking...'
+                };
+                const statusLabel = statusLabels[service.status] || service.status;
+                const detailText = service.detail && service.status !== 'online'
+                    ? `<span class="status-detail">${service.detail}</span>`
+                    : '';
 
                 card.innerHTML = `
                     <div class="status-header">
@@ -411,6 +419,7 @@ async function initServiceStatus() {
                         <span class="status-label">${statusLabel}</span>
                         ${service.latency ? `<span class="status-latency">${service.latency}ms</span>` : ''}
                     </div>
+                    ${detailText}
                 `;
                 statusGrid.appendChild(card);
             });

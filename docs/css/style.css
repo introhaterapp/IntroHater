@@ -2266,13 +2266,25 @@ body.modal-open {
     color: #f59e0b;
 }
 
-.status-blocked .status-indicator {
+.status-blocked .status-indicator,
+.status-unreachable .status-indicator,
+.status-timeout .status-indicator {
     background: #8b5cf6;
     box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
 }
 
-.status-blocked .status-label {
+.status-blocked .status-label,
+.status-unreachable .status-label,
+.status-timeout .status-label {
     color: #8b5cf6;
+}
+
+.status-detail {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    line-height: 1.3;
 }
 
 .status-loading {
