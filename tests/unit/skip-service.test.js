@@ -200,7 +200,8 @@ describe('Skip Service', () => {
 
         it('should reject invalid times', async () => {
             skipService = await loadService();
-            await expect(skipService.addSkipSegment('tt12345:1:1', -5, 20)).rejects.toThrow();
+            const result = await skipService.addSkipSegment('tt12345:1:1', -5, 20);
+            expect(result).toBeNull();
         });
     });
 

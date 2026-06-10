@@ -1,6 +1,7 @@
 const hlsProxy = require('../../src/services/hls-proxy');
 const axios = require('axios');
 const child_process = require('child_process');
+const cacheService = require('../../src/services/cache-service');
 const { EventEmitter } = require('events');
 
 jest.mock('axios');
@@ -9,6 +10,7 @@ jest.mock('child_process');
 describe('HLS Proxy', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        cacheService._probeCache.clear();
     });
 
     describe('generateSmartManifest', () => {
@@ -31,7 +33,7 @@ describe('HLS Proxy', () => {
             });
 
             const details = await hlsProxy.getStreamDetails('http://orig.mp4');
-            expect(details).toEqual({ finalUrl: 'http://final.mp4', contentLength: 123456 });
+            expect(details).toEqual({ finalUrl: 'http://final.mp4', contentLength: 123456, duration: null });
         });
 
         it('should gracefully handle 404s/network errors', async () => {
@@ -39,7 +41,7 @@ describe('HLS Proxy', () => {
 
             const details = await hlsProxy.getStreamDetails('http://orig.mp4');
 
-            expect(details).toEqual({ finalUrl: 'http://orig.mp4', contentLength: null });
+            expect(details).toEqual({ finalUrl: 'http://orig.mp4', contentLength: null, duration: null });
         });
     });
 
