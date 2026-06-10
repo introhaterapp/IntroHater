@@ -2,6 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 
 const skipService = require('../services/skip-service');
 const catalogService = require('../services/catalog');
@@ -9,6 +10,7 @@ const log = require('../utils/logger').api;
 const scraperHealth = require('../services/scraper-health');
 const swaggerSpec = require('../config/swagger-config');
 const { searchWithProvider } = require('../utils/data-provider');
+const { verifyDebridKey, getProvider } = require('../middleware/debridAuth');
 
 const statsRoutes = require('./stats');
 const moderationRoutes = require('./moderation');
@@ -33,6 +35,60 @@ router.use('/', moderationRoutes);
 router.use('/', submissionsRoutes);
 
 
+
+
+router.post('/validate-config', async (req, res) => {
+    const { provider = 'realdebrid', debridKey, scraperUrl } = req.body || {};
+
+    const checks = {
+        debrid: { ok: false, message: 'Debrid API key required' },
+        scraper: { ok: false, message: 'Stream source URL required' }
+    };
+
+    if (debridKey) {
+        const providerConfig = getProvider(provider);
+        const valid = await verifyDebridKey(provider, debridKey);
+        checks.debrid = valid
+            ? { ok: true, message: `${providerConfig?.name || 'Debrid'} API key verified` }
+            : { ok: false, message: `Invalid ${providerConfig?.name || 'debrid'} API key` };
+    }
+
+    if (scraperUrl) {
+        try {
+            let url = scraperUrl.trim();
+            if (!url.startsWith('http')) {
+                checks.scraper = { ok: false, message: 'Stream source must be an https URL' };
+            } else {
+                if (!url.endsWith('/manifest.json')) {
+                    url = url.replace(/\/$/, '') + '/manifest.json';
+                }
+                const response = await axios.get(url, { timeout: 8000 });
+                const manifest = response.data;
+                if (manifest && (manifest.id || manifest.name)) {
+                    checks.scraper = {
+                        ok: true,
+                        message: `Connected to ${manifest.name || manifest.id}`
+                    };
+                } else {
+                    checks.scraper = {
+                        ok: false,
+                        message: 'URL responded but does not look like a Stremio addon manifest'
+                    };
+                }
+            }
+        } catch {
+            checks.scraper = {
+                ok: false,
+                message: 'Could not reach stream source — check your AIOstreams manifest URL'
+            };
+        }
+    }
+
+    res.json({
+        valid: checks.debrid.ok && checks.scraper.ok,
+        checks
+    });
+});
 
 
 router.get('/search', async (req, res) => {

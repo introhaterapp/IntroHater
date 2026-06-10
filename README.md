@@ -16,7 +16,7 @@
 <br/>
 
 <!-- Premium Badge Collection -->
-[![Version](https://img.shields.io/badge/version-1.0.0-6366f1?style=for-the-badge&logo=semver&logoColor=white)](https://github.com/introhaterapp/IntroHater/releases)
+[![Version](https://img.shields.io/badge/version-2.1.0-6366f1?style=for-the-badge&logo=semver&logoColor=white)](https://github.com/introhaterapp/IntroHater/releases)
 [![Stremio](https://img.shields.io/badge/Stremio-Addon-7B2BF9?style=for-the-badge&logo=stremio&logoColor=white)](https://stremio.com)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
 
@@ -216,7 +216,13 @@ flowchart LR
 
 ### For Users
 
-**One-click installation** — no technical setup required:
+**Before you start**, you need:
+
+1. **[Stremio](https://www.stremio.com/)** installed (desktop, mobile, or TV)
+2. A **debrid** account (Real-Debrid, TorBox, Premiumize, or AllDebrid)
+3. **[AIOstreams](https://aiostreams.elfhosted.com/stremio/configure)** configured with your debrid service + a scraper (Comet recommended)
+
+IntroHater sits on top of those — it adds intro skip to streams AIOstreams finds. It is not a standalone scraper.
 
 <div align="center">
 
@@ -224,7 +230,9 @@ flowchart LR
 
 </div>
 
-Simply visit **[introhater.com](https://introhater.com)** → Configure your settings → Install to Stremio
+**Install flow:** Visit **[introhater.com/configure](https://introhater.com/configure.html)** → paste debrid key + AIOstreams URL → validate → install to Stremio
+
+**On Android TV / Fire Stick (MKV torrents):** pick the **Direct** stream for playback; use **Skip** on desktop for auto-skip.
 
 ---
 
