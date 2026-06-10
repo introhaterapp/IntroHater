@@ -15,7 +15,7 @@
         rel="stylesheet">
 
 
-    <link rel="stylesheet" href="css/style.css?v=7">
+    <link rel="stylesheet" href="css/style.css?v=8">
 
 
     <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -25,10 +25,14 @@
 
 
     <meta property="og:type" content="website">
+    <meta property="og:url" content="https://introhater.com/">
     <meta property="og:title" content="IntroHater - Ultimate Stremio Skip Addon">
     <meta property="og:description"
         content="The most advanced auto-skip addon for Stremio. Skip intros, outros, and credits automatically.">
-    <meta property="og:image" content="/icon.svg">
+    <meta property="og:image" content="https://introhater.com/selectstream-targetmeansskipenabled.png">
+    <meta property="og:image:alt" content="IntroHater skip stream selected in Stremio">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://introhater.com/selectstream-targetmeansskipenabled.png">
     <meta name="description"
         content="The most advanced auto-skip addon for Stremio. Skip intros, outros, and credits automatically. Community powered.">
     <script src="js/main.js?v=4" defer></script>
@@ -137,6 +141,13 @@
                     </a>
                 </div>
 
+                <div class="hero-visual reveal-on-scroll">
+                    <div class="hero-screenshot-frame">
+                        <img src="selectstream-targetmeansskipenabled.png"
+                            alt="IntroHater skip-enabled stream selected in Stremio" loading="lazy" width="1200"
+                            height="675">
+                    </div>
+                </div>
 
                 <div class="stats-bar reveal-on-scroll">
                     <div class="stat-item">
@@ -158,6 +169,25 @@
                     <div class="stat-item">
                         <div id="stat-saved" class="stat-value-sm">...</div>
                         <div class="stat-label-sm">Time Saved</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section how-it-works">
+            <div class="container">
+                <div class="steps-row reveal-on-scroll">
+                    <div class="step-item">
+                        <span class="step-num">1</span>
+                        <span>Configure with your debrid key and AIOstreams URL</span>
+                    </div>
+                    <div class="step-item">
+                        <span class="step-num">2</span>
+                        <span>Install the addon to Stremio in one click</span>
+                    </div>
+                    <div class="step-item">
+                        <span class="step-num">3</span>
+                        <span>Pick a skip-enabled stream and enjoy</span>
                     </div>
                 </div>
             </div>
@@ -189,21 +219,27 @@
 
                 <div class="grid-3">
                     <div class="card">
-                        <div class="feature-icon">⚡</div>
+                        <div class="feature-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                        </div>
                         <h3>Instant Processing</h3>
                         <p>Skips intros cleanly without buffering or delay. The addon pre-fetches segment data for
                             seamless playback.</p>
                     </div>
 
                     <div class="card">
-                        <div class="feature-icon">🧠</div>
+                        <div class="feature-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2z"/><path d="M9 21h6"/><path d="M10 17v1"/><path d="M14 17v1"/></svg>
+                        </div>
                         <h3>Smart Recognition</h3>
                         <p>Combines external and user-submitted data to ensure accurate start and end times for any
                             show.</p>
                     </div>
 
                     <div class="card">
-                        <div class="feature-icon">🛡️</div>
+                        <div class="feature-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
                         <h3>Privacy Focused</h3>
                         <p>Open source and transparent. No tracking of your personal viewing habits, ever.</p>
                     </div>
