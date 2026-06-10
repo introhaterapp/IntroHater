@@ -19,12 +19,16 @@ describe('Catalog Service', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        
+        delete process.env.DATA_PROVIDER;
+        delete process.env.OMDB_API_KEY;
+        delete process.env.TMDB_API_KEY;
+
         catalogService = require('../../src/services/catalog');
     });
 
     describe('fetchMetadata', () => {
         it('should fetch metadata from OMDB', async () => {
+            process.env.DATA_PROVIDER = 'OMDB';
             process.env.OMDB_API_KEY = 'test-key';
             axios.get.mockResolvedValueOnce({
                 data: {
@@ -42,7 +46,36 @@ describe('Catalog Service', () => {
                 Year: '2008',
                 Poster: 'https://example.com/poster.jpg'
             });
-            expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('omdbapi.com'));
+            expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('omdbapi.com'), expect.any(Object));
+        });
+
+        it('should fetch TV metadata from TMDB', async () => {
+            process.env.DATA_PROVIDER = 'TMDB';
+            process.env.TMDB_API_KEY = 'test-key';
+            axios.get.mockResolvedValueOnce({
+                data: {
+                    movie_results: [],
+                    tv_results: [{
+                        name: 'Breaking Bad',
+                        first_air_date: '2008-01-20',
+                        poster_path: '/tv.jpg'
+                    }]
+                }
+            });
+
+            const result = await catalogService.fetchMetadata('tt0903747');
+
+            expect(result).toEqual({
+                Title: 'Breaking Bad',
+                Year: '2008',
+                Poster: 'https://image.tmdb.org/t/p/w500/tv.jpg'
+            });
+            expect(axios.get).toHaveBeenCalledWith(
+                expect.stringContaining('api.themoviedb.org/3/find/tt0903747'),
+                expect.objectContaining({
+                    params: expect.objectContaining({ external_source: 'imdb_id' })
+                })
+            );
         });
 
         it('should return fallback data if all lookups fail', async () => {
@@ -66,6 +99,7 @@ describe('Catalog Service', () => {
 
         it('should register a new show with metadata', async () => {
             mockCatalogRepository.findByImdbId.mockResolvedValue(null);
+            process.env.DATA_PROVIDER = 'OMDB';
             process.env.OMDB_API_KEY = 'test-key';
             axios.get.mockResolvedValueOnce({
                 data: {

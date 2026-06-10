@@ -75,12 +75,15 @@ const REQUIRED_ENV_VARS = [
 const OPTIONAL_ENV_VARS = [
     'PORT',
     'PUBLIC_URL',
+    'DATA_PROVIDER',
     'OMDB_API_KEY',
     'TMDB_API_KEY',
     'ANIME_SKIP_CLIENT_ID',
     'AUTH0_CLIENT_ID',
     'AUTH0_ISSUER_BASE_URL',
 ];
+
+const DATA_PROVIDERS = ['OMDB', 'TMDB'];
 
 
 function validateEnv() {
@@ -106,6 +109,10 @@ function validateEnv() {
         console.warn(`⚠️  Optional environment variables not set: ${warnings.join(', ')}`);
     }
 
+    const dataProvider = (process.env.DATA_PROVIDER || 'OMDB').toUpperCase();
+    if (process.env.DATA_PROVIDER && !DATA_PROVIDERS.includes(dataProvider)) {
+        console.warn(`⚠️  Invalid DATA_PROVIDER "${process.env.DATA_PROVIDER}", defaulting to OMDB`);
+    }
 
     if (missing.length > 0) {
         console.error('\n❌ FATAL: Missing required environment variables:');
@@ -200,6 +207,7 @@ module.exports = {
     REQUIRED_ENV_VARS,
     OPTIONAL_ENV_VARS,
     validateEnv,
+    DATA_PROVIDERS,
     OMDB,
     TMDB,
     ANIME_SKIP,

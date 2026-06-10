@@ -1,6 +1,7 @@
 const axios = require('axios');
 const catalogRepository = require('../repositories/catalog.repository');
 const log = require('../utils/logger').catalog;
+const { fetchMetadataFromProvider } = require('../utils/data-provider');
 
 async function ensureInit() {
     await catalogRepository.ensureInit();
@@ -8,44 +9,12 @@ async function ensureInit() {
 
 
 async function fetchMetadata(imdbId) {
-    const dataProvider = process.env.DATA_PROVIDER || 'OMDB';
-    const omdbKey = process.env.OMDB_API_KEY;
-    const tmdbKey = process.env.TMDB_API_KEY;
     let data = null;
 
-    if (!dataProvider) {
-        log.error({ imdbId }, 'DATA_PROVIDER not set');
-    }
-
-    if (dataProvider === 'OMDB' && omdbKey) {
-        try {
-            const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${omdbKey}`);
-            if (response.data && response.data.Response !== "False") {
-                data = {
-                    Title: response.data.Title,
-                    Year: response.data.Year,
-                    Poster: response.data.Poster !== "N/A" ? response.data.Poster : null
-                };
-            }
-        } catch (error) {
-            log.error({ err: error.message }, 'OMDB Error');
-        }
-    }
-
-    if (dataProvider === 'TMDB' && tmdbKey) {
-        try {
-            const response = await axios.get(`https://api.themoviedb.org/3/find/${imdbId}?api_key=${tmdbKey}&language=en-US&external_source=imdb_id`);
-            if (response.data && response.data.movie_results.length > 0) {
-                const movie = response.data.movie_results[0];
-                data = {
-                    Title: movie.title,
-                    Year: movie.release_date ? movie.release_date.substring(0, 4) : "????",
-                    Poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null
-                };
-            }
-        } catch (error) {
-            log.error({ err: error.message }, 'TMDB Error');
-        }
+    try {
+        data = await fetchMetadataFromProvider(imdbId);
+    } catch (error) {
+        log.error({ err: error.message, imdbId }, 'Metadata provider error');
     }
 
 

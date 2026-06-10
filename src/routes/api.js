@@ -2,13 +2,13 @@
 
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
 
 const skipService = require('../services/skip-service');
 const catalogService = require('../services/catalog');
 const log = require('../utils/logger').api;
 const scraperHealth = require('../services/scraper-health');
 const swaggerSpec = require('../config/swagger-config');
+const { searchWithProvider } = require('../utils/data-provider');
 
 const statsRoutes = require('./stats');
 const moderationRoutes = require('./moderation');
@@ -37,23 +37,11 @@ router.use('/', submissionsRoutes);
 
 router.get('/search', async (req, res) => {
     const { q } = req.query;
-
-    const dataProvider = process.env.DATA_PROVIDER || 'OMDB';
-    const omdbKey = process.env.OMDB_API_KEY;
-    const tmdbKey = process.env.TMDB_API_KEY;
-
-    if (!q || !dataProvider) return res.json({ Search: [] });
+    if (!q) return res.json({ Search: [] });
 
     try {
-        if (dataProvider === 'OMDB' && omdbKey) {
-            const response = await axios.get(`https://www.omdbapi.com/?s=${encodeURIComponent(q)}&apikey=${omdbKey}`);
-            res.json(response.data);
-        }
-        
-        if (dataProvider === 'TMDB' && tmdbKey) {
-            const response = await axios.get(`https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(q)}&api_key=${tmdbKey}`);
-            res.json(response.data);
-        }
+        const results = await searchWithProvider(q);
+        res.json(results);
     } catch {
         res.status(500).json({ error: "Search failed" });
     }
