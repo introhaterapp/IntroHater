@@ -2282,6 +2282,27 @@ body.modal-open {
     padding: 20px;
 }
 
+.status-error {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #ef4444;
+    padding: 20px;
+    font-size: 0.9rem;
+}
+
+#login-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    padding: 20px;
+}
+
 .announcement-banner {
     position: relative;
     padding: 12px 48px 12px 20px;

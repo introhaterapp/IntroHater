@@ -2,17 +2,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const header = document.querySelector('header');
 
-    window.addEventListener('scroll', () => {
-        if (window.scrollY > 20) {
-            header.style.background = 'rgba(9, 9, 11, 0.85)';
-            header.style.borderBottom = '1px solid rgba(255, 255, 255, 0.1)';
-            header.style.boxShadow = '0 10px 30px -10px rgba(0, 0, 0, 0.5)';
-        } else {
-            header.style.background = 'transparent';
-            header.style.borderBottom = '1px solid transparent';
-            header.style.boxShadow = 'none';
-        }
-    });
+    if (header) {
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 20) {
+                header.style.background = 'rgba(9, 9, 11, 0.85)';
+                header.style.borderBottom = '1px solid rgba(255, 255, 255, 0.1)';
+                header.style.boxShadow = '0 10px 30px -10px rgba(0, 0, 0, 0.5)';
+            } else {
+                header.style.background = 'rgba(9, 9, 11, 0.8)';
+                header.style.borderBottom = '1px solid rgba(255, 255, 255, 0.08)';
+                header.style.boxShadow = 'none';
+            }
+        });
+    }
 
 
     const menuBtn = document.getElementById('menuToggle');

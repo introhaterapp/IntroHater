@@ -15,9 +15,9 @@
 
 
     <link rel="stylesheet" href="css/style.css?v=7">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <meta name="theme-color" content="#6366f1">
     <script src="js/main.js" defer></script>
-</head>
-
 </head>
 
 <body>
@@ -43,6 +43,7 @@
                     <li><a href="catalog.html">Catalog</a></li>
                     <li><a href="leaderboard.html" class="active">Leaderboard</a></li>
                     <li><a href="contribute.html">Contribute</a></li>
+                    <li><a href="api.html">Docs</a></li>
                     <li><a href="profile.html">Profile</a></li>
                     <li><a href="https://github.com/introhaterapp/IntroHater" target="_blank">GitHub</a></li>
                 </ul>
@@ -87,7 +88,7 @@
                             </thead>
                             <tbody id="leaderboard-body">
                                 <tr>
-                                    <td colspan="4" style="text-align: center; padding: 40px;">Loading data...</td>
+                                    <td colspan="5" style="text-align: center; padding: 40px;">Loading data...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -139,8 +140,6 @@
         </div>
     </footer>
 
-
-    </footer>
     <script>
         let currentTab = 'segments';
         let leaderboardData = null;
@@ -157,7 +156,7 @@
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('leaderboard-body').innerHTML = `
-                    <tr><td colspan="4" style="text-align: center; padding: 40px;">Failed to load data.</td></tr>
+                    <tr><td colspan="5" style="text-align: center; padding: 40px;">Failed to load data.</td></tr>
                 `;
             }
         }
@@ -175,9 +174,15 @@
         }
 
         function displayLeaderboard(type) {
-            if (!leaderboardData?.users) return;
-
             const tbody = document.getElementById('leaderboard-body');
+            if (!leaderboardData?.users?.length) {
+                tbody.innerHTML = `
+                    <tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        No contributors yet. Be the first on the <a href="contribute.html" style="color: var(--primary);">Contribute</a> page!
+                    </td></tr>`;
+                return;
+            }
+
             const users = [...leaderboardData.users];
 
             users.sort((a, b) => {
