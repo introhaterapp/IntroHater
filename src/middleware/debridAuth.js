@@ -2,6 +2,7 @@
 
 const axios = require('axios');
 const crypto = require('crypto');
+const { decodeConfigParam, normalizeScraperUrl } = require('../utils/config-encoding');
 
 
 const DEBRID_PROVIDERS = {
@@ -103,11 +104,13 @@ const parseConfig = (configStr) => {
     for (let i = optionalStartIdx; i < colonParts.length; i++) {
         const part = colonParts[i];
         if (part.startsWith('s=')) {
-            try { scraper = Buffer.from(part.substring(2), 'base64').toString('utf8'); } catch { }
+            try {
+                scraper = normalizeScraperUrl(decodeConfigParam(part.substring(2)));
+            } catch { /* ignore */ }
         } else if (part.startsWith('pp=')) {
-            try { proxyPassword = Buffer.from(part.substring(3), 'base64').toString('utf8'); } catch { }
+            try { proxyPassword = decodeConfigParam(part.substring(3)); } catch { /* ignore */ }
         } else if (part.startsWith('p=')) {
-            try { proxyUrl = Buffer.from(part.substring(2), 'base64').toString('utf8'); } catch { }
+            try { proxyUrl = decodeConfigParam(part.substring(2)); } catch { /* ignore */ }
         }
     }
 
@@ -140,6 +143,11 @@ const parseConfig = (configStr) => {
     // Legacy fallback - if no valid providers found, treat entire string as RD key
     if (!primaryProvider) {
         return { provider: 'realdebrid', key: configStr, providers: { realdebrid: configStr }, scraper, proxyUrl, proxyPassword };
+    }
+
+    if (scraper && !scraper.startsWith('https://')) {
+        console.warn('[Config] Invalid scraper URL after decode — ignoring');
+        scraper = null;
     }
 
     return {

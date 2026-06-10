@@ -2,7 +2,7 @@ const skipRepository = require('../repositories/skip.repository');
 const cacheRepository = require('../repositories/cache.repository');
 const axios = require('axios');
 const catalogService = require('./catalog');
-const { ANIME_SKIP, INTRO_DB } = require('../config/constants');
+const { ANIME_SKIP, INTRO_DB, THE_INTRO_DB } = require('../config/constants');
 const log = require('../utils/logger').skip;
 
 
@@ -378,6 +378,75 @@ async function fetchAnimeSkip(malId, episode, imdbId) {
     return null;
 }
 
+const THE_INTRO_DB_LABELS = {
+    intro: 'Intro',
+    recap: 'Recap',
+    credits: 'Credits',
+    preview: 'Preview',
+    outro: 'Outro'
+};
+
+function msToSec(ms) {
+    if (ms == null || ms === undefined) return null;
+    return Math.round(ms / 1000);
+}
+
+function parseTheIntroDbEntry(entry, label) {
+    const startMs = entry.start_ms ?? entry.startMs;
+    const endMs = entry.end_ms ?? entry.endMs;
+    const startSec = entry.start_sec ?? entry.startSec;
+    const endSec = entry.end_sec ?? entry.endSec;
+
+    let start = startMs != null ? msToSec(startMs) : (typeof startSec === 'number' ? startSec : 0);
+    let end = endMs != null ? msToSec(endMs) : (typeof endSec === 'number' ? endSec : null);
+
+    if (start == null) start = 0;
+    if (end == null || end <= start) return null;
+
+    return { start, end, label, source: 'theintrodb' };
+}
+
+async function fetchTheIntroDB(imdbId, season, episode) {
+    const cacheKey = `theintrodb:${imdbId}:${season}:${episode}`;
+    const cached = await cacheRepository.getCache(cacheKey);
+    if (cached !== null && cached !== undefined) return cached;
+
+    try {
+        const url = `${THE_INTRO_DB.BASE_URL}/segments?imdb_id=${imdbId}&season=${season}&episode=${episode}`;
+        log.debug({ url }, 'Fetching from TheIntroDB');
+        const res = await axios.get(url, { timeout: 8000 });
+        const data = res.data;
+        if (!data) {
+            await cacheRepository.setCache(cacheKey, null);
+            return null;
+        }
+
+        const segments = [];
+
+        for (const [type, label] of Object.entries(THE_INTRO_DB_LABELS)) {
+            const entries = data[type];
+            if (!Array.isArray(entries)) continue;
+            for (const entry of entries) {
+                const parsed = parseTheIntroDbEntry(entry, label);
+                if (parsed) segments.push(parsed);
+            }
+        }
+
+        if (segments.length > 0) {
+            log.info({ imdbId, season, episode, count: segments.length }, 'TheIntroDB hit');
+            await cacheRepository.setCache(cacheKey, segments);
+            return segments;
+        }
+    } catch (e) {
+        if (e.response?.status !== 404) {
+            log.error({ imdbId, season, episode, err: e.message }, 'TheIntroDB fetch failed');
+        }
+    }
+
+    await cacheRepository.setCache(cacheKey, null);
+    return null;
+}
+
 async function fetchIntroDB(imdbId, season, episode) {
     const cacheKey = `introdb:${imdbId}:${season}:${episode}`;
     const cached = await cacheRepository.getCache(cacheKey);
@@ -457,6 +526,18 @@ async function getSkipSegment(fullId) {
                     return intro;
                 }
             }
+
+            const theIntroDbSegments = await fetchTheIntroDB(imdbId, season, episode);
+            if (theIntroDbSegments && theIntroDbSegments.length > 0) {
+                const intro = theIntroDbSegments.find(s => s.label === 'Intro');
+                if (intro) {
+                    log.debug({ fullId, start: intro.start, end: intro.end }, 'Found TheIntroDB');
+                    for (const s of theIntroDbSegments) {
+                        addSkipSegment(fullId, s.start, s.end, s.label, 'theintrodb').catch(() => { });
+                    }
+                    return intro;
+                }
+            }
         }
 
 
@@ -485,7 +566,7 @@ async function getSkipSegment(fullId) {
 
 async function addSkipSegment(fullId, start, end, label = "Intro", userId = "anonymous", applyToSeries = false) {
     await ensureInit();
-    const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot', 'introdb'];
+    const TRUSTED_SOURCES = ['aniskip', 'anime-skip', 'auto-import', 'chapter-bot', 'introdb', 'theintrodb'];
     const isTrusted = TRUSTED_SOURCES.includes(userId);
 
     if (typeof start !== 'number' || typeof end !== 'number' || isNaN(start) || isNaN(end) || start < 0 || end <= start) {

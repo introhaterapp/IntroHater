@@ -9,8 +9,7 @@ const {
     parseConfig,
     getProvider
 } = require('../middleware/debridAuth');
-
-
+const { detectClient, isProxyStreamUrl, buildHlsManifestUrl } = require('../utils/client-detection');
 
 const { MANIFEST } = require('../config/constants');
 
@@ -29,12 +28,111 @@ const manifest = {
     }
 };
 
+function buildStreamOutputs(s, skipSeg, clientInfo, finalBaseUrl, id, effectiveKey, effectiveProvider) {
+    const streamUrl = s.url || s.externalUrl;
+    let infoHash = s.infoHash || s.infohash;
+    const streamName = s.name || 'IntroHater';
+    const baseTitle = s.title || s.name || streamName;
+    const description = s.description || '';
+    const outputs = [];
+
+    if (!streamUrl && !infoHash) return outputs;
+
+    const hlsParams = {
+        id,
+        userKeyPrefix: effectiveKey.substring(0, 8),
+        provider: effectiveProvider,
+        rdKey: effectiveKey,
+        client: clientInfo.client,
+        preferMp4: clientInfo.needsConstrainedPlayer,
+        skipStart: skipSeg?.start,
+        skipEnd: skipSeg?.end
+    };
+
+    if (skipSeg) {
+        if (infoHash) {
+            outputs.push({
+                name: streamName,
+                title: description
+                    ? `${baseTitle} 🎯 Skip\n${description}`
+                    : `${baseTitle} 🎯 Skip`,
+                url: buildHlsManifestUrl(finalBaseUrl, { ...hlsParams, infoHash }),
+                behaviorHints: { ...(s.behaviorHints || {}), notWebReady: clientInfo.needsConstrainedPlayer }
+            });
+        } else if (streamUrl) {
+            if (!infoHash) {
+                const cometHashMatch = streamUrl.match(/\/playback\/([a-fA-F0-9]{40})\//);
+                if (cometHashMatch) infoHash = cometHashMatch[1];
+            }
+
+            if (infoHash) {
+                outputs.push({
+                    name: streamName,
+                    title: description
+                        ? `${baseTitle} 🎯 Skip\n${description}`
+                        : `${baseTitle} 🎯 Skip`,
+                    url: buildHlsManifestUrl(finalBaseUrl, {
+                        ...hlsParams,
+                        infoHash,
+                        streamUrl
+                    }) + (streamUrl ? `&fallback=${encodeURIComponent(streamUrl)}` : ''),
+                    behaviorHints: { ...(s.behaviorHints || {}), notWebReady: clientInfo.needsConstrainedPlayer }
+                });
+            } else {
+                outputs.push({
+                    name: streamName,
+                    title: description
+                        ? `${baseTitle} 🎯 Skip\n${description}`
+                        : `${baseTitle} 🎯 Skip`,
+                    url: buildHlsManifestUrl(finalBaseUrl, { ...hlsParams, streamUrl }),
+                    behaviorHints: { ...(s.behaviorHints || {}), notWebReady: clientInfo.needsConstrainedPlayer }
+                });
+            }
+
+            if (clientInfo.needsConstrainedPlayer) {
+                outputs.push({
+                    name: streamName,
+                    title: description
+                        ? `${baseTitle} 📺 Direct (TV playback, no skip)\n${description}`
+                        : `${baseTitle} 📺 Direct (TV playback, no skip)`,
+                    url: streamUrl,
+                    behaviorHints: s.behaviorHints || {}
+                });
+            }
+        }
+    } else {
+        const isProxyStream = isProxyStreamUrl(streamUrl);
+
+        if (isProxyStream) {
+            outputs.push({
+                name: streamName,
+                title: description ? `${baseTitle}\n${description}` : baseTitle,
+                url: streamUrl,
+                behaviorHints: s.behaviorHints || {}
+            });
+        } else if (streamUrl) {
+            outputs.push({
+                name: streamName,
+                title: description ? `${baseTitle}\n${description}` : baseTitle,
+                url: buildHlsManifestUrl(finalBaseUrl, { ...hlsParams, streamUrl }),
+                behaviorHints: s.behaviorHints || {}
+            });
+        } else if (infoHash) {
+            outputs.push({
+                name: streamName,
+                title: description ? `${baseTitle}\n${description}` : baseTitle,
+                url: buildHlsManifestUrl(finalBaseUrl, { ...hlsParams, infoHash }),
+                behaviorHints: s.behaviorHints || {}
+            });
+        }
+    }
+
+    return outputs;
+}
+
 async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', origin = '') {
     const requestId = Date.now().toString(36);
-    const isWebStremio = userAgent.includes('Stremio/Web') || origin.includes('strem.io') || origin.includes('stremio.com');
-    const ua = userAgent.toLowerCase();
-    const isAndroid = ua.includes('android') || ua.includes('exoplayer') || ua.includes('shield');
-    const client = isWebStremio ? 'web' : (isAndroid ? 'android' : 'desktop');
+    const clientInfo = detectClient(userAgent, origin);
 
     const { provider, key: debridKey, providers, scraper: externalScraper, proxyUrl, proxyPassword } = parseConfig(config);
     const providerConfig = getProvider(provider);
@@ -46,7 +144,7 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
         return { streams: [] };
     }
 
-    console.log(`[Stream ${requestId}] 📥 Request: ${type} ${id} (Client: ${client})`);
+    console.log(`[Stream ${requestId}] 📥 Request: ${type} ${id} (Client: ${clientInfo.client})`);
     console.log(`[Stream ${requestId}] 🔑 Primary: ${providerName} Key: ${debridKey.substring(0, 8)}...${providerCount > 1 ? ` (+${providerCount - 1} secondary)` : ''}`);
     if (externalScraper) console.log(`[Stream ${requestId}] 🌐 Using custom scraper: ${externalScraper.substring(0, 30)}...`);
     if (proxyUrl) console.log(`[Stream ${requestId}] 🛡️ Using proxy: ${proxyUrl}`);
@@ -89,7 +187,9 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             streams: [{
                 name: "IntroHater",
                 title: "⚠️ No streams found",
-                description: "Configure AIOstreams in the External Scraper field for reliable results.",
+                description: externalScraper
+                    ? "No streams returned. Verify your AIOStreams manifest URL and reinstall from the configure page."
+                    : "Configure AIOstreams in the External Scraper field for reliable results.",
                 url: `${finalBaseUrl}/error/no-streams`
             }]
         };
@@ -97,26 +197,18 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
 
     console.log(`[Stream ${requestId}] ✅ Found ${allStreams.length} streams from scraper`);
 
-
-
     let proxyStreamCount = 0;
-    const streams = allStreams.map(s => {
+    const streams = allStreams.flatMap(s => {
         const streamUrl = s.url || s.externalUrl;
         let infoHash = s.infoHash || s.infohash;
 
-        if (!streamUrl && !infoHash) return null;
+        if (!streamUrl && !infoHash) return [];
 
-        const streamName = s.name || "IntroHater";
-        const streamTitle = s.description
-            ? `${s.title || s.name}${skipSeg ? ' 🎯' : ''}\n${s.description}`
-            : `${s.title || s.name}${skipSeg ? ' 🎯' : ''}`;
-
-        // Detect stream provider from name/title prefixes
-        // Supports: [TB]/TorBox, [RD]/Real-Debrid, [PM]/Premiumize, [AD]/AllDebrid
         let effectiveProvider = provider;
         let effectiveKey = debridKey;
 
         if (providers) {
+            const streamName = s.name || 'IntroHater';
             const combinedText = `${streamName} ${s.title || ''}`;
 
             if ((combinedText.includes('[TB]') || combinedText.includes('[TB ') || combinedText.includes('TorBox')) && providers.torbox) {
@@ -134,73 +226,14 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
             }
         }
 
-        // Determine transcoding need based on effective provider
-        const effectiveNeedsTranscoding = (isWebStremio || isAndroid) && effectiveProvider === 'torbox';
+        const outputs = buildStreamOutputs(s, skipSeg, clientInfo, finalBaseUrl, id, effectiveKey, effectiveProvider);
 
-        let playUrl;
-
-        // Case 1: Needs Transcoding (TorBox + Web/Android) AND has InfoHash
-        // We MUST prioritize generating a transcoded stream from InfoHash over using the provided direct URL (which is likely MKV)
-        if (effectiveNeedsTranscoding && infoHash) {
-            const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
-            // Include original streamUrl as fallback for when TorBox doesn't have the torrent cached
-            const fallbackParam = streamUrl ? `&fallback=${encodeURIComponent(streamUrl)}` : '';
-            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${effectiveKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${effectiveKey}${skipParams}&transcode=true&client=${client}${fallbackParam}`;
-        }
-        // Case 2: Existing URL (Debrid Link or Direct)
-        else if (streamUrl) {
-            // Attempt to extract InfoHash from Comet/Debrid URLs if missing
-            // Comet uses /playback/{infoHash}/...
-            if (!infoHash) {
-                const cometHashMatch = streamUrl.match(/\/playback\/([a-fA-F0-9]{40})\//);
-                if (cometHashMatch) {
-                    infoHash = cometHashMatch[1];
-
-                    // Re-evaluate transcoding need now that we have a hash
-                    if (effectiveNeedsTranscoding) {
-                        const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
-                        // Include original streamUrl as fallback
-                        const fallbackParam = `&fallback=${encodeURIComponent(streamUrl)}`;
-                        playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${effectiveKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${effectiveKey}${skipParams}&transcode=true&client=${client}${fallbackParam}`;
-                    }
-                }
-            }
-
-            if (!playUrl) {
-                // If we still don't have a transcode URL, proceed with standard proxy/direct logic
-                // Proxy streaming URLs (Comet /playback/, stremthru, mediafusion) normally pass directly
-                // BUT if we have skip segments, route through HLS proxy for intro skipping
-                const isProxyStream = streamUrl.includes('/playback/') ||
-                    streamUrl.toLowerCase().includes('stremthru') ||
-                    streamUrl.toLowerCase().includes('mediafusion');
-
-                if (isProxyStream && !skipSeg) {
-                    // No skip segment - pass through directly for best compatibility
-                    proxyStreamCount++;
-                    playUrl = streamUrl;
-                } else {
-                    // Has skip segment OR is not a proxy stream - route through HLS for skipping
-                    const encodedUrl = encodeURIComponent(streamUrl);
-                    const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
-                    playUrl = `${finalBaseUrl}/hls/manifest.m3u8?stream=${encodedUrl}&id=${id}&user=${effectiveKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${effectiveKey}${skipParams}&client=${client}`;
-                }
-            }
-        }
-        // Case 3: InfoHash Only (TorBox Native / Other)
-        else if (infoHash) {
-            const skipParams = skipSeg ? `&start=${skipSeg.start}&end=${skipSeg.end}` : '';
-            // Only add transcode param if needed (though logic above handles the forced case)
-            const transcodeParam = effectiveNeedsTranscoding ? '&transcode=true' : '';
-            playUrl = `${finalBaseUrl}/hls/manifest.m3u8?infoHash=${infoHash}&id=${id}&user=${effectiveKey.substring(0, 8)}&provider=${effectiveProvider}&rdKey=${effectiveKey}${skipParams}${transcodeParam}&client=${client}`;
+        if (!skipSeg && streamUrl && isProxyStreamUrl(streamUrl)) {
+            proxyStreamCount++;
         }
 
-        return {
-            name: streamName,
-            title: streamTitle,
-            url: playUrl,
-            behaviorHints: s.behaviorHints || {}
-        };
-    }).filter(Boolean);
+        return outputs;
+    });
 
     if (proxyStreamCount > 0) {
         console.log(`[Stream ${requestId}] 🔄 ${proxyStreamCount} streams without skips passed through directly`);
@@ -209,9 +242,6 @@ async function handleStreamRequest(type, id, config, baseUrl, userAgent = '', or
     console.log(`[Stream ${requestId}] 📊 Returning ${streams.length} stream(s), skip: ${skipSeg ? 'yes' : 'no'}`);
     return { streams };
 };
-
-
-
 
 router.get(['/configure', '/:config/configure'], (req, res) => {
     res.sendFile(path.join(__dirname, '../../docs', 'configure.html'));
@@ -254,14 +284,11 @@ router.get(['/:config/stream/:type/:id.json', '/stream/:type/:id.json'], async (
     const previewStreams = result.streams?.slice(0, 3) || [];
     console.log(`[Stream ${cleanId}] 📤 Sending ${streamCount} stream(s). First 3:`, JSON.stringify({ streams: previewStreams }, null, 2));
 
-    // Disable caching to debug visibility issues
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
     res.json(result);
-
 });
-
 
 module.exports = router;
