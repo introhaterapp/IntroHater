@@ -1,40 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configure IntroHater</title>
     <link rel="icon" type="image/svg+xml" href="icon.svg">
-
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
-
-
-    <link rel="stylesheet" href="css/style.css?v=8">
+    <link rel="stylesheet" href="css/style.css?v=9">
     <script src="js/toast.js" defer></script>
     <script src="js/main.js" defer></script>
 </head>
-
 <body>
-
     <header>
         <div class="container">
             <a href="/" class="logo text-gradient">
                 <img src="icon.svg" alt="IntroHater logo">
                 IntroHater
             </a>
-
             <button class="menu-toggle" aria-label="Toggle navigation menu" id="menuToggle">
                 <span></span>
                 <span></span>
                 <span></span>
             </button>
-
             <nav id="mainNav">
                 <ul class="nav-links">
                     <li><a href="/">Home</a></li>
@@ -51,43 +42,37 @@
             </div>
         </div>
     </header>
-
     <main>
         <section class="section">
             <div class="container max-w-600">
-
                 <div class="page-hero text-center">
                     <h1 class="page-hero-title text-gradient">Configure Addon</h1>
                     <p class="page-hero-subtitle">
                         IntroHater adds intro skip on top of your existing Stremio setup.
                     </p>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 8px;">
+                    <p class="page-hero-note">
                         You need Stremio, a debrid account, and AIOstreams configured before this page.
                     </p>
-                    <button type="button" id="openGuideBtn" class="btn btn-guide" style="margin-top: 16px;">
+                    <button type="button" id="openGuideBtn" class="btn btn-guide mt-16">
                         📖 Setup Guide
                     </button>
                 </div>
-
                 <div class="glass-panel p-40">
-
                     <form id="config-form">
-                        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px; padding: 14px 16px; margin-bottom: 24px; font-size: 0.85rem; color: var(--text-muted);">
-                            <strong style="color: var(--text-main);">Prerequisites:</strong>
+                        <div class="callout callout-info mb-16">
+                            <strong>Prerequisites:</strong>
                             Stremio installed · Debrid account ·
-                            <a href="https://aiostreams.elfhosted.com/stremio/configure" target="_blank" style="color: var(--primary);">AIOstreams configured</a>
+                            <a href="https://aiostreams.elfhosted.com/stremio/configure" target="_blank" class="text-link">AIOstreams configured</a>
                         </div>
-
                         <div class="form-group">
                             <label class="form-label" for="provider">Primary Debrid Provider</label>
-                            <select id="provider" class="form-input" style="margin-bottom: 16px;">
+                            <select id="provider" class="form-input mb-16">
                                 <option value="realdebrid">Real-Debrid</option>
                                 <option value="torbox">TorBox</option>
                                 <option value="premiumize">Premiumize</option>
                                 <option value="alldebrid">AllDebrid</option>
                             </select>
                         </div>
-
                         <div class="form-group">
                             <label class="form-label" for="debridKey">API Key</label>
                             <div class="flex gap-10 mb-8">
@@ -105,78 +90,68 @@
                                     class="btn btn-danger-outline d-none flex-1">Logout</button>
                             </div>
                         </div>
-
                         <!-- Secondary Providers Section -->
                         <div id="secondary-providers-container" class="mt-20"></div>
-
-                        <button type="button" id="addSecondaryBtn" class="btn btn-secondary w-full justify-center mt-16"
-                            style="border-style: dashed;">
+                        <button type="button" id="addSecondaryBtn" class="btn btn-secondary btn-dashed w-full justify-center mt-16">
                             ➕ Add Secondary Provider
                         </button>
-                        <p class="text-sm mt-8 text-center" style="color: var(--text-dim); font-size: 0.75rem;">
+                        <p class="text-sm mt-8 text-center text-dim">
                             Use this if your AIOstreams is configured with multiple debrid services (e.g., TorBox +
                             Real-Debrid)
                         </p>
-
-
-                        <details class="mb-16" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px 16px;">
-                            <summary style="cursor: pointer; font-weight: 600; color: var(--text-main);">What is AIOstreams? (read this if you're stuck)</summary>
-                            <p style="color: var(--text-muted); font-size: 0.85rem; margin: 12px 0 0; line-height: 1.5;">
-                                <strong>AIOstreams</strong> is a separate Stremio addon that finds torrent streams through your debrid service.
-                                IntroHater does <em>not</em> search for torrents itself — it reuses the streams AIOstreams already finds, then adds intro/credits skip on top.
-                            </p>
-                            <p style="color: var(--text-muted); font-size: 0.85rem; margin: 10px 0 0; line-height: 1.5;">
-                                <strong>What to do:</strong> Open <a href="https://aiostreams.elfhosted.com/stremio/configure" target="_blank" style="color: var(--primary);">AIOstreams</a>,
-                                connect your debrid account, pick a scraper (Comet recommended), install it to Stremio, then copy the manifest URL it gives you and paste it below.
-                            </p>
+                        <details class="form-section mb-16">
+                            <summary>What is AIOstreams? (read this if you're stuck)</summary>
+                            <div class="form-section-body">
+                                <p>
+                                    <strong>AIOstreams</strong> is a separate Stremio addon that finds torrent streams through your debrid service.
+                                    IntroHater does <em>not</em> search for torrents itself — it reuses the streams AIOstreams already finds, then adds intro/credits skip on top.
+                                </p>
+                                <p>
+                                    <strong>What to do:</strong> Open <a href="https://aiostreams.elfhosted.com/stremio/configure" target="_blank" class="text-link">AIOstreams</a>,
+                                    connect your debrid account, pick a scraper (Comet recommended), install it to Stremio, then copy the manifest URL it gives you and paste it below.
+                                </p>
+                            </div>
                         </details>
-
                         <div class="form-group mb-16 mt-24">
                             <label class="form-label" for="externalScraper">Stream Source — AIOstreams URL (Required)</label>
                             <input type="text" id="externalScraper" class="form-input"
                                 placeholder="https://aiostreams.../manifest.json" required>
-                            <div class="text-sm mt-8" style="color: var(--text-muted); font-size: 0.8rem;">
+                            <div class="form-hint mt-8">
                                 <strong>Step 1:</strong> Configure <a
                                     href="https://aiostreams.elfhosted.com/stremio/configure" target="_blank"
-                                    style="color: var(--primary);">AIOstreams</a> with your debrid + scraper (Comet recommended).<br>
+                                    class="text-link">AIOstreams</a> with your debrid + scraper (Comet recommended).<br>
                                 <strong>Step 2:</strong> Copy the AIOstreams manifest URL and paste it above.<br>
-                                <div
-                                    style="background: rgba(59, 130, 246, 0.15); border-left: 3px solid #3b82f6; padding: 8px 12px; margin-top: 10px; border-radius: 4px;">
-                                    <strong style="color: #3b82f6;">Multi-Provider:</strong> If AIOstreams uses multiple debrid
+                                <div class="callout callout-blue mt-10">
+                                    <strong>Multi-Provider:</strong> If AIOstreams uses multiple debrid
                                     services, add each provider above. IntroHater picks the right key per stream.
                                 </div>
                             </div>
                         </div>
-
-                        <details id="advancedSection" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px 16px; margin-bottom: 24px;">
-                            <summary style="cursor: pointer; font-weight: 600; color: var(--text-main);">Advanced — self-hosted AIOStreams / StremThru proxy</summary>
-                            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 12px 0 16px; line-height: 1.5;">
-                                Only needed if you self-host AIOStreams and route streams through StremThru or a similar proxy.
-                            </p>
-                            <div class="form-group mb-16">
-                                <label class="form-label" for="proxyUrl">Proxy URL</label>
-                                <input type="text" id="proxyUrl" class="form-input"
-                                    placeholder="https://your-stremthru.example.com">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="proxyPassword">Proxy Password (if required)</label>
-                                <input type="password" id="proxyPassword" class="form-input" placeholder="Optional">
+                        <details id="advancedSection" class="form-section mb-16">
+                            <summary>Advanced — self-hosted AIOStreams / StremThru proxy</summary>
+                            <div class="form-section-body">
+                                <p>
+                                    Only needed if you self-host AIOStreams and route streams through StremThru or a similar proxy.
+                                </p>
+                                <div class="form-group mb-16">
+                                    <label class="form-label" for="proxyUrl">Proxy URL</label>
+                                    <input type="text" id="proxyUrl" class="form-input"
+                                        placeholder="https://your-stremthru.example.com">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="proxyPassword">Proxy Password (if required)</label>
+                                    <input type="password" id="proxyPassword" class="form-input" placeholder="Optional">
+                                </div>
                             </div>
                         </details>
-
-                        <div id="validation-checklist" class="d-none" style="margin-bottom: 20px; font-size: 0.9rem;"></div>
-
+                        <div id="validation-checklist" class="d-none validation-checklist"></div>
                         <div class="mt-20">
                             <button type="submit" id="generateBtn" class="btn btn-primary w-full justify-center">
                                 Validate &amp; Generate Install Link
                             </button>
                         </div>
                     </form>
-
-
-
                     <div id="result-section" class="d-none mt-30 pt-30 border-top">
-
                         <div class="form-group">
                             <label class="form-label">Your Install Link</label>
                             <div class="flex gap-10">
@@ -184,108 +159,89 @@
                                 <button id="copyBtn" class="btn btn-secondary">Copy</button>
                             </div>
                         </div>
-
                         <div class="flex gap-16 mt-20">
                             <a id="installBtn" href="#" class="btn btn-primary flex-1 justify-center">
                                 Install on Stremio
                             </a>
                         </div>
-
-                        <div style="background: rgba(245, 158, 11, 0.12); border-left: 3px solid #f59e0b; padding: 10px 14px; margin-top: 16px; border-radius: 4px; font-size: 0.85rem; color: var(--text-muted); text-align: left;">
-                            <strong style="color: #f59e0b;">Android TV / Fire Stick:</strong> For MKV torrents, pick the
+                        <div class="callout callout-warning mt-16">
+                            <strong>Android TV / Fire Stick:</strong> For MKV torrents, pick the
                             <strong>Direct</strong> stream for playback. Use <strong>Skip</strong> on desktop for auto-skip.
                         </div>
-                        <p class="text-sm text-center mt-16" style="color: var(--text-muted);">
+                        <p class="text-sm text-center mt-16 form-hint">
                             <strong>Install failed?</strong> Copy the link above and paste it into the Stremio search bar
                             (especially on TV and web).<br>
-                            <span style="color: var(--text-dim); font-size: 0.8rem;">Previously installed? Regenerate
+                            <span class="text-dim">Previously installed? Regenerate
                                 your link — old install URLs may have broken scraper encoding.</span>
                         </p>
                     </div>
-
                     <div class="mt-24 pt-24 text-center border-top">
-                        <p style="color: var(--text-muted); font-size: 0.9rem;">
+                        <p class="footer-links">
                             Want to contribute or check history?
                             <br>
-                            Go to the <a href="contribute.html" style="color: var(--primary);">Community Portal</a>.
+                            Go to the <a href="contribute.html" class="text-link">Community Portal</a>.
                         </p>
                     </div>
-
                 </div>
-
-
                 <div class="mt-24 pt-24 text-center border-top">
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">
-                        <a href="profile.html" style="color: var(--primary);">My Profile</a> ·
-                        <a href="contribute.html" style="color: var(--primary);">Contribute</a> ·
-                        <a href="leaderboard.html" style="color: var(--primary);">Leaderboard</a>
+                    <p class="footer-links">
+                        <a href="profile.html" class="text-link">My Profile</a> ·
+                        <a href="contribute.html" class="text-link">Contribute</a> ·
+                        <a href="leaderboard.html" class="text-link">Leaderboard</a>
                     </p>
-                    <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 12px;">
+                    <p class="footer-links-dim">
                         Supports Real-Debrid, TorBox, Premiumize, and AllDebrid.
                     </p>
                 </div>
-
             </div>
         </section>
-
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 let secondaryCount = 0;
                 const maxSecondary = 3;
                 const container = document.getElementById('secondary-providers-container');
                 const addBtn = document.getElementById('addSecondaryBtn');
-
                 // Create secondary provider entry
                 function createSecondaryEntry(prov = '', key = '') {
                     if (secondaryCount >= maxSecondary) return;
                     secondaryCount++;
-
                     const id = secondaryCount;
                     const usedProviders = getUsedProviders();
-
                     const entry = document.createElement('div');
                     entry.className = 'secondary-provider-entry';
                     entry.dataset.id = id;
-                    entry.style.cssText = 'background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; margin-bottom: 12px;';
-
                     // Build options excluding already used providers
                     const providerOptions = Object.entries(DEBRID_PROVIDERS)
                         .filter(([k]) => !usedProviders.includes(k) || k === prov)
                         .map(([k, v]) => `<option value="${k}" ${k === prov ? 'selected' : ''}>${v.name}</option>`)
                         .join('');
-
                     entry.innerHTML = `
                         <div class="flex gap-10 items-center mb-8">
-                            <span style="color: var(--text-muted); font-size: 0.85rem;">Secondary Provider</span>
-                            <button type="button" class="remove-secondary-btn" style="margin-left: auto; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem;" title="Remove">&times;</button>
+                            <span class="secondary-provider-label">Secondary Provider</span>
+                            <button type="button" class="remove-secondary-btn" title="Remove">&times;</button>
                         </div>
                         <div class="flex gap-10 mb-8">
-                            <select class="form-input secondary-provider-select" style="flex: 0 0 140px;">
+                            <select class="form-input provider-select-narrow secondary-provider-select">
                                 ${providerOptions}
                             </select>
                             <input type="text" class="form-input secondary-key-input" placeholder="API Key" value="${key}">
                             <a href="${DEBRID_PROVIDERS[prov || 'realdebrid']?.keyUrl}" target="_blank" class="btn btn-secondary nowrap secondary-get-key">Get Key ↗</a>
                         </div>
                     `;
-
                     container.appendChild(entry);
-
                     // Event: update get key link
                     entry.querySelector('.secondary-provider-select').onchange = function () {
                         const keyUrl = DEBRID_PROVIDERS[this.value]?.keyUrl || '#';
                         entry.querySelector('.secondary-get-key').href = keyUrl;
                     };
-
                     // Event: remove entry
                     entry.querySelector('.remove-secondary-btn').onclick = function () {
                         entry.remove();
                         secondaryCount--;
                         updateAddButton();
                     };
-
                     updateAddButton();
                 }
-
                 function getUsedProviders() {
                     const used = [document.getElementById('provider').value];
                     document.querySelectorAll('.secondary-provider-select').forEach(sel => {
@@ -293,7 +249,6 @@
                     });
                     return used;
                 }
-
                 function updateAddButton() {
                     if (secondaryCount >= maxSecondary || getUsedProviders().length >= Object.keys(DEBRID_PROVIDERS).length) {
                         addBtn.style.display = 'none';
@@ -301,7 +256,6 @@
                         addBtn.style.display = '';
                     }
                 }
-
                 function getSecondaryProviders() {
                     const providers = [];
                     document.querySelectorAll('.secondary-provider-entry').forEach(entry => {
@@ -313,17 +267,14 @@
                     });
                     return providers;
                 }
-
                 // Update Get Key link when primary provider changes
                 document.getElementById('provider').onchange = function () {
                     const provider = this.value;
                     const keyUrl = DEBRID_PROVIDERS[provider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
                     document.getElementById('getKeyLink').href = keyUrl;
                 };
-
                 // Add secondary button
                 addBtn.onclick = () => createSecondaryEntry();
-
                 document.getElementById('logoutBtn')?.addEventListener('click', () => {
                     clearDebridConfig();
                     document.getElementById('debridKey').value = '';
@@ -342,7 +293,6 @@
                         Toast.success('Logged out. Saved configuration cleared.');
                     }
                 });
-
                 // Persistence Logic - load saved config on page load
                 (function () {
                     const config = getDebridConfig();
@@ -352,10 +302,8 @@
                     const savedProxy = config.proxyUrl;
                     const savedProxyPassword = config.proxyPassword;
                     const savedSecondary = config.secondaryProviders || [];
-
                     document.getElementById('provider').value = savedProvider;
                     document.getElementById('getKeyLink').href = DEBRID_PROVIDERS[savedProvider]?.keyUrl || DEBRID_PROVIDERS.realdebrid.keyUrl;
-
                     if (savedKey) {
                         document.getElementById('debridKey').value = savedKey;
                         document.getElementById('logoutBtn').classList.remove('d-none');
@@ -363,7 +311,6 @@
                     if (savedScraper) {
                         document.getElementById('externalScraper').value = savedScraper;
                     }
-
                     const proxyUrlEl = document.getElementById('proxyUrl');
                     const proxyPasswordEl = document.getElementById('proxyPassword');
                     if (savedProxy && proxyUrlEl) {
@@ -373,13 +320,11 @@
                     if (savedProxyPassword && proxyPasswordEl) {
                         proxyPasswordEl.value = savedProxyPassword;
                     }
-
                     // Load secondary providers
                     savedSecondary.forEach(s => {
                         createSecondaryEntry(s.provider, s.key);
                     });
                 })();
-
                 function renderValidationChecklist(checks) {
                     const el = document.getElementById('validation-checklist');
                     const items = [
@@ -389,22 +334,19 @@
                     el.innerHTML = items.map(({ key, label }) => {
                         const check = checks[key];
                         const icon = check.ok ? '✅' : '❌';
-                        const color = check.ok ? '#22c55e' : '#ef4444';
-                        return `<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;color:${color};"><span>${icon}</span><span><strong>${label}:</strong> ${check.message}</span></div>`;
+                        const statusClass = check.ok ? 'validation-item--ok' : 'validation-item--fail';
+                        return `<div class="validation-item ${statusClass}"><span>${icon}</span><span><strong>${label}:</strong> ${check.message}</span></div>`;
                     }).join('');
                     el.classList.remove('d-none');
                 }
-
                 function buildInstallUrl(provider, key, scraper, proxyUrl, proxyPassword, secondaryProviders) {
                     let configValue = `${provider}:${key}`;
                     secondaryProviders.forEach(s => {
                         configValue += `+${s.provider}:${s.key}`;
                     });
-
                     function base64urlEncode(str) {
                         return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
                     }
-
                     if (scraper) {
                         const cleanScraper = scraper.replace(/\/manifest\.json$/, '');
                         configValue += `:s=${base64urlEncode(cleanScraper)}`;
@@ -416,10 +358,8 @@
                     if (proxyPassword) {
                         configValue += `:pp=${base64urlEncode(proxyPassword)}`;
                     }
-
                     return `stremio://${window.location.host}/${configValue}/manifest.json`;
                 }
-
                 // Generate Install Link Form
                 document.getElementById('config-form').onsubmit = async function (e) {
                     e.preventDefault();
@@ -433,18 +373,15 @@
                     const secondaryProviders = getSecondaryProviders();
                     const generateBtn = document.getElementById('generateBtn');
                     const resultSection = document.getElementById('result-section');
-
                     if (!key || !scraper) {
                         if (typeof Toast !== 'undefined') {
                             Toast.warning('Debrid API key and AIOstreams URL are required.');
                         }
                         return;
                     }
-
                     resultSection.classList.add('d-none');
                     generateBtn.disabled = true;
                     generateBtn.textContent = 'Validating...';
-
                     try {
                         const res = await fetch('/api/validate-config', {
                             method: 'POST',
@@ -453,29 +390,24 @@
                         });
                         const data = await res.json();
                         renderValidationChecklist(data.checks);
-
                         if (!data.valid) {
                             if (typeof Toast !== 'undefined') {
                                 Toast.error('Fix the errors above before generating your install link.');
                             }
                             return;
                         }
-
                         setDebridConfig(provider, key, {
                             externalScraper: scraper,
                             proxyUrl: proxyUrl,
                             proxyPassword: proxyPassword,
                             secondaryProviders: secondaryProviders
                         });
-
                         document.getElementById('logoutBtn').classList.remove('d-none');
-
                         const installUrl = buildInstallUrl(provider, key, scraper, proxyUrl, proxyPassword, secondaryProviders);
                         document.getElementById('installLink').value = installUrl;
                         document.getElementById('installBtn').href = installUrl;
                         resultSection.classList.remove('d-none');
                         resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
                         if (typeof Toast !== 'undefined') {
                             Toast.success('Configuration validated. Install link ready.');
                         }
@@ -488,7 +420,6 @@
                         generateBtn.textContent = 'Validate & Generate Install Link';
                     }
                 };
-
                 // Copy Button
                 document.getElementById('copyBtn').onclick = function () {
                     const link = document.getElementById('installLink');
@@ -500,7 +431,6 @@
                         setTimeout(() => btn.textContent = originalText, 2000);
                     });
                 };
-
                 // Select link on click
                 document.getElementById('installLink').onclick = function () {
                     this.select();
@@ -508,8 +438,6 @@
             });
         </script>
     </main>
-
-
     <footer>
         <div class="container">
             <div class="footer-content">
@@ -547,7 +475,6 @@
             </div>
         </div>
     </footer>
-
     <div id="setupGuideModal" class="setup-guide-modal">
         <div class="modal-container">
             <div class="modal-header">
@@ -607,10 +534,10 @@
                             </div>
                         </div>
                         <div class="carousel-slide">
-                            <div class="carousel-caption" style="padding: 40px 24px; text-align: center;">
+                            <div class="carousel-caption carousel-caption-centered">
                                 <span class="step-number">6</span>
                                 <span class="step-text">TV / Fire Stick: pick the right stream</span>
-                                <p class="step-hint" style="max-width: 420px; margin: 16px auto 0; line-height: 1.6;">
+                                <p class="step-hint carousel-hint-wide">
                                     <strong>Android TV / Fire Stick with MKV torrents:</strong> use the
                                     <strong>Direct</strong> stream for playback (no skip).<br><br>
                                     <strong>Desktop or MP4 sources:</strong> use the <strong>Skip</strong> stream for auto-skip.
@@ -627,7 +554,6 @@
             </div>
         </div>
     </div>
-
     <script>
         (function () {
             const modal = document.getElementById('setupGuideModal');
@@ -640,7 +566,6 @@
             const slides = track.children;
             const totalSlides = slides.length;
             let currentSlide = 0;
-
             for (let i = 0; i < totalSlides; i++) {
                 const dot = document.createElement('button');
                 dot.type = 'button';
@@ -650,7 +575,6 @@
                 dotsContainer.appendChild(dot);
             }
             const dots = dotsContainer.children;
-
             function goToSlide(index) {
                 currentSlide = index;
                 track.style.transform = `translateX(-${currentSlide * 100}%)`;
@@ -660,32 +584,26 @@
                     dot.classList.toggle('active', i === currentSlide);
                 });
             }
-
             prevBtn.addEventListener('click', () => {
                 if (currentSlide > 0) goToSlide(currentSlide - 1);
             });
-
             nextBtn.addEventListener('click', () => {
                 if (currentSlide < totalSlides - 1) goToSlide(currentSlide + 1);
             });
-
             openBtn.addEventListener('click', () => {
                 modal.classList.add('active');
                 document.body.style.overflow = 'hidden';
             });
-
             closeBtn.addEventListener('click', () => {
                 modal.classList.remove('active');
                 document.body.style.overflow = '';
             });
-
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.classList.remove('active');
                     document.body.style.overflow = '';
                 }
             });
-
             document.addEventListener('keydown', (e) => {
                 if (!modal.classList.contains('active')) return;
                 if (e.key === 'Escape') {
@@ -700,5 +618,4 @@
         })();
     </script>
 </body>
-
 </html>

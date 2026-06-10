@@ -1,43 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IntroHater - Contribute</title>
     <link rel="icon" type="image/svg+xml" href="icon.svg">
-
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
         rel="stylesheet">
-
-
-    <link rel="stylesheet" href="css/style.css?v=7">
-
+    <link rel="stylesheet" href="css/style.css?v=9">
     <meta name="theme-color" content="#6366f1">
     <script src="js/toast.js" defer></script>
     <script src="js/main.js" defer></script>
 </head>
-
 <body>
-
-
     <header>
         <div class="container">
             <a href="/" class="logo text-gradient">
                 <img src="icon.svg" alt="IntroHater logo">
                 IntroHater
             </a>
-
             <button class="menu-toggle" aria-label="Toggle navigation menu" id="menuToggle">
                 <span></span>
                 <span></span>
                 <span></span>
             </button>
-
             <nav id="mainNav">
                 <ul class="nav-links">
                     <li><a href="/">Home</a></li>
@@ -54,87 +43,69 @@
             </div>
         </div>
     </header>
-
     <main>
         <section class="section">
-            <div class="container" style="padding-top: 100px; max-width: 800px;">
-
-                <div class="header-content text-center" style="margin-bottom: 40px;">
-                    <h1 class="text-gradient" style="font-size: 2.5rem; margin-bottom: 16px;">Contribute</h1>
-                    <p class="hero-subtitle">
+            <div class="container container-contribute">
+                <div class="page-hero text-center mb-16">
+                    <h1 class="page-hero-title text-gradient">Contribute</h1>
+                    <p class="page-hero-subtitle">
                         Search for shows to contribute skip segments or report issues.
                     </p>
                 </div>
-
-
-                <div id="login-banner" class="d-none"
-                    style="background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
-                    <span style="font-size: 1.5rem;">🔑</span>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #fbbf24;">Login Required</div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted);">You need to be logged in with a
+                <div id="login-banner" class="login-banner d-none">
+                    <span class="login-banner-icon">🔑</span>
+                    <div class="flex-1">
+                        <div class="login-banner-title">Login Required</div>
+                        <div class="login-banner-text">You need to be logged in with a
                             supported Debrid API key to contribute or report issues.</div>
                     </div>
-                    <a href="configure.html" class="btn btn-primary" style="white-space: nowrap;">Configure</a>
+                    <a href="configure.html" class="btn btn-primary nowrap">Configure</a>
                 </div>
-
-
                 <div id="search-section">
-                    <div class="glass-panel" style="padding: 30px;">
-                        <h3 style="margin-bottom: 15px; font-family: 'Space Grotesk', sans-serif;">Search for Shows</h3>
-                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+                    <div class="glass-panel dashboard-panel">
+                        <h3 class="section-title">Search for Shows</h3>
+                        <p class="form-hint mb-16">
                             Help the community grow. Search for a show to submit or update skip metadata.
                         </p>
-                        <div style="display: flex; gap: 10px; margin-bottom: 25px;">
+                        <div class="search-row">
                             <input type="text" id="searchInput" class="form-input"
                                 placeholder="e.g. Breaking Bad, Arcane...">
                             <button id="searchBtn" class="btn btn-primary">Search</button>
                         </div>
-                        <div id="search-results"
-                            style="display: flex; flex-direction: column; gap: 12px; max-height: 500px; overflow-y: auto;">
-
-                            <p style="text-align: center; color: var(--text-muted);">enter a search term to begin.</p>
+                        <div id="search-results" class="flex-stack-lg">
+                            <p class="text-center text-muted">enter a search term to begin.</p>
                         </div>
                     </div>
                 </div>
-
             </div>
         </section>
     </main>
-
-
     <div id="submit-overlay" class="modal">
-        <div class="glass-panel premium-modal" style="position: relative;">
-            <button id="closeSubmitX"
-                style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
-            <h2 id="submit-title"
-                style="margin-bottom: 25px; font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem;">Submit Skip
+        <div class="glass-panel premium-modal">
+            <button id="closeSubmitX" class="modal-close-btn">&times;</button>
+            <h2 id="submit-title" class="modal-title-lg">Submit Skip
                 Segment</h2>
-
             <div class="submit-meta-card">
                 <div class="poster-wrapper">
                     <img id="submit-poster" class="poster-img" src="" alt="">
                     <div id="poster-placeholder" class="poster-placeholder d-none">No Poster</div>
                 </div>
-                <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                    <div id="submit-name"
-                        style="font-size: 1.3rem; font-weight: 700; line-height: 1.2; margin-bottom: 4px;">-</div>
-                    <div id="submit-year" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px;">-
+                <div class="flex-1 flex-col justify-center">
+                    <div id="submit-name" class="search-result-title">-</div>
+                    <div id="submit-year" class="search-result-meta">-
                     </div>
-
-                    <div id="episode-inputs" class="episode-grid d-none" style="margin-top: 5px;">
+                    <div id="episode-inputs" class="episode-grid d-none mt-10">
                         <div class="form-group">
-                            <label class="form-label required-label" style="font-size: 0.75rem;">Season</label>
+                            <label class="form-label form-label-sm">Season</label>
                             <input type="number" id="seasonNum" class="form-input" placeholder="S" min="1">
                         </div>
                         <div class="form-group">
-                            <label class="form-label required-label" style="font-size: 0.75rem;">Episode</label>
+                            <label class="form-label form-label-sm">Episode</label>
                             <input type="number" id="episodeNum" class="form-input" placeholder="E" min="1">
                         </div>
                     </div>
                 </div>
             </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label required-label">Start Time</label>
@@ -145,122 +116,93 @@
                     <input type="text" id="skipEnd" class="form-input" placeholder="e.g. 03:00 or 180">
                 </div>
             </div>
-
-            <div class="form-group" style="margin-top: 15px;">
+            <div class="form-group mt-15">
                 <label class="form-label required-label">Segment Type</label>
-                <select id="segmentType" class="form-input" style="cursor: pointer;">
+                <select id="segmentType" class="form-input cursor-pointer">
                     <option value="Intro">Intro</option>
                     <option value="Outro">Outro</option>
                     <option value="Credits">Credits</option>
                 </select>
             </div>
-
-            <div id="seriesOptionContainer" class="d-none" style="margin-top: 5px;">
-                <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0;">
-                    <input type="checkbox" id="applySeries"
-                        style="width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; border-radius: 4px;">
-                    <label for="applySeries"
-                        style="font-weight: 500; cursor: pointer; color: var(--text-main); font-size: 0.95rem;">Apply to
+            <div id="seriesOptionContainer" class="d-none mt-10">
+                <div class="checkbox-row">
+                    <input type="checkbox" id="applySeries">
+                    <label for="applySeries">Apply to
                         entire series?</label>
                 </div>
-                <div id="seriesWarning" class="d-none"
-                    style="color: #fbbf24; font-size: 0.8rem; margin-top: 8px; background: rgba(251, 191, 36, 0.08); padding: 12px; border-radius: 10px; border: 1px solid rgba(251, 191, 36, 0.2); line-height: 1.4;">
+                <div id="seriesWarning" class="series-warning d-none">
                     ⚠️ <strong>Warning:</strong> This applies this skip to <u>ALL episodes</u>. Use only for intros that
                     appear at the exact same timestamp.
                 </div>
             </div>
-
-            <div style="display: flex; gap: 15px; margin-top: 30px;">
-                <button id="closeSubmitBtn" class="btn btn-secondary"
-                    style="flex: 1; border-radius: 12px;">Cancel</button>
-                <button id="submitBtn" class="btn btn-primary"
-                    style="flex: 1; justify-content: center; border-radius: 12px;">Publish Skip</button>
+            <div class="modal-actions">
+                <button id="closeSubmitBtn" class="btn btn-secondary">Cancel</button>
+                <button id="submitBtn" class="btn btn-primary justify-center">Publish Skip</button>
             </div>
         </div>
     </div>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const { provider, debridKey } = getDebridConfig();
             let currentItem = null;
-
             // --- Event Listeners (Fix for CSP) ---
             document.getElementById('closeSubmitX')?.addEventListener('click', closeSubmit);
             document.getElementById('closeSubmitBtn')?.addEventListener('click', closeSubmit);
-
             // Show login banner if not logged in
             if (!debridKey) {
                 const banner = document.getElementById('login-banner');
                 if (banner) {
                     banner.classList.remove('d-none');
-                    banner.style.display = 'flex';
                 }
             }
-
             // --- Search/Submit Logic ---
             let searchTimeout = null;
             document.getElementById('searchInput').addEventListener('input', () => {
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(performSearch, 500);
             });
-
             document.getElementById('searchBtn').onclick = performSearch;
-
             async function performSearch() {
                 const q = document.getElementById('searchInput').value.trim();
                 if (!q) return;
-
                 const btn = document.getElementById('searchBtn');
                 btn.textContent = 'Searching...';
-
                 try {
                     const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
                     const data = await res.json();
-
                     const cont = document.getElementById('search-results');
                     cont.innerHTML = '';
-
                     if (data.Search) {
                         data.Search.forEach(item => {
                             const row = document.createElement('div');
-                            row.className = 'glass-panel';
-                            row.style.padding = '15px';
-                            row.style.display = 'flex';
-                            row.style.gap = '20px';
-                            row.style.alignItems = 'center';
-
+                            row.className = 'glass-panel search-result-row';
                             const imgEl = document.createElement('img');
                             imgEl.src = item.Poster !== 'N/A' ? item.Poster : '/icon.svg';
-                            imgEl.style.cssText = 'width: 50px; height: 75px; object-fit: cover; border-radius: 6px;';
-
+                            imgEl.className = 'search-result-poster';
                             const infoEl = document.createElement('div');
-                            infoEl.style.flex = '1';
+                            infoEl.className = 'search-result-info';
                             infoEl.innerHTML = `
-                            <div style="font-weight: 600; font-size: 1.1rem;">${item.Title}</div>
-                            <div style="font-size: 0.85rem; color: var(--text-muted);">${item.Year} • ${item.Type}</div>
+                            <div class="search-result-title">${item.Title}</div>
+                            <div class="search-result-meta">${item.Year} • ${item.Type}</div>
                         `;
-
                             const contributeBtn = document.createElement('button');
-                            contributeBtn.className = 'btn btn-primary';
-                            contributeBtn.style.fontSize = '0.85rem';
+                            contributeBtn.className = 'btn btn-primary text-sm';
                             contributeBtn.textContent = 'Contribute';
                             contributeBtn.onclick = (e) => { e.stopPropagation(); openSubmit(item); };
-
                             row.appendChild(imgEl);
                             row.appendChild(infoEl);
                             row.appendChild(contributeBtn);
                             cont.appendChild(row);
                         });
                     } else {
-                        cont.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No results found.</p>';
+                        cont.innerHTML = '<p class="text-center text-muted">No results found.</p>';
                     }
                 } catch (e) {
                     console.error(e);
-                    cont.innerHTML = '<p style="text-align: center; color: #ef4444;">Search failed. Try again.</p>';
+                    document.getElementById('search-results').innerHTML = '<p class="text-center text-danger">Search failed. Try again.</p>';
                 }
                 finally { btn.textContent = 'Search'; }
             }
-
             function openSubmit(item) {
                 if (!debridKey) {
                     if (typeof Toast !== 'undefined') {
@@ -270,14 +212,11 @@
                     }
                     return;
                 }
-
                 currentItem = item;
                 document.getElementById('submit-name').textContent = item.Title;
                 document.getElementById('submit-year').textContent = `${item.Year} (${item.imdbID})`;
-
                 const posterImg = document.getElementById('submit-poster');
                 const posterPlaceholder = document.getElementById('poster-placeholder');
-
                 if (item.Poster && item.Poster !== 'N/A') {
                     posterImg.src = item.Poster;
                     posterImg.classList.remove('d-none');
@@ -287,12 +226,10 @@
                     posterImg.classList.add('d-none');
                     posterPlaceholder.classList.remove('d-none');
                 }
-
                 const epiSection = document.getElementById('episode-inputs');
                 if (item.Type === 'series' || item.Type === 'episode' || (item.imdbID && item.imdbID.includes(':'))) {
                     epiSection.classList.remove('d-none');
                     document.getElementById('seriesOptionContainer').classList.remove('d-none');
-
                     // Pre-fill season/episode if present in ID
                     if (item.imdbID && item.imdbID.includes(':')) {
                         const parts = item.imdbID.split(':');
@@ -305,27 +242,22 @@
                     epiSection.classList.add('d-none');
                     document.getElementById('seriesOptionContainer').classList.add('d-none');
                 }
-
                 // Reset series options
                 document.getElementById('applySeries').checked = false;
                 document.getElementById('seriesWarning').classList.add('d-none');
-
-                document.getElementById('submit-overlay').style.display = 'flex';
+                document.getElementById('submit-overlay').classList.add('active');
             }
-
             // Toggle warning
             document.getElementById('applySeries').addEventListener('change', (e) => {
                 const warn = document.getElementById('seriesWarning');
                 if (e.target.checked) warn.classList.remove('d-none');
                 else warn.classList.add('d-none');
             });
-
             function openSubmitFromHistory(vid, title, poster) {
                 // Pseudo-item for history
                 const parts = vid.split(':');
                 const imdbID = parts[0];
                 const isSeries = parts.length >= 3;
-
                 openSubmit({
                     Title: title || vid,
                     imdbID: vid,
@@ -334,11 +266,9 @@
                     Poster: poster
                 });
             }
-
             function closeSubmit() {
-                document.getElementById('submit-overlay').style.display = 'none';
+                document.getElementById('submit-overlay').classList.remove('active');
             }
-
             function parseTime(v) {
                 if (v.includes(':')) {
                     const p = v.split(':').map(x => parseFloat(x));
@@ -346,14 +276,12 @@
                 }
                 return parseFloat(v);
             }
-
             document.getElementById('submitBtn').onclick = async () => {
                 const startStr = document.getElementById('skipStart').value.trim();
                 const endStr = document.getElementById('skipEnd').value.trim();
                 const season = document.getElementById('seasonNum').value;
                 const episode = document.getElementById('episodeNum').value;
                 const applyToSeries = document.getElementById('applySeries').checked;
-
                 // Helper function for showing messages
                 function showMessage(msg, type = 'error') {
                     if (typeof Toast !== 'undefined') {
@@ -362,22 +290,17 @@
                         alert(msg);
                     }
                 }
-
                 if (!startStr || !endStr) {
                     return showMessage("Please enter start and end times.");
                 }
-
                 const start = parseTime(startStr);
                 const end = parseTime(endStr);
-
                 if (isNaN(start) || isNaN(end)) {
                     return showMessage("Invalid time format. Use MM:SS or seconds.");
                 }
-
                 if (start >= end) {
                     return showMessage("Start time must be before end time.");
                 }
-
                 // Validate season/episode for series content (unless applying to whole series)
                 const isSeries = currentItem && (currentItem.Type === 'series' || currentItem.Type === 'episode');
                 if (isSeries && !applyToSeries) {
@@ -388,11 +311,9 @@
                         return showMessage("Season and episode must be positive numbers.");
                     }
                 }
-
                 const btn = document.getElementById('submitBtn');
                 btn.disabled = true;
                 btn.textContent = 'Publishing...';
-
                 try {
                     const segmentType = document.getElementById('segmentType').value;
                     const res = await fetch('/api/submit', {
@@ -411,7 +332,6 @@
                             applyToSeries: applyToSeries
                         })
                     });
-
                     if (res.ok) {
                         showMessage("Thanks for your contribution! 🎉 An admin will review it shortly.", 'success');
                         closeSubmit();
@@ -431,7 +351,6 @@
                     btn.textContent = 'Publish Skip';
                 }
             };
-
             // --- Global Modal Close ---
             window.onclick = function (event) {
                 const submitOverlay = document.getElementById('submit-overlay');
@@ -441,9 +360,7 @@
             }
         });
     </script>
-
-
-    <footer style="margin-top: 60px;">
+    <footer class="footer-spaced">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-col">
@@ -481,7 +398,5 @@
             </div>
         </div>
     </footer>
-
 </body>
-
 </html>

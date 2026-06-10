@@ -15,7 +15,7 @@
         rel="stylesheet">
 
 
-    <link rel="stylesheet" href="css/style.css?v=8">
+    <link rel="stylesheet" href="css/style.css?v=9">
     <meta name="theme-color" content="#6366f1">
     <script src="js/main.js" defer></script>
     <script src="js/toast.js" defer></script>
@@ -25,16 +25,15 @@
 
 
     <div id="login-overlay">
-        <div class="glass-panel" style="max-width: 450px; width: 100%; padding: 40px; position: relative;">
-            <button id="closeOverlayBtn" class="modal-close" aria-label="Close login dialog"
-                style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
-            <div class="text-center" style="margin-bottom: 30px;">
-                <h2 class="text-gradient" style="font-size: 2rem;">My Profile</h2>
-                <p style="color: var(--text-muted); margin-top: 10px;">Select your provider and paste your API key to
+        <div class="glass-panel login-overlay-panel">
+            <button id="closeOverlayBtn" class="modal-close-btn" aria-label="Close login dialog">&times;</button>
+            <div class="text-center mb-16">
+                <h2 class="text-gradient text-3xl">My Profile</h2>
+                <p class="page-hero-note">Select your provider and paste your API key to
                     view your
                     profile.</p>
             </div>
-            <div class="form-group" style="margin-bottom: 15px;">
+            <div class="form-group mb-16">
                 <label class="form-label" for="authProvider">Debrid Provider</label>
                 <select id="authProvider" class="form-input">
                     <option value="realdebrid">Real-Debrid</option>
@@ -47,11 +46,10 @@
                 <label class="form-label" for="authKey" id="authKeyLabel">API Key</label>
                 <input type="text" id="authKey" class="form-input" placeholder="Paste your key here">
             </div>
-            <button id="enterBtn" class="btn btn-primary"
-                style="width: 100%; justify-content: center; margin-top: 10px;">View Profile</button>
-            <p style="text-align: center; margin-top: 20px; font-size: 0.85rem;">
+            <button id="enterBtn" class="btn btn-primary w-full justify-center mt-10">View Profile</button>
+            <p class="text-center mt-20 text-sm">
                 <a id="getAuthKeyLink" href="https://real-debrid.com/apitoken" target="_blank"
-                    style="color: var(--primary);">Get your key
+                    class="text-link">Get your key
                     here ↗</a>
             </p>
         </div>
@@ -89,10 +87,10 @@
 
     <main>
         <section class="section">
-            <div class="container" style="max-width: 900px;">
+            <div class="container container-profile">
 
-                <div id="profile-content" style="display: none;">
-                    <div class="page-hero text-center" style="padding-bottom: 24px;">
+                <div id="profile-content" class="d-none">
+                    <div class="page-hero text-center pb-24">
                         <h1 class="page-hero-title">My <span class="text-gradient-primary">Profile</span></h1>
                         <p class="page-hero-subtitle">Track your contributions and activity.</p>
                     </div>
@@ -102,8 +100,7 @@
                             <h2 id="userName">Loading...</h2>
                             <p>Rank: <span id="userRank">#-</span> · Member since <span id="joinDate">-</span></p>
                         </div>
-                        <button id="logoutBtn" class="btn btn-secondary"
-                            style="margin-left: auto; border: 1px solid #ef4444; color: #ef4444;">
+                        <button id="logoutBtn" class="btn btn-danger-ghost ml-auto">
                             Logout
                         </button>
                     </div>
@@ -129,32 +126,31 @@
                     </div>
 
 
-                    <div class="glass-panel" style="padding: 24px; margin-bottom: 24px;">
-                        <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 16px;">📊 Contribution
-                            Breakdown</h3>
+                    <div class="glass-panel dashboard-panel">
+                        <h3 class="section-title">Contribution Breakdown</h3>
                         <div class="contribution-breakdown">
                             <div class="breakdown-chart" id="contributionChart">
                                 <div class="breakdown-item">
                                     <div class="breakdown-label">Intros</div>
                                     <div class="breakdown-bar">
-                                        <div class="breakdown-fill" id="fillIntro"
-                                            style="width: 0%; background: #6366f1;"></div>
+                                        <div class="breakdown-fill fill-intro" id="fillIntro"
+                                            style="width: 0%;"></div>
                                     </div>
                                     <div class="breakdown-value" id="valIntro">0</div>
                                 </div>
                                 <div class="breakdown-item">
                                     <div class="breakdown-label">Outros</div>
                                     <div class="breakdown-bar">
-                                        <div class="breakdown-fill" id="fillOutro"
-                                            style="width: 0%; background: #a855f7;"></div>
+                                        <div class="breakdown-fill fill-outro" id="fillOutro"
+                                            style="width: 0%;"></div>
                                     </div>
                                     <div class="breakdown-value" id="valOutro">0</div>
                                 </div>
                                 <div class="breakdown-item">
                                     <div class="breakdown-label">Credits</div>
                                     <div class="breakdown-bar">
-                                        <div class="breakdown-fill" id="fillCredits"
-                                            style="width: 0%; background: #ec4899;"></div>
+                                        <div class="breakdown-fill fill-credits" id="fillCredits"
+                                            style="width: 0%;"></div>
                                     </div>
                                     <div class="breakdown-value" id="valCredits">0</div>
                                 </div>
@@ -177,18 +173,17 @@
                     </div>
 
 
-                    <div class="glass-panel" style="padding: 24px; margin-bottom: 24px;">
-                        <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 16px;">🏆 Achievements</h3>
+                    <div class="glass-panel dashboard-panel">
+                        <h3 class="section-title">Achievements</h3>
                         <div class="badge-grid" id="badgeGrid">
 
                         </div>
                     </div>
 
 
-                    <div class="glass-panel" style="padding: 24px;">
-                        <h3 style="font-family: 'Space Grotesk', sans-serif; margin-bottom: 16px;">📜 Recent Activity
-                        </h3>
-                        <div id="history-list" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div class="glass-panel dashboard-panel dashboard-panel-last">
+                        <h3 class="section-title">Recent Activity</h3>
+                        <div id="history-list" class="history-list">
 
                         </div>
                     </div>
@@ -199,54 +194,48 @@
     </main>
 
 
-    <div id="refine-overlay" class="modal"
-        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
-        <div class="glass-panel" style="max-width: 500px; width: 90%; padding: 30px; position: relative;">
-            <button id="closeRefineX"
-                style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
-            <h2 id="refine-title"
-                style="margin-bottom: 25px; font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem;">Refine Skip
+    <div id="refine-overlay" class="modal d-none">
+        <div class="glass-panel premium-modal">
+            <button id="closeRefineX" class="modal-close-btn">&times;</button>
+            <h2 id="refine-title" class="modal-title-lg">Refine Skip
                 Segment</h2>
 
-            <div class="submit-meta-card" style="display: flex; gap: 16px; margin-bottom: 20px; align-items: center;">
-                <div class="poster-wrapper" style="flex-shrink: 0;">
-                    <img id="refine-poster" style="width: 60px; height: 90px; object-fit: cover; border-radius: 8px;"
+            <div class="submit-meta-card">
+                <div class="poster-wrapper">
+                    <img id="refine-poster" class="refine-poster-sm"
                         src="" alt="">
-                    <div id="refine-poster-placeholder" class="poster-placeholder d-none"
-                        style="width: 60px; height: 90px; background: var(--bg-card); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--text-muted);">
+                    <div id="refine-poster-placeholder" class="poster-placeholder refine-poster-placeholder-sm d-none">
                         No Poster</div>
                 </div>
-                <div style="flex: 1;">
-                    <div id="refine-name" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">-</div>
-                    <div id="refine-vid" style="color: var(--text-muted); font-size: 0.85rem;">-</div>
+                <div class="flex-1">
+                    <div id="refine-name" class="history-title">-</div>
+                    <div id="refine-vid" class="history-meta">-</div>
                 </div>
             </div>
 
-            <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="flex: 1;">
+            <div class="form-row">
+                <div class="form-group flex-1">
                     <label class="form-label">Start Time</label>
                     <input type="text" id="refineStart" class="form-input" placeholder="e.g. 01:25 or 85">
                 </div>
-                <div class="form-group" style="flex: 1;">
+                <div class="form-group flex-1">
                     <label class="form-label">End Time</label>
                     <input type="text" id="refineEnd" class="form-input" placeholder="e.g. 03:00 or 180">
                 </div>
             </div>
 
-            <div class="form-group" style="margin-bottom: 15px;">
+            <div class="form-group mb-16">
                 <label class="form-label">Segment Type</label>
-                <select id="refineSegmentType" class="form-input" style="cursor: pointer;">
+                <select id="refineSegmentType" class="form-input cursor-pointer">
                     <option value="Intro">Intro</option>
                     <option value="Outro">Outro</option>
                     <option value="Credits">Credits</option>
                 </select>
             </div>
 
-            <div style="display: flex; gap: 15px; margin-top: 20px;">
-                <button id="closeRefineBtn" class="btn btn-secondary"
-                    style="flex: 1; border-radius: 12px;">Cancel</button>
-                <button id="refineSubmitBtn" class="btn btn-primary"
-                    style="flex: 1; justify-content: center; border-radius: 12px;">Submit Refinement</button>
+            <div class="modal-actions">
+                <button id="closeRefineBtn" class="btn btn-secondary">Cancel</button>
+                <button id="refineSubmitBtn" class="btn btn-primary justify-center">Submit Refinement</button>
             </div>
         </div>
     </div>
@@ -373,7 +362,7 @@
                     });
                     const data = await res.json();
 
-                    document.getElementById('profile-content').style.display = 'block';
+                    document.getElementById('profile-content').classList.remove('d-none');
 
                     // Avatar
                     const initials = (data.userId || 'U').substring(0, 2).toUpperCase();
@@ -406,17 +395,12 @@
                         const progress = badge.progress ? badge.progress(data) : (earned ? 100 : 0);
 
                         const el = document.createElement('div');
-                        el.className = `badge ${earned ? 'earned' : 'locked'}`;
-                        el.style.flexDirection = 'column';
-                        el.style.alignItems = 'flex-start';
-                        el.style.padding = '12px 16px';
-                        el.style.borderRadius = '12px';
-                        el.style.minWidth = '140px';
+                        el.className = `badge badge-card ${earned ? 'earned' : 'locked'}`;
 
                         el.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
-                            <span style="font-size: 1.2rem;">${badge.icon}</span>
-                            <span style="font-weight: 600;">${badge.name}</span>
+                        <div class="badge-card-header">
+                            <span class="badge-card-icon">${badge.icon}</span>
+                            <span class="badge-card-name">${badge.name}</span>
                         </div>
                         <div class="badge-progress">
                             <div class="badge-progress-bar" style="width: ${progress}%"></div>
@@ -456,35 +440,33 @@
 
                             // Left side - poster and info
                             const infoDiv = document.createElement('div');
-                            infoDiv.style.cssText = 'display: flex; gap: 12px; align-items: center;';
+                            infoDiv.className = 'history-item-info';
 
                             if (item.poster) {
                                 const img = document.createElement('img');
                                 img.src = item.poster;
-                                img.style.cssText = 'width: 40px; height: 60px; object-fit: cover; border-radius: 6px;';
+                                img.className = 'history-poster';
                                 infoDiv.appendChild(img);
                             }
 
                             const textDiv = document.createElement('div');
                             textDiv.innerHTML = `
-                            <div style="font-weight: 600;">${item.title || item.videoId}</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(item.timestamp).toLocaleString()}</div>
+                            <div class="history-title">${item.title || item.videoId}</div>
+                            <div class="history-meta">${new Date(item.timestamp).toLocaleString()}</div>
                         `;
                             infoDiv.appendChild(textDiv);
 
                             // Right side - action buttons
                             const actionsDiv = document.createElement('div');
-                            actionsDiv.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+                            actionsDiv.className = 'history-actions';
 
                             const refineBtn = document.createElement('button');
-                            refineBtn.className = 'btn btn-secondary';
-                            refineBtn.style.cssText = 'padding: 6px 12px; font-size: 0.75rem;';
+                            refineBtn.className = 'btn btn-secondary btn-sm';
                             refineBtn.textContent = 'Refine';
                             refineBtn.onclick = () => openRefineModal(item.videoId, item.title || '', item.poster || '');
 
                             const reportBtn = document.createElement('button');
-                            reportBtn.className = 'btn';
-                            reportBtn.style.cssText = 'padding: 6px 12px; font-size: 0.75rem; border: 1px solid #ef4444; color: #ef4444; background: transparent;';
+                            reportBtn.className = 'btn btn-sm btn-danger-ghost';
                             reportBtn.textContent = 'Report ⚠️';
                             reportBtn.onclick = () => reportIssue(item.videoId, reportBtn);
 
@@ -496,7 +478,7 @@
                             historyList.appendChild(el);
                         });
                     } else {
-                        historyList.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No recent activity. Watch something on Stremio!</p>';
+                        historyList.innerHTML = '<p class="text-center text-muted">No recent activity. Watch something on Stremio!</p>';
                     }
 
                 } catch (e) {
@@ -563,11 +545,14 @@
                 document.getElementById('refineStart').value = '';
                 document.getElementById('refineEnd').value = '';
 
-                document.getElementById('refine-overlay').style.display = 'flex';
+                document.getElementById('refine-overlay').classList.add('active');
+                document.getElementById('refine-overlay').classList.remove('d-none');
             }
 
             function closeRefineModal() {
-                document.getElementById('refine-overlay').style.display = 'none';
+                const overlay = document.getElementById('refine-overlay');
+                overlay.classList.remove('active');
+                overlay.classList.add('d-none');
                 currentRefineItem = null;
             }
 
