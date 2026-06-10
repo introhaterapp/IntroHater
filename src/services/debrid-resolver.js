@@ -1,5 +1,98 @@
 const axios = require('axios');
 const log = require('../utils/logger').hls;
+const { detectContainer } = require('../utils/container-detection');
+
+const EPISODE_PATTERNS = (season, episode) => [
+    new RegExp(`[Ss]0*${season}[Ee]0*${episode}(?:[^0-9]|$)`, 'i'),
+    new RegExp(`(?:^|[^0-9])${season}x0*${episode}(?:[^0-9]|$)`, 'i'),
+    new RegExp(`[Ee]pisode[._\\s-]?0*${episode}(?:[^0-9]|$)`, 'i'),
+    new RegExp(`(?:^|[._\\s-])E0*${episode}(?:[^0-9]|$)`, 'i')
+];
+
+function getFileName(file) {
+    if (file.path) return file.path.split('/').pop();
+    return file.name || file.short_name || '';
+}
+
+function isMp4File(fileName) {
+    const lower = fileName.toLowerCase();
+    return lower.endsWith('.mp4') || lower.endsWith('.m4v');
+}
+
+function pickBestFileIndex(files, { targetSeason, targetEpisode, preferMp4 }) {
+    if (!files || files.length === 0) return 0;
+
+    let candidates = files.map((file, index) => ({
+        index,
+        file,
+        fileName: getFileName(file),
+        size: file.bytes || file.size || 0
+    }));
+
+    if (targetSeason !== null && targetEpisode !== null) {
+        const episodeMatches = [];
+        for (const c of candidates) {
+            for (const pattern of EPISODE_PATTERNS(targetSeason, targetEpisode)) {
+                if (pattern.test(c.fileName)) {
+                    episodeMatches.push(c);
+                    break;
+                }
+            }
+        }
+        if (episodeMatches.length > 0) {
+            candidates = episodeMatches;
+        }
+    }
+
+    if (preferMp4) {
+        const mp4Candidates = candidates.filter((c) => isMp4File(c.fileName));
+        if (mp4Candidates.length > 0) {
+            candidates = mp4Candidates;
+        }
+    }
+
+    candidates.sort((a, b) => b.size - a.size);
+    const selected = candidates[0];
+    log.info(`[DebridResolver] Selected file: ${selected.fileName} (container: ${detectContainer(selected.fileName)})`);
+    return selected.index;
+}
+
+function pickBestTorBoxFile(files, { targetSeason, targetEpisode, preferMp4 }) {
+    if (!files || files.length === 0) return null;
+
+    let candidates = files.map((file) => ({
+        file,
+        fileName: getFileName(file),
+        size: file.size || 0
+    }));
+
+    if (targetSeason !== null && targetEpisode !== null) {
+        const episodeMatches = [];
+        for (const c of candidates) {
+            for (const pattern of EPISODE_PATTERNS(targetSeason, targetEpisode)) {
+                if (pattern.test(c.fileName)) {
+                    episodeMatches.push(c);
+                    break;
+                }
+            }
+        }
+        if (episodeMatches.length > 0) {
+            candidates = episodeMatches;
+        }
+    }
+
+    if (preferMp4) {
+        const mp4Candidates = candidates.filter((c) => isMp4File(c.fileName));
+        if (mp4Candidates.length > 0) {
+            candidates = mp4Candidates;
+        }
+    }
+
+    candidates.sort((a, b) => b.size - a.size);
+    const selected = candidates[0];
+    log.info(`[DebridResolver:TorBox] Selected file: ${selected.fileName} (container: ${detectContainer(selected.fileName)})`);
+    return selected.file;
+}
 
 async function resolveInfoHash(provider, key, infoHash, options = {}) {
     if (!provider || !key || !infoHash) return null;
@@ -18,10 +111,10 @@ async function resolveInfoHash(provider, key, infoHash, options = {}) {
 }
 
 async function resolveRD(key, infoHash, options = {}) {
-    const { transcode } = options;
+    const { transcode, skipRequested, preferMp4, videoId } = options;
     const logPrefix = `[DebridResolver:RD]`;
+    const useTranscode = transcode && !skipRequested;
 
-    // 1. Add magnet
     const addRes = await axios.post('https://api.real-debrid.com/rest/1.0/torrents/addMagnet',
         `magnet=magnet:?xt=urn:btih:${infoHash}`, {
         headers: {
@@ -33,7 +126,6 @@ async function resolveRD(key, infoHash, options = {}) {
     const torrentId = addRes.data.id;
     if (!torrentId) return null;
 
-    // 2. Select files (select all for simplicity in auto-skip context)
     await axios.post(`https://api.real-debrid.com/rest/1.0/torrents/selectFiles/${torrentId}`,
         'files=all', {
         headers: {
@@ -42,21 +134,15 @@ async function resolveRD(key, infoHash, options = {}) {
         }
     });
 
-    // 3. Get info
     const infoRes = await axios.get(`https://api.real-debrid.com/rest/1.0/torrents/info/${torrentId}`, {
         headers: { 'Authorization': `Bearer ${key}` }
     });
 
-    // 4. Find the best file (Episode match or Largest)
     const files = infoRes.data.files || [];
     const links = infoRes.data.links || [];
 
     if (links.length === 0) return null;
 
-    let selectedIndex = 0;
-
-    // Extract season/episode from videoId for matching
-    const { videoId } = options;
     let targetSeason = null;
     let targetEpisode = null;
 
@@ -68,51 +154,15 @@ async function resolveRD(key, infoHash, options = {}) {
         }
     }
 
-    if (files.length > 0 && links.length === files.length) {
-        let matchedFile = null;
+    let selectedIndex = 0;
 
-        // Try episode matching first
+    if (files.length > 0 && links.length === files.length) {
         if (targetSeason !== null && targetEpisode !== null) {
             log.info(`${logPrefix} Looking for S${String(targetSeason).padStart(2, '0')}E${String(targetEpisode).padStart(2, '0')}`);
-
-            const episodePatterns = [
-                new RegExp(`[Ss]0*${targetSeason}[Ee]0*${targetEpisode}(?:[^0-9]|$)`, 'i'),
-                new RegExp(`(?:^|[^0-9])${targetSeason}x0*${targetEpisode}(?:[^0-9]|$)`, 'i'),
-                new RegExp(`[Ee]pisode[._\\s-]?0*${targetEpisode}(?:[^0-9]|$)`, 'i'),
-                new RegExp(`(?:^|[._\\s-])E0*${targetEpisode}(?:[^0-9]|$)`, 'i')
-            ];
-
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const fileName = file.path.split('/').pop();
-
-                for (const pattern of episodePatterns) {
-                    if (pattern.test(fileName)) {
-                        matchedFile = { index: i, ...file };
-                        log.info(`${logPrefix} Matched episode file: ${fileName}`);
-                        break;
-                    }
-                }
-                if (matchedFile) break;
-            }
         }
-
-        // Fallback to largest file
-        if (!matchedFile) {
-            let largestSize = 0;
-            files.forEach((file, index) => {
-                if (file.bytes > largestSize) {
-                    largestSize = file.bytes;
-                    selectedIndex = index;
-                }
-            });
-            log.info(`${logPrefix} Using largest file (Index ${selectedIndex})`);
-        } else {
-            selectedIndex = matchedFile.index;
-        }
+        selectedIndex = pickBestFileIndex(files, { targetSeason, targetEpisode, preferMp4 });
     }
 
-    // 5. Unrestrict link
     const unrestrictRes = await axios.post('https://api.real-debrid.com/rest/1.0/unrestrict/link',
         `link=${encodeURIComponent(links[selectedIndex])}`, {
         headers: {
@@ -124,8 +174,7 @@ async function resolveRD(key, infoHash, options = {}) {
     const unrestrictedId = unrestrictRes.data.id;
     const downloadUrl = unrestrictRes.data.download;
 
-    // 6. If transcode requested, try to get HLS stream
-    if (transcode && unrestrictedId) {
+    if (useTranscode && unrestrictedId) {
         try {
             log.info(`${logPrefix} Requesting transcoded stream for file ${unrestrictedId}`);
             const streamRes = await axios.get(`https://api.real-debrid.com/rest/1.0/streaming/transcode/${unrestrictedId}`, {
@@ -149,10 +198,10 @@ async function resolveRD(key, infoHash, options = {}) {
 }
 
 async function resolveTorBox(key, infoHash, options = {}) {
-    const { transcode, videoId } = options;
+    const { transcode, skipRequested, preferMp4, videoId } = options;
     const logPrefix = `[DebridResolver:TorBox]`;
+    const useTranscode = transcode && !skipRequested;
 
-    // Extract season/episode from videoId (e.g. tt0944947:1:3 → S01E03)
     let targetSeason = null;
     let targetEpisode = null;
     if (videoId && videoId.includes(':')) {
@@ -165,7 +214,6 @@ async function resolveTorBox(key, infoHash, options = {}) {
     }
 
     try {
-        // Step 1: Add magnet to ensure it's in the account and get ID
         let torrentId;
         try {
             const addRes = await axios.post('https://api.torbox.app/v1/api/torrents/createtorrent',
@@ -177,11 +225,10 @@ async function resolveTorBox(key, infoHash, options = {}) {
                 torrentId = addRes.data.data.torrent_id;
             }
         } catch {
-            // If add fails, fall through to list check
+            // fall through to list check
         }
 
         if (!torrentId) {
-            // Use bypass_cache=true to see recently added torrents
             const listRes = await axios.get('https://api.torbox.app/v1/api/torrents/mylist?bypass_cache=true', {
                 headers: { Authorization: `Bearer ${key}` }
             });
@@ -196,10 +243,8 @@ async function resolveTorBox(key, infoHash, options = {}) {
             return null;
         }
 
-        // Step 2: Get File ID (Largest file)
         let fileId = null;
 
-        // Try checkcached first
         try {
             const checkRes = await axios.get(`https://api.torbox.app/v1/api/torrents/checkcached?hash=${infoHash}&format=object&list_files=true`, {
                 headers: { Authorization: `Bearer ${key}` }
@@ -211,61 +256,29 @@ async function resolveTorBox(key, infoHash, options = {}) {
             }
 
             if (cachedItem && cachedItem.files && cachedItem.files.length > 0) {
-                const largestFile = cachedItem.files.reduce((prev, current) => (prev.size > current.size) ? prev : current);
-                // TorBox API sometimes uses 'id', 'file_id', or 'idx' 
-                fileId = largestFile.id || largestFile.file_id || largestFile.idx;
-                if (fileId) {
-                    log.info(`${logPrefix} Got file ID ${fileId} from checkcached`);
+                const picked = pickBestTorBoxFile(cachedItem.files, { targetSeason, targetEpisode, preferMp4 });
+                if (picked) {
+                    fileId = picked.id || picked.file_id || picked.idx;
+                    if (fileId != null) {
+                        log.info(`${logPrefix} Got file ID ${fileId} from checkcached`);
+                    }
                 }
             }
         } catch (e) {
             log.warn(`${logPrefix} checkcached failed: ${e.message}`);
         }
 
-        // Fallback: Get file list from torrent info
-        if (!fileId) {
+        if (fileId === null || fileId === undefined) {
             try {
-                const infoRes = await axios.get(`https://api.torbox.app/v1/api/torrents/mylist?bypass_cache=true`, {
+                const infoRes = await axios.get('https://api.torbox.app/v1/api/torrents/mylist?bypass_cache=true', {
                     headers: { Authorization: `Bearer ${key}` }
                 });
 
                 if (infoRes.data && infoRes.data.data) {
                     const torrent = infoRes.data.data.find(t => t.id === torrentId || t.hash?.toLowerCase() === infoHash.toLowerCase());
                     if (torrent && torrent.files && torrent.files.length > 0) {
-                        let targetFile = null;
-
-                        // Try to match episode if we have season/episode info
-                        if (targetSeason !== null && targetEpisode !== null) {
-                            // Patterns ordered from strictest to loosest
-                            const episodePatterns = [
-                                // S01E03, S1E03, S01E3 - most reliable
-                                new RegExp(`[Ss]0*${targetSeason}[Ee]0*${targetEpisode}(?:[^0-9]|$)`, 'i'),
-                                // 1x03 format
-                                new RegExp(`(?:^|[^0-9])${targetSeason}x0*${targetEpisode}(?:[^0-9]|$)`, 'i'),
-                                // Episode.03 or Episode 3
-                                new RegExp(`[Ee]pisode[._\\s-]?0*${targetEpisode}(?:[^0-9]|$)`, 'i'),
-                                // E03 standalone (only in filename, not path)
-                                new RegExp(`(?:^|[._\\s-])E0*${targetEpisode}(?:[^0-9]|$)`, 'i')
-                            ];
-
-                            for (const file of torrent.files) {
-                                const fileName = file.name || file.short_name || '';
-                                for (const pattern of episodePatterns) {
-                                    if (pattern.test(fileName)) {
-                                        targetFile = file;
-                                        log.info(`${logPrefix} Matched episode file: ${fileName}`);
-                                        break;
-                                    }
-                                }
-                                if (targetFile) break;
-                            }
-                        }
-
-                        // Fallback to largest file if no episode match
-                        if (!targetFile) {
-                            targetFile = torrent.files.reduce((prev, current) => (prev.size > current.size) ? prev : current);
-                            log.warn(`${logPrefix} No episode match, using largest file: ${targetFile.name || targetFile.short_name}`);
-                        }
+                        const targetFile = pickBestTorBoxFile(torrent.files, { targetSeason, targetEpisode, preferMp4 })
+                            || torrent.files.reduce((prev, current) => (prev.size > current.size) ? prev : current);
 
                         fileId = targetFile.id || targetFile.file_id || targetFile.idx || 0;
                         log.info(`${logPrefix} Got file ID ${fileId} from mylist`);
@@ -276,21 +289,18 @@ async function resolveTorBox(key, infoHash, options = {}) {
             }
         }
 
-        // Last resort: use 0 as default file ID (first/largest file)
         if (fileId === null || fileId === undefined) {
             log.warn(`${logPrefix} Could not determine file ID, using default 0`);
             fileId = 0;
         }
 
-        // Step 3: Get Stream/Download Link
-        if (transcode) {
-            // Request Transcoded HLS Stream (preferred for Android/Web)
+        if (useTranscode) {
             log.info(`${logPrefix} Requesting transcoded stream for torrent ${torrentId}, file ${fileId}`);
             try {
-                const streamRes = await axios.get(`https://api.torbox.app/v1/api/stream/createstream`, {
+                const streamRes = await axios.get('https://api.torbox.app/v1/api/stream/createstream', {
                     params: { id: torrentId, file_id: fileId, type: 'torrent' },
                     headers: { Authorization: `Bearer ${key}` },
-                    timeout: 15000 // 15s timeout for transcode API
+                    timeout: 15000
                 });
 
                 if (streamRes.data.success && streamRes.data.data) {
@@ -308,11 +318,9 @@ async function resolveTorBox(key, infoHash, options = {}) {
                 log.warn(`${logPrefix} createstream failed: ${streamErr.message}`);
             }
 
-            // Transcode failed - DO NOT return null, try download link as fallback
             log.info(`${logPrefix} ⚠️ Transcode unavailable, falling back to download link`);
         }
 
-        // Request Download Link (either no transcode requested, or transcode failed)
         try {
             const dlRes = await axios.get('https://api.torbox.app/v1/api/torrents/requestdl', {
                 params: { token: key, torrent_id: torrentId, file_id: fileId },
@@ -337,4 +345,4 @@ async function resolveTorBox(key, infoHash, options = {}) {
     }
 }
 
-module.exports = { resolveInfoHash };
+module.exports = { resolveInfoHash, pickBestFileIndex, pickBestTorBoxFile };

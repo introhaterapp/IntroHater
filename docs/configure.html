@@ -159,7 +159,9 @@
 
                         <p class="text-sm text-center mt-16" style="color: var(--text-muted);">
                             If installation fails, copy the link above and paste it into the Stremio search bar to
-                            install manually.
+                            install manually.<br>
+                            <span style="color: var(--text-dim); font-size: 0.8rem;">Previously installed? Regenerate
+                                your link — old install URLs may have broken scraper encoding.</span>
                         </p>
                     </div>
 
@@ -354,17 +356,21 @@
                         configValue += `+${s.provider}:${s.key}`;
                     });
 
-                    // Add optional params
+                    function base64urlEncode(str) {
+                        return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                    }
+
+                    // Add optional params (base64url — standard base64 / breaks stremio:// paths)
                     if (scraper) {
                         let cleanScraper = scraper.replace(/\/manifest\.json$/, '');
-                        configValue += `:s=${btoa(cleanScraper)}`;
+                        configValue += `:s=${base64urlEncode(cleanScraper)}`;
                     }
                     if (proxyUrl) {
                         let cleanProxy = proxyUrl.replace(/\/$/, '');
-                        configValue += `:p=${btoa(cleanProxy)}`;
+                        configValue += `:p=${base64urlEncode(cleanProxy)}`;
                     }
                     if (proxyPassword) {
-                        configValue += `:pp=${btoa(proxyPassword)}`;
+                        configValue += `:pp=${base64urlEncode(proxyPassword)}`;
                     }
 
                     // Construct Stremio Install URL
@@ -431,7 +437,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2025 IntroHater. Open source and community powered.</p>
+                <p>&copy; 2026 IntroHater. Open source and community powered.</p>
             </div>
         </div>
     </footer>

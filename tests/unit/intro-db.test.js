@@ -33,28 +33,40 @@ describe('IntroDB Integration', () => {
     });
 
     it('should fetch intro from IntroDB and return it', async () => {
-        try {
-            const imdbId = 'tt1234567';
-            const season = 1;
-            const episode = 1;
-            const fullId = `${imdbId}:${season}:${episode}`;
+        const imdbId = 'tt1234567';
+        const season = 1;
+        const episode = 1;
+        const fullId = `${imdbId}:${season}:${episode}`;
 
-            axios.get.mockResolvedValueOnce({
+        axios.get.mockResolvedValueOnce({
+            data: { start_sec: 10, end_sec: 100 }
+        });
+
+        const result = await skipService.getSkipSegment(fullId);
+        expect(result).not.toBeNull();
+        expect(result.start).toBe(10);
+        expect(result.end).toBe(100);
+    });
+
+    it('should fetch intro from TheIntroDB segments API', async () => {
+        const imdbId = 'tt1234567';
+        const season = 1;
+        const episode = 1;
+        const fullId = `${imdbId}:${season}:${episode}`;
+
+        axios.get
+            .mockResolvedValueOnce({ data: {} })
+            .mockResolvedValueOnce({
                 data: {
-                    intro: { start: 10.5, end: 100.2 },
-                    outro: { start: 1200, end: 1300 }
+                    intro: [{ start_ms: 5000, end_ms: 90000 }]
                 }
             });
 
-            const result = await skipService.getSkipSegment(fullId);
-            console.log('Result:', result);
-
-            expect(result).not.toBeNull();
-            expect(result.start).toBe(10.5);
-        } catch (e) {
-            console.error('Test error:', e);
-            throw e;
-        }
+        const result = await skipService.getSkipSegment(fullId);
+        expect(result).not.toBeNull();
+        expect(result.start).toBe(5);
+        expect(result.end).toBe(90);
+        expect(result.source).toBe('theintrodb');
     });
 
     it('should handle IntroDB API errors gracefully', async () => {

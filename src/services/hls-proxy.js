@@ -443,7 +443,8 @@ ${videoUrl}
 }
 
 /**
- * Proxies and patches an external HLS playlist to allow for intro skipping.
+ * @deprecated NOT used for skip — debrid m3u8 playlist patching does not skip in Stremio.
+ * Kept for reference; HLS routes passthrough transcode m3u8 URLs instead.
  * @param {string} playlistUrl - The external M3U8 URL.
  * @param {number|null} skipStart - Intro start time in seconds.
  * @param {number|null} skipEnd - Intro end time in seconds.

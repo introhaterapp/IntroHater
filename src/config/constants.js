@@ -159,6 +159,10 @@ const INTRO_DB = {
     BASE_URL: 'https://api.introdb.app'
 };
 
+const THE_INTRO_DB = {
+    BASE_URL: 'https://api.introdb.app'
+};
+
 const SERVER = {
     PORT: process.env.PORT || 7005,
     PUBLIC_URL: process.env.PUBLIC_URL
@@ -171,7 +175,7 @@ const STATS = {
 
 const MANIFEST = {
     ID: "org.introhater",
-    VERSION: "2.0.0",
+    VERSION: "2.1.0",
     NAME: "IntroHater",
     DESCRIPTION: "Universal Skip Intro for Stremio (TV/Mobile/PC)",
     resources: ["stream"],
@@ -200,6 +204,7 @@ module.exports = {
     TMDB,
     ANIME_SKIP,
     INTRO_DB,
+    THE_INTRO_DB,
     SERVER,
     STATS,
     MANIFEST,
