@@ -321,7 +321,9 @@ Or use `render.yaml` for one-click deployment to Render.com.
 <summary><b>☁️ Cloud Deployment (Render/Railway)</b></summary>
 <br/>
 
-The repository includes a `render.yaml` for easy deployment:
+**Production** (`introhater.com`) runs on [Render](https://render.com) behind [Cloudflare](https://cloudflare.com). Pushes to `main` auto-deploy via `render.yaml` (`autoDeploy: true`).
+
+To deploy your own instance:
 
 1. Fork this repository
 2. Connect to [Render.com](https://render.com) or [Railway.app](https://railway.app)
